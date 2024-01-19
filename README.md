@@ -1,66 +1,20 @@
-## Foundry
+# Collective Loans 
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+We want to allow people to access small amount of credits from emergent countries mainly. 
 
-Foundry consists of:
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+## Description 
 
-## Documentation
+We introduce the concept of collective loans. The collective is a group of lenders that will have a governance right to vote on who to allow to borrow money from their pool based on the shares they own on the **ERC4626 contract.** The credit delegation agreement on the vault will happen on collective based decision. Indeed, delegating credit to borrowers will be based on the group’s voting outcome (to vote, you need to have staked an amount)
 
-https://book.getfoundry.sh/
 
-## Usage
+## Architecture 
 
-### Build
 
-```shell
-$ forge build
-```
 
-### Test
+## Technology used 
 
-```shell
-$ forge test
-```
 
-### Format
+## Video 
 
-```shell
-$ forge fmt
-```
 
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
