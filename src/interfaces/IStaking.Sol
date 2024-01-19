@@ -4,5 +4,17 @@ pragma solidity 0.8.20;
 
 interface Staking {
 
+    struct Allocation {
+        address collectiveAddress; 
+        address staker; 
+        uint256 tokens; 
+        uint256 stakingTime; 
+    }
+
+    function setMinimumStake(uint256 _minimumStake) external;
+    function stake(uint256 _tokens) external;
+    function unstake(uint256 _tokens) external;
+    function withdraw() external; 
+    function getListOfStakers() external view returns (address[] memory, Stakes.Lender[] memory);
 
 }
