@@ -1,4 +1,4 @@
-# Collective Loans 
+# StormBit
 
 We want to allow people to access small amount of credits from emergent countries mainly. 
 
