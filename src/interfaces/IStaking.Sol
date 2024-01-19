@@ -2,7 +2,9 @@
 
 pragma solidity 0.8.20;
 
-interface Staking {
+import "../library/Loans.sol";
+
+interface IStaking {
 
     struct Allocation {
         address collectiveAddress; 
@@ -12,9 +14,10 @@ interface Staking {
     }
 
     function setMinimumStake(uint256 _minimumStake) external;
-    function stake(uint256 _tokens) external;
+    function stake(uint256 _tokens) external returns (uint256);
     function unstake(uint256 _tokens) external;
     function withdraw() external; 
-    function getListOfStakers() external view returns (address[] memory, Stakes.Lender[] memory);
+    function getListOfLenders() external view returns (address[] memory, Loans.Lender[] memory);
+    function returnVoteRights(uint256 _amountStaked) external view returns (uint256);
 
 }

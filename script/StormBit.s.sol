@@ -3,7 +3,7 @@ pragma solidity ^0.8.13;
 
 import {Script, console2} from "forge-std/Script.sol";
 
-contract CollectiveLoanScript is Script {
+contract StormBitScript is Script {
     function setUp() public {}
 
     function run() public {

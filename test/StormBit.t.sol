@@ -2,6 +2,6 @@
 pragma solidity 0.8.20;
 
 import {Test, console2} from "forge-std/Test.sol";
-import {CollectiveLoan} from "../src/CollectiveLoan.sol";
+import {StormBit} from "../src/StormBit.sol";
 
-contract CollectiveLoanTest is Test {}
+contract StormBitTest is Test {}

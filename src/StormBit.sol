@@ -5,7 +5,7 @@ import "./interfaces/ICollectiveLoan.sol";
 
 error NOT_POOL_MANAGERS();
 
-abstract contract CollectiveLoan is ICollectiveLoan {
+abstract contract StormBit is ICollectiveLoan {
     event PoolManagerAdded(address _poolManager);
 
     string constant ZERO_ADDRESS_ERROR = "CollectiveLoan: zero address";
