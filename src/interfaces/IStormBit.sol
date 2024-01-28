@@ -2,14 +2,14 @@
 
 pragma solidity 0.8.20;
 
-interface ICollectiveLoan {
-    enum CollectiveLoanStatus {
+interface IStormBit {
+    enum StormBitStatus {
         Launched,
         Open,
         Complete
     }
 
-    function status() external view returns (CollectiveLoanStatus);
+    function status() external view returns (StormBitStatus);
 
     function addPoolManagers(address[] memory _poolManagers) external;
 
