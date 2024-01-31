@@ -5,6 +5,7 @@ import "./StormBitLending.sol";
 import "./interfaces/IStormBit.sol";
 import "./interfaces/IStaking.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
 
 // - StormBit Core: main contract, a contract factory as well, is ownable and pausable. ( DAO governance for v2 )
 // used when creating pools
@@ -12,7 +13,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 // Should receive NFT (ERC721) => Implements ERC721Receiver
 
-abstract contract StormBitCore is IStormBit, Ownable {
+abstract contract StormBitCore is IStormBit, Ownable, Pausable {
     event StormBitLendingPool(address indexed token, address indexed pool, uint8 maxAmountOfStakers);
 
     address public staking;
@@ -26,8 +27,8 @@ abstract contract StormBitCore is IStormBit, Ownable {
     }
 
     function createPool(address token, uint8 _maxAmountOfStakers) public returns (address) {
-        // bool haveStaked = IStaking(staking).haveAvailableStake(msg.sender);
-        // require(haveStaked == true, "Need to ERC20 stake first");
+        bool haveStaked = IStaking(staking).haveAvailableStake(msg.sender);
+        require(haveStaked == true, "Need to ERC20 stake first");
 
         StormBitLending stormBitLending = new StormBitLending(token, _maxAmountOfStakers, msg.sender);
 

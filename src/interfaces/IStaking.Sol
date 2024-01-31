@@ -14,10 +14,11 @@ interface IStaking {
     }
 
     function setMinimumStake(uint256 _minimumStake) external;
-    function stake(uint256 _tokens) external returns (uint256);
+    function stake(uint256 _tokens) external; 
     function unstake(uint256 _tokens) external;
     function withdraw() external; 
     function getListOfLenders() external view returns (address[] memory, Loans.Lender[] memory);
     function returnVoteRights(uint256 _amountStaked) external view returns (uint256);
+    function haveAvailableStake(address _staker) external view returns (bool);
 
 }
