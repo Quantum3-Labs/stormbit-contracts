@@ -45,9 +45,13 @@ contract Staking is IStaking, Ownable {
     }
 
     /**
-     * @dev Retire staked tokens from the pool, and lock them
+     * @dev reetire staked tokens from the pool, and lock them
      */
     function unstake(uint256 _tokens) external override {}
+
+    function withdraw(address _lender) external override {
+        require(Loans.poolWithdraw() > 0);
+    }
 
     function haveAvailableStake(address _staker) external view override returns (bool) {
         haveStaked[_staker] = true;
