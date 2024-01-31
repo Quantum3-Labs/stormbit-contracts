@@ -7,3 +7,4 @@ lib/openzeppelin-contracts:@openzeppelin/contracts/=lib/openzeppelin-contracts/c
 lib/openzeppelin-contracts:ds-test/=lib/openzeppelin-contracts/lib/forge-std/lib/ds-test/src/
 lib/openzeppelin-contracts:erc4626-tests/=lib/openzeppelin-contracts/lib/erc4626-tests/
 lib/openzeppelin-contracts:forge-std/=lib/openzeppelin-contracts/lib/forge-std/src/
+solmate/=lib/solmate/
