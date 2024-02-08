@@ -3,6 +3,9 @@ pragma solidity ^0.8.21;
 
 import "./interfaces/IStormBitLending.sol";
 import "./interfaces/IStormBit.sol";
+import "./Interfaces/IStrategy.sol";
+import "@openzeppelin/contracts/proxy/Clones.sol";
+
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
@@ -184,6 +187,9 @@ contract StormBitLending is
         address strategy,
         bytes calldata strategyCalldata
     ) external onlySelf {
+        address newStrategy = Clones.clone(strategy);
+        IStrategy(newStrategy).initialize(strategyCalldata);
+        // call beforeLoan function on strategy
         // TODO : on the ERC4626 of the main contract, transfer the corresponding shares to the user.
     }
 
@@ -291,7 +297,8 @@ contract StormBitLending is
 
     function _getVotes(
         address account,
-        uint256 timepoint
+        uint256 timepoint,
+        bytes memory /*params*/
     )
         internal
         view
