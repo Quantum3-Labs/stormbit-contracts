@@ -34,6 +34,7 @@ contract StormBitLending is
     GovernorVotesQuorumFractionUpgradeable
 {
     // ---------- CONFIG VARS ----------
+    string _poolName;
     uint256 _creditScore;
     uint256 _maxAmountOfStakers;
     uint256 _votingQuorum;
@@ -54,6 +55,14 @@ contract StormBitLending is
         _;
     }
 
+    modifier onlyStormBit() {
+        require(
+            msg.sender == address(_stormBit),
+            "StormBitLending: not StormBit"
+        );
+        _;
+    }
+
     modifier onlyKYCVerified() {
         require(
             _stormBit.isKYCVerified(msg.sender),
@@ -66,6 +75,7 @@ contract StormBitLending is
         InitParams memory params,
         address _firstOwner
     ) external override initializer {
+        _poolName = params.name;
         _stormBit = IStormBit(msg.sender);
         _creditScore = params.creditScore;
         _maxAmountOfStakers = params.maxAmountOfStakers;
@@ -74,9 +84,9 @@ contract StormBitLending is
         _votingPowerCoolDown = params.votingPowerCoolDown;
 
         __Ownable_init(_firstOwner);
-        __ERC20_init("StormBitLending", "SBL");
-        __ERC20Permit_init("StormBitLending");
-        __Governor_init("StormBitLending");
+        __ERC20_init(_poolName, "SBL");
+        __ERC20Permit_init(_poolName);
+        __Governor_init(_poolName);
         __GovernorVotes_init(IVotes(address(this)));
         __GovernorVotesQuorumFraction_init(_votingQuorum);
 
@@ -92,27 +102,29 @@ contract StormBitLending is
         _isSupportedAction[this.changeVotingPowerCoolDown.selector] = true;
         _isSupportedAction[this.changeMaxAmountOfStakers.selector] = true;
 
-        // check if this pool already has the amount of assets of the token in the ERC4626 of the main contract
+        // setup supported assets
+        for (uint256 i = 0; i < supportedAssets.length; i++) {
+            _isSupportedAsset[supportedAssets[i]] = true;
+        }
 
+        // check if init token is supported
+        require(
+            _isSupportedAsset[initToken],
+            "StormBitLending: init token not supported"
+        );
+        for (uint256 i = 0; i < params.supportedStrategies.length; i++) {
+            _isSupportedStrategy[params.supportedStrategies[i]] = true;
+        }
+        // check if this pool already has the amount of assets of the token in the ERC4626 of the main contract
         // setup with first deposit
         _stake(initAmount, _firstOwner);
     }
 
     function stake(address token, uint256 amount) external onlyKYCVerified {
-        // deposits the assets in the ERC4626 of the main contract
+        // transfer the assets from the user intothe ERC4626 of the main contract
 
         // stake the amount of shares in the pool
         _stake(amount, msg.sender);
-    }
-
-    function _stake(uint256 amount, address staker) internal {
-        // calculate the shares of the pool that belong to this amount
-        // we can consider all tokens to have same weight first
-
-        // TODO : change this
-        uint256 sharesInPool = amount;
-        _mint(staker, sharesInPool);
-        _delegate(staker, staker); // self delegate
     }
 
     function requestLoan(
@@ -147,6 +159,22 @@ contract StormBitLending is
         _propose(targets, values, calldatas, description, msg.sender);
     }
 
+    // ---------- STORMBIT CALLS ----------------
+    function execute(
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    )
+        public
+        payable
+        override(GovernorUpgradeable)
+        onlyStormBit
+        returns (uint256)
+    {
+        return super.execute(targets, values, calldatas, descriptionHash);
+    }
+
     // ---------- SELF CALLABLE - GOV FUNCTIONS ----------------
 
     function executeLoan(
@@ -157,6 +185,13 @@ contract StormBitLending is
         bytes calldata strategyCalldata
     ) external onlySelf {
         // TODO : on the ERC4626 of the main contract, transfer the corresponding shares to the user.
+    }
+
+    function changeStrategyStatus(
+        address strategy,
+        bool status
+    ) external onlySelf {
+        _changeStrategyStatus(strategy, status);
     }
 
     function changeVotingQuorum(uint256 newQuorum) external onlySelf {
@@ -175,6 +210,22 @@ contract StormBitLending is
         uint256 newMaxAmountOfStakers
     ) external onlySelf {
         _maxAmountOfStakers = newMaxAmountOfStakers;
+    }
+
+    // ---------- INTERNALS ----------------
+
+    function _changeStrategyStatus(address strategy, bool status) internal {
+        _isSupportedStrategy[strategy] = status;
+    }
+
+    function _stake(uint256 amount, address staker) internal {
+        // calculate the shares of the pool that belong to this amount
+        // we can consider all tokens to have same weight first
+
+        // TODO : change this
+        uint256 sharesInPool = amount;
+        _mint(staker, sharesInPool);
+        _delegate(staker, staker); // self delegate
     }
 
     // ---------- OVERRIDES ---------------------------
@@ -212,7 +263,7 @@ contract StormBitLending is
         override(GovernorUpgradeable, ERC20Upgradeable)
         returns (string memory)
     {
-        return "StormBitLending";
+        return _poolName;
     }
 
     function clock()
@@ -228,6 +279,29 @@ contract StormBitLending is
         return SafeCast.toUint48(block.timestamp);
     }
 
+    // to get the erc20 votes power now , calls this
+    /**
+     ** function getPastVotes(address account, uint256 timepoint) where timepoint is block timestamp - cool down
+     */
+
+    function getValidVotes(address account) public view returns (uint256) {
+        if (block.timestamp < _votingPowerCoolDown) return 0;
+        return getPastVotes(account, block.timestamp - _votingPowerCoolDown);
+    }
+
+    function _getVotes(
+        address account,
+        uint256 timepoint
+    )
+        internal
+        view
+        override(GovernorUpgradeable, GovernorVotesUpgradeable)
+        returns (uint256)
+    {
+        if (timepoint < _votingPowerCoolDown) return 0;
+        return super._getVotes(account, timepoint - _votingPowerCoolDown, "");
+    }
+
     function CLOCK_MODE()
         public
         view
@@ -239,17 +313,6 @@ contract StormBitLending is
         )
         returns (string memory)
     {
-        return "mode=blocknumber&from=default";
-    }
-
-    function quorum(
-        uint256 timepoint
-    )
-        public
-        view
-        override(GovernorUpgradeable, GovernorVotesQuorumFractionUpgradeable)
-        returns (uint256)
-    {
-        return super.quorum(timepoint - _votingPowerCoolDown);
+        return "mode=blocktimestamp&from=default";
     }
 }

@@ -1,31 +1,11 @@
 // SPDX-License-Identifier: MIT
-
 pragma solidity ^0.8.21;
+import "./IStormBitLending.sol";
 
 interface IStormBit {
-    enum StormBitStatus {
-        Launched,
-        Open,
-        Complete
-    }
+    event PoolCreated(address indexed pool, address creator);
 
-    function status() external view returns (StormBitStatus);
-
-    function addPoolManagers(address[] memory _poolManagers) external;
-
-    function setupCollective(
-        uint8 _maxLenders,
-        uint8 _minLenders,
-        uint8 _requestLoanFee
-    ) external;
-
-    function requestLoan() external;
-
-    function vote() external view returns (bool _result);
-
-    function abort() external;
-
-    function cancel() external returns (bool);
+    function createPool(IStormBitLending.InitParams memory params) external;
 
     function isKYCVerified(address _address) external view returns (bool);
 }
