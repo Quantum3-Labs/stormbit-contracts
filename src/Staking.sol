@@ -2,8 +2,13 @@
 pragma solidity 0.8.20;
 
 import "./interfaces/IStaking.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract Staking is IStaking, Ownable {
+    using SafeERC20 for IERC20;
+
     enum Aggreement {
         BaseAgreement,
         NFTAgreement,
@@ -15,7 +20,7 @@ contract Staking is IStaking, Ownable {
     address public token;
     address[] public borrowers;
 
-    mapping(address => Loans.Lender) public loans;
+    mapping(address => LendingPool.Lender) public loans;
     mapping(address => bool) public haveStaked;
     mapping(uint256 => uint256) public totalSupplied; // mapping of poolId to totalSupplied
 
@@ -40,7 +45,7 @@ contract Staking is IStaking, Ownable {
 
         // stake is added to the total supply
         totalSupplied += _tokens;
-        _safeTransferFrom(msg.sender, address(this), _tokens);
+        safeTransferFrom(msg.sender, address(this), _tokens);
         emit stakedInPool(msg.sender, _tokens);
     }
 
@@ -50,7 +55,7 @@ contract Staking is IStaking, Ownable {
     function unstake(uint256 _tokens) external override {}
 
     function withdraw(address _lender) external override {
-        require(Loans.poolWithdraw() > 0);
+        require(LendingPool.poolWithdraw() > 0);
     }
 
     function haveAvailableStake(address _staker) external view override returns (bool) {

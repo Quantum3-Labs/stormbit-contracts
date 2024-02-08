@@ -3,7 +3,7 @@
 pragma solidity 0.8.20;
 
 library LendingPool {
-    using Loans for Loans.Lender;
+    using LendingPool for LendingPool.Lender;
 
     struct Lender {
         address tokensStaked;

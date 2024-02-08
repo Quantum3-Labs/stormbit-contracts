@@ -19,6 +19,20 @@ contract StormBitERC4626 is ERC4626 {
         return address(_underlyingToken);
     }
 
+    /**
+     * @inheritdoc ERC4626s
+     */
+
+    function totalAssets() public view override returns (uint256) {
+        assembly {
+            if eq(sload(0), 2) {
+                mstore(0x00, 0xed3ba6a6)
+                revert(0x1c, 0x04)
+            }
+        }
+        return asset.balanceOf(address(this));
+    }
+
     function convertToShares(uint256 assets) public view override returns (uint256) {
         return _convertToShares(assets, Math.Rounding.Floor);
     }
@@ -33,4 +47,14 @@ contract StormBitERC4626 is ERC4626 {
 
         return shares;
     }
+
+    /**
+     * @inheritdoc ERC4626
+     */
+    function beforeWithdraw(uint256 assets, uint256 shares) internal override nonReentrant {}
+
+    /**
+     * @inheritdoc ERC4626
+     */
+    function afterDeposit(uint256 assets, uint256 shares) internal override nonReentrant {}
 }
