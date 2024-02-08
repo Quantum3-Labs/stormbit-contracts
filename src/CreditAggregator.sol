@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.20;
+pragma solidity ^0.8.21;
 
 import "./interfaces/IStormBit.sol";
 
@@ -7,4 +7,6 @@ import "./interfaces/IStormBit.sol";
 //     - a contract that uses many chainlink functions scripts to aggregate data from different APIs
 //     - this is called when the user submits a loan request. his aggregated credit scored gets stored in the contract and will be used when the loan is approve.
 
-contract CreditAggregator {}
+contract CreditAggregator {
+
+}

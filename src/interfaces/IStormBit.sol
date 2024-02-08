@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.20;
+pragma solidity ^0.8.21;
 
 interface IStormBit {
     enum StormBitStatus {
@@ -13,7 +13,11 @@ interface IStormBit {
 
     function addPoolManagers(address[] memory _poolManagers) external;
 
-    function setupCollective(uint8 _maxLenders, uint8 _minLenders, uint8 _requestLoanFee) external;
+    function setupCollective(
+        uint8 _maxLenders,
+        uint8 _minLenders,
+        uint8 _requestLoanFee
+    ) external;
 
     function requestLoan() external;
 
@@ -22,4 +26,6 @@ interface IStormBit {
     function abort() external;
 
     function cancel() external returns (bool);
+
+    function isKYCVerified(address _address) external view returns (bool);
 }
