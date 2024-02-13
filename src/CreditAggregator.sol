@@ -7,6 +7,4 @@ import "./interfaces/IStormBit.sol";
 //     - a contract that uses many chainlink functions scripts to aggregate data from different APIs
 //     - this is called when the user submits a loan request. his aggregated credit scored gets stored in the contract and will be used when the loan is approve.
 
-contract CreditAggregator {
-
-}
+contract CreditAggregator {}

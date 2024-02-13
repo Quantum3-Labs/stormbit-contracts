@@ -11,10 +11,7 @@ interface IStrategy {
 
     function afterLoan(bytes memory data) external returns (bool);
 
-    function getPaymentDates()
-        external
-        view
-        returns (uint256[] memory, uint256[] memory);
+    function getPaymentDates() external view returns (uint256[] memory, uint256[] memory);
 
     function pay(uint256 amount) external returns (bool);
 

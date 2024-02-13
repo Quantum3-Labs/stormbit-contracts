@@ -23,17 +23,12 @@ interface IStormBitLending {
         bytes strategyCalldata;
     }
 
-    function initialize(InitParams memory params, address _firstOwner) external;
+    function initializeLending(InitParams memory params, address _firstOwner) external;
 
     function stake(address token, uint256 amount) external;
 
     function requestLoan(LoanRequestParams memory params) external;
 
-    function executeLoan(
-        address token,
-        address to,
-        uint256 amount,
-        address strategy,
-        bytes calldata strategyCalldata
-    ) external;
+    function executeLoan(address token, address to, uint256 amount, address strategy, bytes calldata strategyCalldata)
+        external;
 }

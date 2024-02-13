@@ -17,6 +17,7 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 contract StormBitCore is IStormBit, Ownable, Pausable {
     using EnumerableSet for EnumerableSet.AddressSet;
+
     address public lastPool;
     EnumerableSet.AddressSet internal _lendingPools;
     address internal _lendingPoolImplementation;
@@ -26,24 +27,15 @@ contract StormBitCore is IStormBit, Ownable, Pausable {
         _;
     }
 
-    constructor(
-        address initialOwner,
-        address lendingPoolImplementation
-    ) Ownable(initialOwner) {
+    constructor(address initialOwner, address lendingPoolImplementation) Ownable(initialOwner) {
         _lendingPoolImplementation = lendingPoolImplementation;
     }
 
-    function createPool(
-        IStormBitLending.InitParams memory params
-    ) external onlyKYCVerified {
+    function createPool(IStormBitLending.InitParams memory params) external onlyKYCVerified {
         address newPool = Clones.clone(_lendingPoolImplementation);
         // transfer the tokens
-        IERC20(params.initToken).transferFrom(
-            msg.sender,
-            newPool,
-            params.initAmount
-        );
-        IStormBitLending(newPool).initialize(params, msg.sender);
+        IERC20(params.initToken).transferFrom(msg.sender, newPool, params.initAmount);
+        IStormBitLending(newPool).initializeLending(params, msg.sender);
 
         emit PoolCreated(newPool, msg.sender);
     }

@@ -9,9 +9,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 contract StormBitERC4626 is ERC4626 {
     IERC20 private _underlyingToken;
 
-    constructor(
-        IERC20 underlyingToken
-    ) ERC4626(underlyingToken) ERC20("StormBitERC4626", "STB4626") {
+    constructor(IERC20 underlyingToken) ERC4626(underlyingToken) ERC20("StormBitERC4626", "STB4626") {
         _underlyingToken = underlyingToken;
         _mint(msg.sender, 10000000);
     }
