@@ -148,7 +148,7 @@ contract StormBitLending is
         onlySelf
     {
         address newStrategy = Clones.clone(strategy);
-        // IStrategy(newStrategy).initialize(strategyCalldata); // REMOVE THIS 
+        // IStrategy(newStrategy).initialize(strategyCalldata); // REMOVE THIS
         // call beforeLoan function on strategy
         // TODO : on the ERC4626 of the main contract, transfer the corresponding shares to the user.
     }
