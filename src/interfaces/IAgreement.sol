@@ -1,6 +1,6 @@
 pragma solidity ^0.8.21;
 
-interface IStrategy {
+interface IAgreement {
     function paymentToken() external view returns (address);
 
     function lateFee() external view returns (uint256);
@@ -11,10 +11,7 @@ interface IStrategy {
 
     function afterLoan(bytes memory data) external returns (bool);
 
-    function getPaymentDates()
-        external
-        view
-        returns (uint256[] memory, uint256[] memory);
+    function getPaymentDates() external view returns (uint256[] memory, uint256[] memory);
 
     function pay(uint256 amount) external returns (bool);
 

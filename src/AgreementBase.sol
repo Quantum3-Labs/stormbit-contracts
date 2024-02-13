@@ -1,9 +1,9 @@
 pragma solidity ^0.8.21;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "./interfaces/IStrategy.sol";
+import "./interfaces/IAgreement.sol";
 
-abstract contract StrategyBase is IStrategy, Initializable {
+abstract contract AgreementBase is IAgreement, Initializable {
     uint256 public _lateFee;
     address public _paymentToken;
     address public _deployer;

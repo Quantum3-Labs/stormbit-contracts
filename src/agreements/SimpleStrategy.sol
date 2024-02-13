@@ -1,8 +1,8 @@
 pragma solidity ^0.8.21;
 
-import "../StrategyBase.sol";
+import "../AgreementBase.sol";
 
-contract SimpleStrategy is StrategyBase {
+contract SimpleStrategy is AgreementBase {
     function beforeLoan(bytes memory) external override returns (bool) {
         return true;
     }

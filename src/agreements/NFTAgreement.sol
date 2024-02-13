@@ -1,11 +1,11 @@
 pragma solidity ^0.8.21;
 
-import "../StrategyBase.sol";
+import "../AgreementBase.sol";
 import "../interfaces/IStormBitLending.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
-contract NFTAgreement is StrategyBase {
+contract NFTAgreement is AgreementBase {
     mapping(address => NFTAggreement) public nftAgreements;
     mapping(address => bool) public hasNFTLocked;
 
@@ -62,14 +62,14 @@ contract NFTAgreement is StrategyBase {
         );
     }
 
-    function sendRequest(uint256 loanAmount, address token, bytes calldata strategyCalldata) internal {
+    function sendRequest(uint256 loanAmount, address token, bytes calldata agreementCalldata) internal {
         require(hasNFTLocked[msg.sender], "NFTAgreement: NFT not locked");
         // request loan
         IStormBitLending.LoanRequestParams memory params = IStormBitLending.LoanRequestParams({
             amount: loanAmount,
             token: token,
-            strategy: address(this), // @note - this contract is the strategy used
-            strategyCalldata: strategyCalldata
+            agreement: address(this), // @note - this contract is the strategy used
+            agreementCalldata: agreementCalldata
         });
     }
 

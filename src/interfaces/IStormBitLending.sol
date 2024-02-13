@@ -13,14 +13,14 @@ interface IStormBitLending {
         uint256 initAmount;
         address initToken; //  initToken has to be in supportedAssets
         address[] supportedAssets;
-        address[] supportedStrategies;
+        address[] supportedAgreements;
     }
 
     struct LoanRequestParams {
         uint256 amount;
         address token;
-        address strategy;
-        bytes strategyCalldata;
+        address agreement;
+        bytes agreementCalldata;
     }
 
     function initializeLending(InitParams memory params, address _firstOwner) external;
@@ -29,6 +29,6 @@ interface IStormBitLending {
 
     function requestLoan(LoanRequestParams memory params) external;
 
-    function executeLoan(address token, address to, uint256 amount, address strategy, bytes calldata strategyCalldata)
+    function executeLoan(address token, address to, uint256 amount, address strategy, bytes calldata agreementCalldata)
         external;
 }
