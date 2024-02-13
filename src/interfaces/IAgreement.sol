@@ -11,6 +11,8 @@ interface IAgreement {
 
     function afterLoan(bytes memory data) external returns (bool);
 
+    function withdraw(uint256 amount) external;
+
     function getPaymentDates() external view returns (uint256[] memory, uint256[] memory);
 
     function pay(uint256 amount) external returns (bool);

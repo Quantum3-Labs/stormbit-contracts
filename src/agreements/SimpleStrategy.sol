@@ -2,13 +2,17 @@ pragma solidity ^0.8.21;
 
 import "../AgreementBase.sol";
 
-contract SimpleStrategy is AgreementBase {
+contract SimpleAgreement is AgreementBase {
     function beforeLoan(bytes memory) external override returns (bool) {
         return true;
     }
 
     function afterLoan(bytes memory) external override returns (bool) {
         return true;
+    }
+
+    function withdraw(uint256 amount) public {
+        payable(msg.sender).transfer(amount);
     }
 
     function penalty() public view override returns (bool, uint256) {

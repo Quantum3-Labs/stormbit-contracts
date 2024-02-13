@@ -37,6 +37,10 @@ contract NFTAgreement is AgreementBase {
 
     function afterLoan(bytes memory) external override returns (bool) {}
 
+    function withdraw(uint256 amount) public {
+        payable(msg.sender).transfer(amount);
+    }
+
     function penalty() public view override returns (bool, uint256) {
         (uint256 amount, uint256 time) = nextPayment();
         return (_hasPenalty || time < block.timestamp, _lateFee);
