@@ -3,7 +3,7 @@ pragma solidity ^0.8.21;
 
 import "./interfaces/IStormBitLending.sol";
 import "./interfaces/IStormBit.sol";
-import "./Interfaces/IStrategy.sol";
+// import "./Interfaces/IStrategy.sol"; // REMOVE THIS LINE
 import "@openzeppelin/contracts/proxy/Clones.sol";
 
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -109,8 +109,7 @@ contract StormBitLending is
     }
 
     function stake(address token, uint256 amount) external onlyKYCVerified {
-        // transfer the assets from the user intothe ERC4626 of the main contract
-
+        // transfer the assets from the user into the ERC4626 of the main contract
         // stake the amount of shares in the pool
         _stake(amount, msg.sender);
     }
@@ -149,7 +148,7 @@ contract StormBitLending is
         onlySelf
     {
         address newStrategy = Clones.clone(strategy);
-        IStrategy(newStrategy).initialize(strategyCalldata);
+        // IStrategy(newStrategy).initialize(strategyCalldata); // REMOVE THIS 
         // call beforeLoan function on strategy
         // TODO : on the ERC4626 of the main contract, transfer the corresponding shares to the user.
     }

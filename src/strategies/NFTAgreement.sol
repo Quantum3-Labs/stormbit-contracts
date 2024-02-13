@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 contract NFTAgreement is StrategyBase {
-
     mapping(address => NFTAggreement) public nftAgreements;
     mapping(address => bool) public hasNFTLocked;
 
