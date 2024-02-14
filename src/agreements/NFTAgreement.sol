@@ -5,9 +5,13 @@ import "../interfaces/IStormBitLending.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
-contract NFTAgreement is AgreementBase {
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+abstract contract NFTAgreement is AgreementBase {
     mapping(address => NFTAggreement) public nftAgreements;
     mapping(address => bool) public hasNFTLocked;
+    address borrower;
+    mapping(address => uint256) public borrowerAllocation;
 
     struct NFTAggreement {
         address nftContract; // contract of the nft to transfer
@@ -15,18 +19,6 @@ contract NFTAgreement is AgreementBase {
         uint256[] paymentAmounts;
         uint256 borrowedAmount;
         uint256 penalty; // increments by timestamp, late payers.
-    }
-
-    function initializeNFTAgreement(
-        bytes memory initData,
-        address nftContract,
-        uint256[] memory paymentDeadlines,
-        uint256[] memory paymentAmounts,
-        uint256 borrowedAmount,
-        uint256 penalty
-    ) external {
-        // initialize(initData);
-        _paymentToken = nftContract;
     }
 
     function paymentToken() public view override returns (address) {
@@ -53,6 +45,10 @@ contract NFTAgreement is AgreementBase {
         }
         _paymentCount++;
         return true;
+    }
+
+    function _withdraw() internal {
+        IERC20(_paymentToken).transfer(borrower, borrowerAllocation[msg.sender]);
     }
 
     // You have to lock the NFT to submit a request for a loan.
@@ -83,4 +79,6 @@ contract NFTAgreement is AgreementBase {
     {
         return this.onERC721Received.selector;
     }
+
+    receive() external payable {}
 }

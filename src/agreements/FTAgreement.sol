@@ -6,7 +6,7 @@ import {StormBitCore} from "../StormBitCore.sol";
 import {StormBitLending} from "../StormBitLending.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract FTAgreement is AgreementBase {
+abstract contract FTAgreement is AgreementBase {
     StormBitCore stormbitCore;
     StormBitLending stormbitLending;
 
@@ -19,7 +19,7 @@ contract FTAgreement is AgreementBase {
     mapping(address => uint256) public depositTimes;
     mapping(address => uint256) public collateralBalances;
 
-    constructor(StormBitCore _stormbitCore, StormBitLending _stormbitLending, uint256 _collateralAmount) public {
+    constructor(StormBitCore _stormbitCore, StormBitLending _stormbitLending, uint256 _collateralAmount) {
         stormbitCore = _stormbitCore;
         stormbitLending = _stormbitLending;
         collateralAmount = _collateralAmount;
@@ -96,4 +96,6 @@ contract FTAgreement is AgreementBase {
         collateralBalances[msg.sender] = collateralAmount; // @audit - check for reentrancy
         requested[msg.sender] == true; // @audit - check for reentrancy
     }
+
+    receive() external payable {}
 }

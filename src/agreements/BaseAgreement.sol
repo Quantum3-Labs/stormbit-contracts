@@ -7,26 +7,26 @@ import {StormBitLending} from "../StormBitLending.sol";
 import {IStormBitLending} from "../interfaces/IStormBitLending.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-abstract contract BaseAgreement is AgreementBase {
+contract BaseAgreement is AgreementBase {
     address private borrower;
     address public token;
 
-    mapping(address => uint256) public userAllocation;
+    mapping(address => uint256) public borrowerAllocation;
     mapping(address => uint256) public startTime;
 
     event ETHReceived(uint256 amount);
 
     constructor(address _token) public {
         borrower = msg.sender;
-        token = _token;
+        _paymentToken = _token;
     }
 
-    // 1. funds are received into this contract
-    // 2. user withdraws this funds
-    function afterLoan(bytes memory) external override returns (bool) {
-        startTime[msg.sender] = block.timestamp;
-        IERC20(token).transfer(msg.sender, userAllocation[msg.sender]);
-        userAllocation[borrower] = 0;
+    function lateFee() public view override returns (uint256) {
+        return _lateFee;
+    }
+
+    function paymentToken() public view override returns (address) {
+        return _paymentToken;
     }
 
     function nextPayment() public view override returns (uint256, uint256) {
@@ -34,11 +34,36 @@ abstract contract BaseAgreement is AgreementBase {
         return (_amounts[_paymentCount], dueTime);
     }
 
-    function withdraw(uint256 amount) public {
-        payable(msg.sender).transfer(amount);
+    function pay(uint256 amount) public override returns (bool) {
+        require(borrowerAllocation[borrower] >= amount, "Insufficient funds");
+        IERC20(token).transfer(address(this), amount);
+        return true;
     }
 
-    receive() external payable {
-        emit ETHReceived(msg.value);
+    function beforeLoan(bytes memory) external override returns (bool) {
+        return true;
     }
+
+    // 1. funds are received into this contract
+    // 2. user withdraws this funds
+    function afterLoan(bytes memory) external override returns (bool) {
+        startTime[msg.sender] = block.timestamp;
+        withdraw();
+        borrowerAllocation[borrower] = 0;
+    }
+
+    function withdraw() override public {
+        IERC20(token).transfer(borrower, borrowerAllocation[msg.sender]);
+    }
+
+    function getPaymentDates() public view override returns (uint256[] memory, uint256[] memory) {
+        return (_amounts, _times);
+    }
+
+    function penalty() public view override returns (bool, uint256) {
+        (uint256 amount, uint256 time) = nextPayment();
+        return (_hasPenalty || time < block.timestamp, _lateFee);
+    }
+
+    receive() external payable {}
 }

@@ -154,8 +154,10 @@ contract StormBitLending is
         address newAgreement = Clones.clone(agreement);
         IAgreement(newAgreement).initialize(agreementCalldata);
         // call beforeLoan function on Agreement
+        IAgreement(newAgreement).beforeLoan(agreementCalldata);
         // deposit funds into the agreement
         // TODO : on the ERC4626 of the main contract, transfer the corresponding shares to the user.
+        IERC20(token).transfer(newAgreement, amount);
     }
 
     function changeAgreementStatus(address Agreement, bool status) external onlySelf {

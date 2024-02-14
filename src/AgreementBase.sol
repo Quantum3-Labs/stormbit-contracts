@@ -46,6 +46,8 @@ abstract contract AgreementBase is IAgreement, Initializable {
 
     function afterLoan(bytes memory) external virtual override returns (bool);
 
+    function withdraw() virtual override external;
+
     function getPaymentDates() public view virtual override returns (uint256[] memory, uint256[] memory) {
         return (_amounts, _times);
     }
