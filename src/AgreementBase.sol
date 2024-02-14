@@ -18,14 +18,18 @@ abstract contract AgreementBase is IAgreement, Initializable {
     }
 
     function initialize(bytes memory initData) external override initializer {
-        (uint256 lateFee, address PaymentToken, uint256[] memory amounts, uint256[] memory times) =
-            abi.decode(initData, (uint256, address, uint256[], uint256[]));
+        (
+            uint256 lateFee,
+            address PaymentToken,
+            uint256[] memory amounts,
+            uint256[] memory times
+        ) = abi.decode(initData, (uint256, address, uint256[], uint256[]));
         _lateFee = lateFee;
         _paymentToken = PaymentToken;
         _deployer = msg.sender;
         // TODO : check if this array initialization is correct under library clone
-        amounts = _amounts;
-        times = _times;
+        _amounts = amounts;
+        _times = times;
     }
 
     function lateFee() public view virtual override returns (uint256) {
@@ -36,7 +40,13 @@ abstract contract AgreementBase is IAgreement, Initializable {
         return _paymentToken;
     }
 
-    function nextPayment() public view virtual override returns (uint256, uint256) {
+    function nextPayment()
+        public
+        view
+        virtual
+        override
+        returns (uint256, uint256)
+    {
         return (_amounts[_paymentCount], _times[_paymentCount]);
     }
 
@@ -46,9 +56,15 @@ abstract contract AgreementBase is IAgreement, Initializable {
 
     function afterLoan(bytes memory) external virtual override returns (bool);
 
-    function withdraw() virtual override external;
+    function withdraw() external virtual override;
 
-    function getPaymentDates() public view virtual override returns (uint256[] memory, uint256[] memory) {
+    function getPaymentDates()
+        public
+        view
+        virtual
+        override
+        returns (uint256[] memory, uint256[] memory)
+    {
         return (_amounts, _times);
     }
 
