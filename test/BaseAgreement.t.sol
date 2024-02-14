@@ -6,15 +6,26 @@ import "../src/agreements/BaseAgreement.sol";
 import "./MockToken.t.sol";
 
 contract BaseAgreementTest is Test {
-    MockToken public token;
+    MockToken public mockToken;
     BaseAgreement public agreement;
     address owner = makeAddr("owner");
 
     function setUp() public {
         agreement = new BaseAgreement();
+        mockToken = new MockToken();
     }
 
-    function testDeployment() public {
-        assertEq(address(agreement.paymentToken()), address(token));
+    function initAgreement() public {
+        agreement.initialize(
+            abi.encode(
+                1000,
+                address(mockToken),
+                [100, 200, 300],
+                [20 days, 10 days, 5 days]
+            )
+        );
+
+        assertEq(address(agreement.paymentToken()), address(mockToken));
+
     }
 }

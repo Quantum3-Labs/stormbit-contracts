@@ -8,9 +8,6 @@ import {IStormBitLending} from "../interfaces/IStormBitLending.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract BaseAgreement is AgreementBedrock {
-    address private borrower;
-    address public token;
-
     mapping(address => uint256) public borrowerAllocation;
     mapping(address => uint256) public startTime;
 
@@ -23,13 +20,13 @@ contract BaseAgreement is AgreementBedrock {
     }
 
     function nextPayment() public view override returns (uint256, uint256) {
-        uint256 dueTime = startTime[borrower] + 10 days; // @note - 10 days after deposit of collateral
+        uint256 dueTime = startTime[msg.sender] + 10 days; // @note - 10 days after deposit of collateral
         return (_amounts[_paymentCount], dueTime);
     }
 
     function pay(uint256 amount) public override returns (bool) {
-        require(borrowerAllocation[borrower] >= amount, "Insufficient funds");
-        IERC20(token).transfer(address(this), amount);
+        require(borrowerAllocation[msg.sender] >= amount, "Insufficient funds");
+        IERC20(_paymentToken).transfer(address(this), amount);
         return true;
     }
 
@@ -42,11 +39,12 @@ contract BaseAgreement is AgreementBedrock {
     function afterLoan(bytes memory) external override returns (bool) {
         startTime[msg.sender] = block.timestamp;
         withdraw();
-        borrowerAllocation[borrower] = 0;
+        borrowerAllocation[msg.sender] = 0;
     }
 
     function withdraw() public override {
-        IERC20(token).transfer(borrower, borrowerAllocation[msg.sender]);
+        require(borrowerAllocation[msg.sender] > 0, "No funds to withdraw");
+        IERC20(_paymentToken).transfer(msg.sender, borrowerAllocation[msg.sender]);
     }
 
     function getPaymentDates() public view override returns (uint256[] memory, uint256[] memory) {
@@ -58,5 +56,9 @@ contract BaseAgreement is AgreementBedrock {
         return (_hasPenalty || time < block.timestamp, _lateFee);
     }
 
+    /**
+     * @notice - Agreement should receive allocation of funds 
+     * @dev - This function is called by the StormBitLending.executeLoan() function
+     */
     receive() external payable {}
 }
