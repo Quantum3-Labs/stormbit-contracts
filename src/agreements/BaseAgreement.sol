@@ -57,7 +57,7 @@ contract BaseAgreement is AgreementBedrock {
     }
 
     /**
-     * @notice - Agreement should receive allocation of funds 
+     * @notice - Agreement should receive allocation of funds
      * @dev - This function is called by the StormBitLending.executeLoan() function
      */
     receive() external payable {}
