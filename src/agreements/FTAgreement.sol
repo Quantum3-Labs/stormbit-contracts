@@ -1,12 +1,12 @@
 pragma solidity ^0.8.21;
 
-import "../AgreementBase.sol";
+import "../AgreementBedrock.sol";
 import "../interfaces/IStormBitLending.sol";
 import {StormBitCore} from "../StormBitCore.sol";
 import {StormBitLending} from "../StormBitLending.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-abstract contract FTAgreement is AgreementBase {
+abstract contract FTAgreement is AgreementBedrock {
     StormBitCore stormbitCore;
     StormBitLending stormbitLending;
 

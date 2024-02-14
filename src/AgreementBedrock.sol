@@ -3,7 +3,7 @@ pragma solidity ^0.8.21;
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "./interfaces/IAgreement.sol";
 
-abstract contract AgreementBase is IAgreement, Initializable {
+abstract contract AgreementBedrock is IAgreement, Initializable {
     uint256 public _lateFee;
     address public _paymentToken;
     address public _deployer;
@@ -18,12 +18,8 @@ abstract contract AgreementBase is IAgreement, Initializable {
     }
 
     function initialize(bytes memory initData) external override initializer {
-        (
-            uint256 lateFee,
-            address PaymentToken,
-            uint256[] memory amounts,
-            uint256[] memory times
-        ) = abi.decode(initData, (uint256, address, uint256[], uint256[]));
+        (uint256 lateFee, address PaymentToken, uint256[] memory amounts, uint256[] memory times) =
+            abi.decode(initData, (uint256, address, uint256[], uint256[]));
         _lateFee = lateFee;
         _paymentToken = PaymentToken;
         _deployer = msg.sender;
@@ -40,13 +36,7 @@ abstract contract AgreementBase is IAgreement, Initializable {
         return _paymentToken;
     }
 
-    function nextPayment()
-        public
-        view
-        virtual
-        override
-        returns (uint256, uint256)
-    {
+    function nextPayment() public view virtual override returns (uint256, uint256) {
         return (_amounts[_paymentCount], _times[_paymentCount]);
     }
 
@@ -58,13 +48,7 @@ abstract contract AgreementBase is IAgreement, Initializable {
 
     function withdraw() external virtual override;
 
-    function getPaymentDates()
-        public
-        view
-        virtual
-        override
-        returns (uint256[] memory, uint256[] memory)
-    {
+    function getPaymentDates() public view virtual override returns (uint256[] memory, uint256[] memory) {
         return (_amounts, _times);
     }
 

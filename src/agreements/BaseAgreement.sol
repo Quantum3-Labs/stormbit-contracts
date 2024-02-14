@@ -1,25 +1,18 @@
 pragma solidity ^0.8.21;
 
-import "../AgreementBase.sol";
+import "../AgreementBedrock.sol";
 import {StormBitCore} from "../StormBitCore.sol";
 import {StormBitLending} from "../StormBitLending.sol";
 
 import {IStormBitLending} from "../interfaces/IStormBitLending.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract BaseAgreement is AgreementBase {
+contract BaseAgreement is AgreementBedrock {
     address private borrower;
     address public token;
 
     mapping(address => uint256) public borrowerAllocation;
     mapping(address => uint256) public startTime;
-
-    event ETHReceived(uint256 amount);
-
-    constructor(address _token) public {
-        borrower = msg.sender;
-        _paymentToken = _token;
-    }
 
     function lateFee() public view override returns (uint256) {
         return _lateFee;
@@ -52,7 +45,7 @@ contract BaseAgreement is AgreementBase {
         borrowerAllocation[borrower] = 0;
     }
 
-    function withdraw() override public {
+    function withdraw() public override {
         IERC20(token).transfer(borrower, borrowerAllocation[msg.sender]);
     }
 

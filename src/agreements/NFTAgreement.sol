@@ -1,13 +1,13 @@
 pragma solidity ^0.8.21;
 
-import "../AgreementBase.sol";
+import "../AgreementBedrock.sol";
 import "../interfaces/IStormBitLending.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-abstract contract NFTAgreement is AgreementBase {
+abstract contract NFTAgreement is AgreementBedrock {
     mapping(address => NFTAggreement) public nftAgreements;
     mapping(address => bool) public hasNFTLocked;
     address borrower;
