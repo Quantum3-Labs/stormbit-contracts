@@ -2,13 +2,14 @@
 pragma solidity ^0.8.21;
 
 import "forge-std/Script.sol";
-import {BaseAgreement} from "../src/agreements/BaseAgreement.sol";
+import {SimpleAgreement} from "../src/agreements/SimpleAgreement.sol";
+import {IAgreement} from "../src/interfaces/IAgreement.sol";
 import "../test/MockToken.t.sol";
 
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract BaseAgreementScript is Script {
-    BaseAgreement public agreement;
+    SimpleAgreement public agreement;
     MockToken public mockToken;
 
     function run() external {
@@ -36,10 +37,15 @@ contract BaseAgreementScript is Script {
         );
 
         // Deploy BaseAgreement proxy
-        address agreementImpl = address(new BaseAgreement());
-        bytes memory agreementData = abi.encodeWithSelector(BaseAgreement.initialize.selector, initData);
-        address agreementProxy = address(new ERC1967Proxy(agreementImpl, agreementData));
-        agreement = BaseAgreement(payable(agreementProxy));
+        address agreementImpl = address(new SimpleAgreement());
+        bytes memory agreementData = abi.encodeWithSelector(
+            IAgreement.initialize.selector,
+            initData
+        );
+        address agreementProxy = address(
+            new ERC1967Proxy(agreementImpl, agreementData)
+        );
+        agreement = SimpleAgreement(payable(agreementProxy));
 
         vm.stopBroadcast();
     }

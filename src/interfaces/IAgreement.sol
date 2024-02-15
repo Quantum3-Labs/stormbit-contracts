@@ -9,11 +9,22 @@ interface IAgreement {
 
     function withdraw() external;
 
-    function getPaymentDates() external view returns (uint256[] memory, uint256[] memory);
+    function getPaymentDates()
+        external
+        view
+        returns (uint256[] memory, uint256[] memory);
 
     function payBack() external returns (bool);
 
     function initialize(bytes memory initData) external;
 
     function penalty() external returns (uint256);
+
+    function lender() external view returns (address);
+
+    function borrower() external view returns (address);
+
+    function isLoanFinished() external view returns (bool);
+
+    function totalLoanAmount() external view returns (uint256);
 }
