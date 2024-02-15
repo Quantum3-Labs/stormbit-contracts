@@ -6,7 +6,6 @@ via-ir=true
 optimizer_runs = 10000000
 gas_reports = ["*"]
 
-
 [rpc_endpoints]
 default_network = "http://127.0.0.1:8545"
 localhost = "http://127.0.0.1:8545"

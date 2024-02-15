@@ -15,11 +15,18 @@ contract BaseAgreementTest is Test {
 
     function setUp() public {
         mockToken = new MockToken();
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = 200;
+        amounts[1] = 100;
+
+        uint256[] memory times = new uint256[](2);
+        times[0] = 2;
+        times[1] = 3;
         bytes memory initData = abi.encode(
             1000, // lateFee
-            address(mockToken),             // PaymentToken address
-            [200, 100, 50],
-            [2 days, 3 days, 4 days]
+            address(mockToken), // PaymentToken address
+            amounts,
+            times
         );
 
         address agreementImpl = address(new BaseAgreement());
@@ -31,11 +38,7 @@ contract BaseAgreementTest is Test {
     function testInitAgreement() public {
         assertEq(address(agreement.paymentToken()), address(mockToken));
         assertEq(agreement.lateFee(), 1000);
-        // check next payment
-        // (uint256 amount, uint256 time) = agreement.nextPayment();
-        // assertEq(agreement._amounts(1), 200);
-
-        
-        
+        (uint256 amount, uint256 time) = agreement.nextPayment();
+        assertEq(agreement._amounts(0), 200);
     }
 }

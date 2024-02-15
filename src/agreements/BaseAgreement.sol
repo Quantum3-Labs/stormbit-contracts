@@ -12,7 +12,12 @@ contract BaseAgreement is AgreementBedrock {
     mapping(address => uint256) public startTime;
 
     function initialize(bytes memory initData) external override initializer {
-        (_lateFee, _paymentToken) = abi.decode(initData, (uint256, address));
+        (uint256 lateFee, address PaymentToken, uint256[] memory amounts, uint256[] memory times) =
+            abi.decode(initData, (uint256, address, uint256[], uint256[]));
+        _lateFee = lateFee;
+        _paymentToken = PaymentToken;
+        _amounts = amounts;
+        _times = times;
         _deployer = msg.sender;
     }
 
@@ -25,8 +30,7 @@ contract BaseAgreement is AgreementBedrock {
     }
 
     function nextPayment() public view override returns (uint256, uint256) {
-        uint256 dueTime = startTime[msg.sender] + 10 days; // @note - 10 days after deposit of collateral
-        return (_amounts[_paymentCount], dueTime);
+        return (_amounts[_paymentCount], _times[_paymentCount]);
     }
 
     function pay(uint256 amount) public override returns (bool) {
