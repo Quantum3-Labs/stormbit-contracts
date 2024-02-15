@@ -11,6 +11,11 @@ contract BaseAgreement is AgreementBedrock {
     mapping(address => uint256) public borrowerAllocation;
     mapping(address => uint256) public startTime;
 
+    function initialize(bytes memory initData) external override initializer {
+        (_lateFee, _paymentToken) = abi.decode(initData, (uint256, address));
+        _deployer = msg.sender;
+    }
+
     function lateFee() public view override returns (uint256) {
         return _lateFee;
     }

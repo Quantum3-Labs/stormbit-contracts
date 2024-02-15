@@ -4,36 +4,30 @@ pragma solidity ^0.8.12;
 import "forge-std/test.sol";
 import "../src/agreements/BaseAgreement.sol";
 import "./MockToken.t.sol";
+import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import "../src/AgreementBedrock.sol";
 
 contract BaseAgreementTest is Test {
     MockToken public mockToken;
     BaseAgreement public agreement;
+    AgreementBedrock public bedrock;
     address owner = makeAddr("owner");
 
     function setUp() public {
-        agreement = new BaseAgreement();
         mockToken = new MockToken();
+        bytes memory initData = abi.encode(
+            1000, // lateFee
+            address(mockToken) // PaymentToken address
+        );
+
+        address agreementImpl = address(new BaseAgreement());
+        bytes memory agreementData = abi.encodeWithSelector(BaseAgreement.initialize.selector, initData);
+        address agreementProxy = address(new ERC1967Proxy(agreementImpl, agreementData));
+        agreement = BaseAgreement(payable(agreementProxy));
     }
 
     function testInitAgreement() public {
-        // Ensuring correct data encoding for the initialize call
-        uint256[] memory amounts = new uint256[](2);
-        amounts[0] = 100;
-        amounts[1] = 200;
-        uint256[] memory times = new uint256[](2);
-        times[0] = 1000;
-        times[1] = 2000;
-
-        bytes memory initData = abi.encode(
-            1000, // lateFee
-            address(mockToken)// PaymentToken address
-        );
-    
-        agreement.initialize(initData);
-
-        // Assertions to verify initialization was successful
         assertEq(address(agreement.paymentToken()), address(mockToken));
         assertEq(agreement.lateFee(), 1000);
-        // Add more assertions as necessary to verify the amounts and times
     }
 }
