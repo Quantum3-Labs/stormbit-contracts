@@ -52,9 +52,4 @@ contract BaseAgreementTest is Test {
         assertEq(agreement._borrower(), borrower);
         assertEq(agreement._lender(), lender);
     }
-
-    function testReceiveEther() public {
-        // vm.prank(lending);
-        // lending.executeLoanWithEther();
-    }
 }

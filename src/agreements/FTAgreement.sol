@@ -79,5 +79,4 @@ abstract contract FTAgreement is AgreementBedrock {
         requested[msg.sender] == true; // @audit - check for reentrancy
     }
 
-    receive() external payable {}
 }

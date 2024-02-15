@@ -79,5 +79,4 @@ abstract contract NFTAgreement is AgreementBedrock {
         return this.onERC721Received.selector;
     }
 
-    receive() external payable {}
 }

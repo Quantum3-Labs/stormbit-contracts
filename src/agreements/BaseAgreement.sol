@@ -72,12 +72,4 @@ contract BaseAgreement is AgreementBedrock {
         }
         return 0;
     }
-
-    /**
-     * @notice - Agreement should receive allocation of funds
-     * @dev - This function is called by the StormBitLending.executeLoanWithEther() function
-     */
-    receive() external payable {
-        borrowBalance[msg.sender] += msg.value;
-    }
 }

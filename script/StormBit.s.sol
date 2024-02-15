@@ -9,13 +9,14 @@ import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract BaseAgreementScript is Script {
     BaseAgreement public agreement;
-    MockToken public mockToken; 
+    MockToken public mockToken;
+
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
         console.log("trying with address", vm.addr(deployerPrivateKey));
 
-        // Deploy mockToken 
+        // Deploy mockToken
         mockToken = new MockToken();
 
         uint256[] memory amounts = new uint256[](2);
@@ -34,13 +35,12 @@ contract BaseAgreementScript is Script {
             times
         );
 
-        // Deploy BaseAgreement proxy 
+        // Deploy BaseAgreement proxy
         address agreementImpl = address(new BaseAgreement());
         bytes memory agreementData = abi.encodeWithSelector(BaseAgreement.initialize.selector, initData);
         address agreementProxy = address(new ERC1967Proxy(agreementImpl, agreementData));
         agreement = BaseAgreement(payable(agreementProxy));
 
         vm.stopBroadcast();
-
     }
 }
