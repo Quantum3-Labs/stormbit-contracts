@@ -38,7 +38,7 @@ abstract contract NFTAgreement is AgreementBedrock {
         return (_hasPenalty || time < block.timestamp, _lateFee);
     }
 
-    function pay(uint256 amount) public override returns (bool) {
+    function payBack(uint256 amount) public override returns (bool) {
         (uint256 _amount, uint256 _time) = nextPayment();
         if (_amount == amount && _time < block.timestamp) {
             _hasPenalty = true;

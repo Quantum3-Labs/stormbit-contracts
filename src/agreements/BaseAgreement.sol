@@ -4,7 +4,6 @@ import "../AgreementBedrock.sol";
 import {StormBitCore} from "../StormBitCore.sol";
 import {StormBitLending} from "../StormBitLending.sol";
 
-import {IStormBitLending} from "../interfaces/IStormBitLending.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract BaseAgreement is AgreementBedrock {
@@ -33,10 +32,17 @@ contract BaseAgreement is AgreementBedrock {
         return (_amounts[_paymentCount], _times[_paymentCount]);
     }
 
-    function pay(uint256 amount) public override returns (bool) {
-        require(borrowerAllocation[msg.sender] >= amount, "Insufficient funds");
+    /*
+    * @notice - Borrower pays back the loan
+    */
+    function payBack(uint256 amount) public override returns (bool) {
+        // check if deadline has passed and apply fee on borrower
+        (bool hasPenalty, uint256 fee) = penalty();
+        if (hasPenalty) {
+            amount += fee;
+        }
         IERC20(_paymentToken).transfer(address(this), amount);
-        return true;
+        return true; 
     }
 
     function beforeLoan(bytes memory) external override returns (bool) {

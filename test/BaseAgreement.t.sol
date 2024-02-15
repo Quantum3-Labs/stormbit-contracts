@@ -10,7 +10,7 @@ import "../src/AgreementBedrock.sol";
 contract BaseAgreementTest is Test {
     MockToken public mockToken;
     BaseAgreement public agreement;
-    AgreementBedrock public bedrock;
+    StormBitLending public lending;
     address owner = makeAddr("owner");
 
     function setUp() public {
@@ -41,4 +41,6 @@ contract BaseAgreementTest is Test {
         (uint256 amount, uint256 time) = agreement.nextPayment();
         assertEq(agreement._amounts(0), 200);
     }
+
+    function testPayBackLoan() public {}
 }

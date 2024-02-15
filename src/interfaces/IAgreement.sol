@@ -15,7 +15,7 @@ interface IAgreement {
 
     function getPaymentDates() external view returns (uint256[] memory, uint256[] memory);
 
-    function pay(uint256 amount) external returns (bool);
+    function payBack(uint256 amount) external returns (bool);
 
     function initialize(bytes memory initData) external;
 

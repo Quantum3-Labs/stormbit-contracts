@@ -67,7 +67,7 @@ abstract contract FTAgreement is AgreementBedrock {
         return (_amounts[_paymentCount], dueTime);
     }
 
-    function pay(uint256 amount) public override returns (bool) {
+    function payBack(uint256 amount) public override returns (bool) {
         (uint256 _amount, uint256 _time) = nextPayment();
         if (_amount == amount && _time < block.timestamp) {
             _hasPenalty = true;

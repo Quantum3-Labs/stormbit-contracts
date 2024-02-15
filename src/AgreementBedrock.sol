@@ -20,7 +20,7 @@ abstract contract AgreementBedrock is IAgreement, Initializable {
     function initialize(bytes memory initData) external virtual override initializer {
         (uint256 lateFee, address PaymentToken, uint256[] memory amounts, uint256[] memory times) =
             abi.decode(initData, (uint256, address, uint256[], uint256[]));
-         _lateFee = lateFee; 
+        _lateFee = lateFee;
         _paymentToken = PaymentToken;
         _amounts = amounts;
         _times = times;
@@ -39,7 +39,7 @@ abstract contract AgreementBedrock is IAgreement, Initializable {
         return (_amounts[_paymentCount], _times[_paymentCount]);
     }
 
-    function pay(uint256 amount) public virtual override returns (bool);
+    function payBack(uint256 amount) public virtual override returns (bool);
 
     function beforeLoan(bytes memory) external virtual override returns (bool);
 
