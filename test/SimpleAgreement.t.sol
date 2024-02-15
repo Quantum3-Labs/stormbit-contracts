@@ -3,7 +3,7 @@ pragma solidity ^0.8.12;
 
 import "forge-std/test.sol";
 import "../src/agreements/SimpleAgreement.sol";
-import "./MockToken.t.sol";
+import "src/mocks/MockToken.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import "../src/AgreementBedrock.sol";
 import {IAgreement} from "../src/interfaces/IAgreement.sol";
@@ -28,7 +28,6 @@ contract SimpleAgreementTest is Test {
         bytes memory initData = abi.encode(
             1000, // lateFee
             borrower,
-            lender,
             address(mockToken), // PaymentToken address
             amounts,
             times

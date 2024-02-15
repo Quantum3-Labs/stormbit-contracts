@@ -19,6 +19,8 @@ import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorVotesQ
 
 import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorCountingSimpleUpgradeable.sol";
 
+import {console} from "forge-std/Console.sol";
+
 // - StormBitLending: implementation contract to be used when creating new lending pools.
 //     - has a bunch of setters and getters that are only owner.
 //     - has a approve loan function that is only available for people with voting power. ( can use a tweaked governance here )
@@ -48,6 +50,8 @@ contract StormBitLending is
     mapping(address => bool) public _isSupportedAsset;
     mapping(bytes4 => bool) public _isSupportedAction;
     mapping(address => bool) public _isSupportedAgreement;
+
+    mapping(address => address) public _userAgreement;
 
     constructor() {
         _disableInitializers();
@@ -120,6 +124,7 @@ contract StormBitLending is
         }
         // check if this pool already has the amount of assets of the token in the ERC4626 of the main contract
         // setup with first deposit
+        IERC20(initToken).transferFrom(_firstOwner, address(this), initAmount);
         _stake(initAmount, _firstOwner);
     }
 
@@ -131,8 +136,8 @@ contract StormBitLending is
 
     function requestLoan(
         LoanRequestParams memory params
-    ) external virtual onlyKYCVerified {
-        // pre application checks
+    ) external virtual onlyKYCVerified returns (uint256 proposalId) {
+        // TODO perform checks on the amounts that are requested on the agreement contract
         require(
             _isSupportedAgreement[params.agreement],
             "StormBitLending: agreement not supported"
@@ -158,7 +163,7 @@ contract StormBitLending is
             params.agreementCalldata
         );
         _loanRequestNonce++;
-        _propose(targets, values, calldatas, description, msg.sender);
+        return _propose(targets, values, calldatas, description, msg.sender);
     }
 
     // ---------- STORMBIT CALLS ----------------
@@ -186,9 +191,14 @@ contract StormBitLending is
         address agreement,
         bytes calldata agreementCalldata
     ) external onlySelf {
+        require(
+            _userAgreement[to] == address(0),
+            "StormBitLending: user has loan"
+        );
         address newAgreement = Clones.clone(agreement);
         IAgreement(newAgreement).initialize(agreementCalldata);
         IERC20(token).transfer(newAgreement, amount);
+        _userAgreement[to] = newAgreement;
     }
 
     function changeAgreementStatus(
@@ -291,6 +301,16 @@ contract StormBitLending is
     function getValidVotes(address account) public view returns (uint256) {
         if (block.timestamp < _votingPowerCoolDown) return 0;
         return getPastVotes(account, block.timestamp - _votingPowerCoolDown);
+    }
+
+    function isSupportedAgreement(
+        address agreement
+    ) public view returns (bool) {
+        return _isSupportedAgreement[agreement];
+    }
+
+    function userAgreement(address user) public view returns (address) {
+        return _userAgreement[user];
     }
 
     function _getVotes(

@@ -18,6 +18,11 @@ abstract contract AgreementBedrock is IAgreement, Initializable {
 
     uint256 internal _paymentCount = 0;
 
+    modifier onlyBorrower() {
+        require(msg.sender == _borrower, "AgreementBedrock: not borrower");
+        _;
+    }
+
     constructor() {
         _disableInitializers();
     }
@@ -27,17 +32,16 @@ abstract contract AgreementBedrock is IAgreement, Initializable {
     ) public virtual override initializer {
         (
             uint256 lateFee,
-            address lender,
             address borrower,
             address PaymentToken,
             uint256[] memory amounts,
             uint256[] memory times
         ) = abi.decode(
                 initData,
-                (uint256, address, address, address, uint256[], uint256[])
+                (uint256, address, address, uint256[], uint256[])
             );
         _lateFee = lateFee;
-        _lender = lender;
+        _lender = msg.sender; // lender deploys this, aka lending pool
         _borrower = borrower;
         _paymentToken = PaymentToken;
         _amounts = amounts;
@@ -111,8 +115,12 @@ abstract contract AgreementBedrock is IAgreement, Initializable {
         return 0;
     }
 
-    function withdraw() external virtual override {
+    function withdraw() external virtual override onlyBorrower {
         _beforeLoan();
+        IERC20(_paymentToken).transfer(
+            _borrower,
+            IERC20(_paymentToken).balanceOf(address(this))
+        );
     }
 
     // -------------------- CUSTOM FUNCTIONS --------------------

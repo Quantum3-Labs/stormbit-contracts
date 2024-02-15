@@ -4,7 +4,7 @@ pragma solidity ^0.8.21;
 import "forge-std/Script.sol";
 import {SimpleAgreement} from "../src/agreements/SimpleAgreement.sol";
 import {IAgreement} from "../src/interfaces/IAgreement.sol";
-import "../test/MockToken.t.sol";
+import {MockToken} from "src/mocks/MockToken.sol";
 
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 

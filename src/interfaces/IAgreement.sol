@@ -20,7 +20,7 @@ interface IAgreement {
 
     function penalty() external returns (uint256);
 
-    function lender() external view returns (address);
+    function lender() external view returns (address); // lending pool
 
     function borrower() external view returns (address);
 
