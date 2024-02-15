@@ -11,8 +11,12 @@ contract BaseAgreement is AgreementBedrock {
     mapping(address => uint256) public startTime;
 
     function initialize(bytes memory initData) external override initializer {
-        (uint256 lateFee, address PaymentToken, uint256[] memory amounts, uint256[] memory times) =
-            abi.decode(initData, (uint256, address, uint256[], uint256[]));
+        (
+            uint256 lateFee,
+            address PaymentToken,
+            uint256[] memory amounts,
+            uint256[] memory times
+        ) = abi.decode(initData, (uint256, address, uint256[], uint256[]));
         _lateFee = lateFee;
         _paymentToken = PaymentToken;
         _amounts = amounts;
@@ -33,16 +37,15 @@ contract BaseAgreement is AgreementBedrock {
     }
 
     /*
-    * @notice - Borrower pays back the loan
-    */
-    function payBack(uint256 amount) public override returns (bool) {
+     * @notice - Borrower pays back the loan
+     */
+    function payBack() public override returns (bool) {
         // check if deadline has passed and apply fee on borrower
-        (bool hasPenalty, uint256 fee) = penalty();
-        if (hasPenalty) {
-            amount += fee;
-        }
-        IERC20(_paymentToken).transfer(address(this), amount);
-        return true; 
+        (uint256 amount, ) = nextPayment();
+        uint256 fee = penalty();
+        IERC20(_paymentToken).transfer(address(this), amount + fee);
+        _paymentCount++;
+        return true;
     }
 
     function beforeLoan(bytes memory) external override returns (bool) {
@@ -59,16 +62,27 @@ contract BaseAgreement is AgreementBedrock {
 
     function withdraw() public override {
         require(borrowerAllocation[msg.sender] > 0, "No funds to withdraw");
-        IERC20(_paymentToken).transfer(msg.sender, borrowerAllocation[msg.sender]);
+        IERC20(_paymentToken).transfer(
+            msg.sender,
+            borrowerAllocation[msg.sender]
+        );
     }
 
-    function getPaymentDates() public view override returns (uint256[] memory, uint256[] memory) {
+    function getPaymentDates()
+        public
+        view
+        override
+        returns (uint256[] memory, uint256[] memory)
+    {
         return (_amounts, _times);
     }
 
-    function penalty() public view override returns (bool, uint256) {
+    function penalty() public view override returns (uint256) {
         (uint256 amount, uint256 time) = nextPayment();
-        return (_hasPenalty || time < block.timestamp, _lateFee);
+        if (_hasPenalty || time < block.timestamp) {
+            return (_lateFee);
+        }
+        return 0;
     }
 
     /**

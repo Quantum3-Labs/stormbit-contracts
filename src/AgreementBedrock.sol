@@ -17,9 +17,15 @@ abstract contract AgreementBedrock is IAgreement, Initializable {
         _disableInitializers();
     }
 
-    function initialize(bytes memory initData) external virtual override initializer {
-        (uint256 lateFee, address PaymentToken, uint256[] memory amounts, uint256[] memory times) =
-            abi.decode(initData, (uint256, address, uint256[], uint256[]));
+    function initialize(
+        bytes memory initData
+    ) external virtual override initializer {
+        (
+            uint256 lateFee,
+            address PaymentToken,
+            uint256[] memory amounts,
+            uint256[] memory times
+        ) = abi.decode(initData, (uint256, address, uint256[], uint256[]));
         _lateFee = lateFee;
         _paymentToken = PaymentToken;
         _amounts = amounts;
@@ -35,11 +41,17 @@ abstract contract AgreementBedrock is IAgreement, Initializable {
         return _paymentToken;
     }
 
-    function nextPayment() public view virtual override returns (uint256, uint256) {
+    function nextPayment()
+        public
+        view
+        virtual
+        override
+        returns (uint256, uint256)
+    {
         return (_amounts[_paymentCount], _times[_paymentCount]);
     }
 
-    function payBack(uint256 amount) public virtual override returns (bool);
+    function payBack() public virtual override returns (bool);
 
     function beforeLoan(bytes memory) external virtual override returns (bool);
 
@@ -47,9 +59,15 @@ abstract contract AgreementBedrock is IAgreement, Initializable {
 
     function withdraw() external virtual override;
 
-    function getPaymentDates() public view virtual override returns (uint256[] memory, uint256[] memory) {
+    function getPaymentDates()
+        public
+        view
+        virtual
+        override
+        returns (uint256[] memory, uint256[] memory)
+    {
         return (_amounts, _times);
     }
 
-    function penalty() public view virtual override returns (bool, uint256);
+    function penalty() public view virtual override returns (uint256);
 }

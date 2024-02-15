@@ -13,11 +13,14 @@ interface IAgreement {
 
     function withdraw() external;
 
-    function getPaymentDates() external view returns (uint256[] memory, uint256[] memory);
+    function getPaymentDates()
+        external
+        view
+        returns (uint256[] memory, uint256[] memory);
 
-    function payBack(uint256 amount) external returns (bool);
+    function payBack() external returns (bool);
 
     function initialize(bytes memory initData) external;
 
-    function penalty() external returns (bool, uint256);
+    function penalty() external returns (uint256);
 }
