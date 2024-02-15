@@ -26,9 +26,7 @@ contract BaseAgreementTest is Test {
 
         bytes memory initData = abi.encode(
             1000, // lateFee
-            address(mockToken), // PaymentToken address
-            amounts,
-            times
+            address(mockToken)// PaymentToken address
         );
     
         agreement.initialize(initData);
