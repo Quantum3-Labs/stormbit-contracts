@@ -7,16 +7,9 @@ interface IAgreement {
 
     function nextPayment() external view returns (uint256, uint256);
 
-    function beforeLoan(bytes memory data) external returns (bool);
-
-    function afterLoan(bytes memory data) external returns (bool);
-
     function withdraw() external;
 
-    function getPaymentDates()
-        external
-        view
-        returns (uint256[] memory, uint256[] memory);
+    function getPaymentDates() external view returns (uint256[] memory, uint256[] memory);
 
     function payBack() external returns (bool);
 

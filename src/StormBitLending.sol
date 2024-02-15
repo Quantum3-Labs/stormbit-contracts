@@ -153,11 +153,21 @@ contract StormBitLending is
     {
         address newAgreement = Clones.clone(agreement);
         IAgreement(newAgreement).initialize(agreementCalldata);
-        // call beforeLoan function on Agreement
-        IAgreement(newAgreement).beforeLoan(agreementCalldata);
-        // deposit funds into the agreement
         // TODO : on the ERC4626 of the main contract, transfer the corresponding shares to the user.
         IERC20(token).transfer(newAgreement, amount);
+    }
+
+    function executeLoanWithEther(address payable agreement, bytes calldata agreementCalldata)
+        external
+        payable
+        onlySelf
+    {
+        address newAgreement = Clones.clone(agreement);
+        IAgreement(newAgreement).initialize(agreementCalldata);
+        // deposit funds into the agreement
+        (bool success, bytes memory data) = agreement.call{value: msg.value}("");
+        require(success, "Failed to send Ether");
+        // TODO : on the ERC4626 of the main contract, transfer the corresponding shares to the user.
     }
 
     function changeAgreementStatus(address Agreement, bool status) external onlySelf {

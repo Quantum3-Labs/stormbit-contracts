@@ -31,4 +31,6 @@ interface IStormBitLending {
 
     function executeLoan(address token, address to, uint256 amount, address strategy, bytes calldata agreementCalldata)
         external;
+
+    function executeLoanWithEther(address payable agreement, bytes calldata agreementCalldata) external payable;
 }

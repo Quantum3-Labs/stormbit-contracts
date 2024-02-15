@@ -7,17 +7,22 @@ import {StormBitLending} from "../StormBitLending.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract BaseAgreement is AgreementBedrock {
-    mapping(address => uint256) public borrowerAllocation;
+    mapping(address => uint256) public borrowBalance;
     mapping(address => uint256) public startTime;
+    mapping(address => bool) public isBorrower;
 
     function initialize(bytes memory initData) external override initializer {
         (
             uint256 lateFee,
+            address borrower,
+            address lender,
             address PaymentToken,
             uint256[] memory amounts,
             uint256[] memory times
-        ) = abi.decode(initData, (uint256, address, uint256[], uint256[]));
+        ) = abi.decode(initData, (uint256, address, address, address, uint256[], uint256[]));
         _lateFee = lateFee;
+        _lender = lender;
+        _borrower = borrower;
         _paymentToken = PaymentToken;
         _amounts = amounts;
         _times = times;
@@ -41,39 +46,22 @@ contract BaseAgreement is AgreementBedrock {
      */
     function payBack() public override returns (bool) {
         // check if deadline has passed and apply fee on borrower
-        (uint256 amount, ) = nextPayment();
+        (uint256 amount,) = nextPayment();
         uint256 fee = penalty();
         IERC20(_paymentToken).transfer(address(this), amount + fee);
         _paymentCount++;
         return true;
     }
 
-    function beforeLoan(bytes memory) external override returns (bool) {
-        return true;
-    }
-
-    // 1. funds are received into this contract
-    // 2. user withdraws this funds
-    function afterLoan(bytes memory) external override returns (bool) {
-        startTime[msg.sender] = block.timestamp;
-        withdraw();
-        borrowerAllocation[msg.sender] = 0;
-    }
-
+    /**
+     * @notice - Borrower sends loan amount to his wallet
+     */
     function withdraw() public override {
-        require(borrowerAllocation[msg.sender] > 0, "No funds to withdraw");
-        IERC20(_paymentToken).transfer(
-            msg.sender,
-            borrowerAllocation[msg.sender]
-        );
+        require(borrowBalance[msg.sender] > 0, "No funds to withdraw");
+        IERC20(_paymentToken).transfer(msg.sender, borrowBalance[msg.sender]);
     }
 
-    function getPaymentDates()
-        public
-        view
-        override
-        returns (uint256[] memory, uint256[] memory)
-    {
+    function getPaymentDates() public view override returns (uint256[] memory, uint256[] memory) {
         return (_amounts, _times);
     }
 
@@ -89,5 +77,7 @@ contract BaseAgreement is AgreementBedrock {
      * @notice - Agreement should receive allocation of funds
      * @dev - This function is called by the StormBitLending.executeLoan() function
      */
-    receive() external payable {}
+    receive() external payable {
+        borrowBalance[msg.sender] += msg.value;
+    }
 }

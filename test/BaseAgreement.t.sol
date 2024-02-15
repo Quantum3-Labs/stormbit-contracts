@@ -12,6 +12,8 @@ contract BaseAgreementTest is Test {
     BaseAgreement public agreement;
     StormBitLending public lending;
     address owner = makeAddr("owner");
+    address borrower = makeAddr("borrower");
+    address lender = makeAddr("lender");
 
     function setUp() public {
         mockToken = new MockToken();
@@ -24,15 +26,22 @@ contract BaseAgreementTest is Test {
         times[1] = 3;
         bytes memory initData = abi.encode(
             1000, // lateFee
+            borrower,
+            lender,
             address(mockToken), // PaymentToken address
             amounts,
             times
         );
 
+        // Init the agreement
         address agreementImpl = address(new BaseAgreement());
         bytes memory agreementData = abi.encodeWithSelector(BaseAgreement.initialize.selector, initData);
         address agreementProxy = address(new ERC1967Proxy(agreementImpl, agreementData));
         agreement = BaseAgreement(payable(agreementProxy));
+
+        // Init the lending
+        // address lendingImpl = address(new StormBitLending());
+        // bytes memory lendingData = abi.encodeWithSelector(StormBitLending.initializeLending.selector, params, owner);
     }
 
     function testInitAgreement() public {
@@ -40,7 +49,12 @@ contract BaseAgreementTest is Test {
         assertEq(agreement.lateFee(), 1000);
         (uint256 amount, uint256 time) = agreement.nextPayment();
         assertEq(agreement._amounts(0), 200);
+        assertEq(agreement._borrower(), borrower);
+        assertEq(agreement._lender(), lender);
     }
 
-    function testPayBackLoan() public {}
+    function testReceiveEther() public {
+        // vm.prank(lending);
+        // lending.executeLoanWithEther();
+    }
 }

@@ -19,49 +19,15 @@ abstract contract FTAgreement is AgreementBedrock {
     mapping(address => uint256) public depositTimes;
     mapping(address => uint256) public collateralBalances;
 
-    constructor(
-        StormBitCore _stormbitCore,
-        StormBitLending _stormbitLending,
-        uint256 _collateralAmount
-    ) {
+    constructor(StormBitCore _stormbitCore, StormBitLending _stormbitLending, uint256 _collateralAmount) {
         stormbitCore = _stormbitCore;
         stormbitLending = _stormbitLending;
         collateralAmount = _collateralAmount;
     }
 
     modifier onlyLender() {
-        require(
-            msg.sender == address(stormbitLending),
-            "StormBitLending: not self"
-        );
+        require(msg.sender == address(stormbitLending), "StormBitLending: not self");
         _;
-    }
-
-    // Before Loan requirements :
-    // KYC Verified already checked on requestLoan
-    // Collateral deposit
-    function beforeLoan(bytes memory) external override returns (bool) {
-        if (!requested[msg.sender]) {
-            revert("Loan not requested yet");
-        }
-    }
-
-    // After Loan requirements :
-    // return the collateral deposit to the user.
-    function afterLoan(
-        bytes memory
-    ) external override onlyLender returns (bool) {
-        //@audit -- onlyStormbitLender can call this function
-        uint256 collateral = collateralBalances[msg.sender];
-        require(collateral > 0, "No collateral to return");
-        IERC20(token).transferFrom(
-            address(stormbitLending),
-            msg.sender,
-            collateral
-        );
-        collateralBalances[msg.sender] = 0;
-        requested[msg.sender] = false; //Loan is now DONE
-        return true;
     }
 
     function withdraw(uint256 amount) public {
@@ -85,7 +51,7 @@ abstract contract FTAgreement is AgreementBedrock {
 
     function payBack() public override returns (bool) {
         // check if deadline has passed and apply fee on borrower
-        (uint256 amount, ) = nextPayment();
+        (uint256 amount,) = nextPayment();
         uint256 fee = penalty();
         IERC20(_paymentToken).transfer(address(this), amount + fee);
         _paymentCount++;
@@ -96,25 +62,17 @@ abstract contract FTAgreement is AgreementBedrock {
         // deposit collateral
         //1. The collateral has to be > to the amount requested
         IERC20(token).approve(address(stormbitLending), collateralAmount); // approve stormbitLending to return the collateral
-        IERC20(token).transferFrom(
-            msg.sender,
-            address(stormbitLending),
-            collateralAmount
-        );
+        IERC20(token).transferFrom(msg.sender, address(stormbitLending), collateralAmount);
         depositTimes[msg.sender] = block.timestamp;
 
         // request loan
-        IStormBitLending.LoanRequestParams memory params = IStormBitLending
-            .LoanRequestParams({
-                amount: loanAmount,
-                token: token,
-                agreement: address(this), // @note - this contract is the strategy used
-                agreementCalldata: agreementCalldata
-            });
-        require(
-            loanAmount < collateralAmount,
-            "Collateral amount has to be greater than loan amount"
-        );
+        IStormBitLending.LoanRequestParams memory params = IStormBitLending.LoanRequestParams({
+            amount: loanAmount,
+            token: token,
+            agreement: address(this), // @note - this contract is the strategy used
+            agreementCalldata: agreementCalldata
+        });
+        require(loanAmount < collateralAmount, "Collateral amount has to be greater than loan amount");
         stormbitLending.requestLoan(params);
 
         collateralBalances[msg.sender] = collateralAmount; // @audit - check for reentrancy

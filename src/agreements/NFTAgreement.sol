@@ -25,10 +25,6 @@ abstract contract NFTAgreement is AgreementBedrock {
         return _paymentToken;
     }
 
-    function beforeLoan(bytes memory) external override returns (bool) {}
-
-    function afterLoan(bytes memory) external override returns (bool) {}
-
     function withdraw(uint256 amount) public {
         payable(msg.sender).transfer(amount);
     }
@@ -43,7 +39,7 @@ abstract contract NFTAgreement is AgreementBedrock {
 
     function payBack() public override returns (bool) {
         // check if deadline has passed and apply fee on borrower
-        (uint256 amount, ) = nextPayment();
+        (uint256 amount,) = nextPayment();
         uint256 fee = penalty();
         IERC20(_paymentToken).transfer(address(this), amount + fee);
         _paymentCount++;
@@ -51,53 +47,35 @@ abstract contract NFTAgreement is AgreementBedrock {
     }
 
     function _withdraw() internal {
-        IERC20(_paymentToken).transfer(
-            borrower,
-            borrowerAllocation[msg.sender]
-        );
+        IERC20(_paymentToken).transfer(borrower, borrowerAllocation[msg.sender]);
     }
 
     // You have to lock the NFT to submit a request for a loan.
     function lockNFT(uint256 tokenId) public {
         require(!hasNFTLocked[msg.sender], "NFT already locked");
-        IERC721(_paymentToken).safeTransferFrom(
-            msg.sender,
-            address(this),
-            tokenId
-        ); // transfer NFT to this contract
-        (bool succes, ) = address(this).call(
+        IERC721(_paymentToken).safeTransferFrom(msg.sender, address(this), tokenId); // transfer NFT to this contract
+        (bool succes,) = address(this).call(
             abi.encodeWithSignature(
-                "onERC721Received(address,address,uint256,bytes)",
-                msg.sender,
-                address(this),
-                tokenId,
-                ""
+                "onERC721Received(address,address,uint256,bytes)", msg.sender, address(this), tokenId, ""
             )
         );
     }
 
-    function sendRequest(
-        uint256 loanAmount,
-        address token,
-        bytes calldata agreementCalldata
-    ) internal {
+    function sendRequest(uint256 loanAmount, address token, bytes calldata agreementCalldata) internal {
         require(hasNFTLocked[msg.sender], "NFTAgreement: NFT not locked");
         // request loan
-        IStormBitLending.LoanRequestParams memory params = IStormBitLending
-            .LoanRequestParams({
-                amount: loanAmount,
-                token: token,
-                agreement: address(this), // @note - this contract is the strategy used
-                agreementCalldata: agreementCalldata
-            });
+        IStormBitLending.LoanRequestParams memory params = IStormBitLending.LoanRequestParams({
+            amount: loanAmount,
+            token: token,
+            agreement: address(this), // @note - this contract is the strategy used
+            agreementCalldata: agreementCalldata
+        });
     }
 
-    function onERC721Received(
-        address operator,
-        address from,
-        uint256 tokenId,
-        bytes calldata data
-    ) external returns (bytes4) {
+    function onERC721Received(address operator, address from, uint256 tokenId, bytes calldata data)
+        external
+        returns (bytes4)
+    {
         return this.onERC721Received.selector;
     }
 
