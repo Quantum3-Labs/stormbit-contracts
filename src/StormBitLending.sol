@@ -3,7 +3,7 @@ pragma solidity ^0.8.21;
 
 // import "./interfaces/IStormBitLending.sol";
 import "./interfaces/IStormBit.sol";
-import "./Interfaces/IAgreement.sol"; // REMOVE THIS LINE
+import "./interfaces/IAgreement.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
 
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -63,16 +63,25 @@ contract StormBitLending is
     }
 
     modifier onlyStormBit() {
-        require(msg.sender == address(_stormBit), "StormBitLending: not StormBit");
+        require(
+            msg.sender == address(_stormBit),
+            "StormBitLending: not StormBit"
+        );
         _;
     }
 
     modifier onlyKYCVerified() {
-        require(_stormBit.isKYCVerified(msg.sender), "StormBitLending: KYC not verified");
+        require(
+            _stormBit.isKYCVerified(msg.sender),
+            "StormBitLending: KYC not verified"
+        );
         _;
     }
 
-    function initializeLending(InitParams memory params, address _firstOwner) external override initializer {
+    function initializeLending(
+        InitParams memory params,
+        address _firstOwner
+    ) external override initializer {
         _poolName = params.name;
         _stormBit = IStormBit(msg.sender);
         _creditScore = params.creditScore;
@@ -88,8 +97,11 @@ contract StormBitLending is
         __GovernorVotes_init(IVotes(address(this)));
         __GovernorVotesQuorumFraction_init(_votingQuorum);
 
-        (address initToken, uint256 initAmount, address[] memory supportedAssets) =
-            (params.initToken, params.initAmount, params.supportedAssets);
+        (
+            address initToken,
+            uint256 initAmount,
+            address[] memory supportedAssets
+        ) = (params.initToken, params.initAmount, params.supportedAssets);
 
         // setup supported calls
         _isSupportedAction[this.changeVotingQuorum.selector] = true;
@@ -103,7 +115,10 @@ contract StormBitLending is
         }
 
         // check if init token is supported
-        require(_isSupportedAsset[initToken], "StormBitLending: init token not supported");
+        require(
+            _isSupportedAsset[initToken],
+            "StormBitLending: init token not supported"
+        );
         for (uint256 i = 0; i < params.supportedAgreements.length; i++) {
             _isSupportedAgreement[params.supportedAgreements[i]] = true;
         }
@@ -119,19 +134,24 @@ contract StormBitLending is
         _stake(amount, msg.sender);
     }
 
-    function requestLoan(LoanRequestParams memory params)
-        external
-        virtual
-        onlyKYCVerified
-        returns (uint256 proposalId)
-    {
+    function requestLoan(
+        LoanRequestParams memory params
+    ) external virtual onlyKYCVerified returns (uint256 proposalId) {
         // TODO perform checks on the amounts that are requested on the agreement contract
-        require(_isSupportedAgreement[params.agreement], "StormBitLending: agreement not supported");
-        require(_isSupportedAsset[params.token], "StormBitLending: asset not supported");
+        require(
+            _isSupportedAgreement[params.agreement],
+            "StormBitLending: agreement not supported"
+        );
+        require(
+            _isSupportedAsset[params.token],
+            "StormBitLending: asset not supported"
+        );
         address[] memory targets = new address[](1);
         uint256[] memory values = new uint256[](1);
         bytes[] memory calldatas = new bytes[](1);
-        string memory description = string(abi.encode("Request Loan at ", _loanRequestNonce));
+        string memory description = string(
+            abi.encode("Request Loan at ", _loanRequestNonce)
+        );
         targets[0] = address(this);
         values[0] = 0;
         calldatas[0] = abi.encodeWithSelector(
@@ -152,24 +172,39 @@ contract StormBitLending is
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) public payable override(GovernorUpgradeable) onlyStormBit returns (uint256) {
+    )
+        public
+        payable
+        override(GovernorUpgradeable)
+        onlyStormBit
+        returns (uint256)
+    {
         return super.execute(targets, values, calldatas, descriptionHash);
     }
 
     // ---------- SELF CALLABLE - GOV FUNCTIONS ----------------
 
-    function executeLoan(address token, address to, uint256 amount, address agreement, bytes calldata agreementCalldata)
-        external
-        onlySelf
-    {
-        require(_userAgreement[to] == address(0), "StormBitLending: user has loan");
+    function executeLoan(
+        address token,
+        address to,
+        uint256 amount,
+        address agreement,
+        bytes calldata agreementCalldata
+    ) external onlySelf {
+        require(
+            _userAgreement[to] == address(0),
+            "StormBitLending: user has loan"
+        );
         address newAgreement = Clones.clone(agreement);
         IAgreement(newAgreement).initialize(agreementCalldata);
         IERC20(token).transfer(newAgreement, amount);
         _userAgreement[to] = newAgreement;
     }
 
-    function changeAgreementStatus(address agreement, bool status) external onlySelf {
+    function changeAgreementStatus(
+        address agreement,
+        bool status
+    ) external onlySelf {
         _changeAgreementStatus(agreement, status);
     }
 
@@ -185,7 +220,9 @@ contract StormBitLending is
         _votingPowerCoolDown = newCoolDown;
     }
 
-    function changeMaxAmountOfStakers(uint256 newMaxAmountOfStakers) external onlySelf {
+    function changeMaxAmountOfStakers(
+        uint256 newMaxAmountOfStakers
+    ) external onlySelf {
         _maxAmountOfStakers = newMaxAmountOfStakers;
     }
 
@@ -207,15 +244,22 @@ contract StormBitLending is
 
     // ---------- OVERRIDES ---------------------------
 
-    function _update(address from, address to, uint256 value)
-        internal
-        virtual
-        override(ERC20Upgradeable, ERC20VotesUpgradeable)
-    {
+    function _update(
+        address from,
+        address to,
+        uint256 value
+    ) internal virtual override(ERC20Upgradeable, ERC20VotesUpgradeable) {
         super._update(from, to, value);
     }
 
-    function nonces(address owner) public view override(NoncesUpgradeable, ERC20PermitUpgradeable) returns (uint256) {
+    function nonces(
+        address owner
+    )
+        public
+        view
+        override(NoncesUpgradeable, ERC20PermitUpgradeable)
+        returns (uint256)
+    {
         return super.nonces(owner);
     }
 
@@ -227,14 +271,23 @@ contract StormBitLending is
         return 7 days; // 1 week
     }
 
-    function name() public view override(GovernorUpgradeable, ERC20Upgradeable) returns (string memory) {
+    function name()
+        public
+        view
+        override(GovernorUpgradeable, ERC20Upgradeable)
+        returns (string memory)
+    {
         return _poolName;
     }
 
     function clock()
         public
         view
-        override(GovernorUpgradeable, GovernorVotesUpgradeable, VotesUpgradeable)
+        override(
+            GovernorUpgradeable,
+            GovernorVotesUpgradeable,
+            VotesUpgradeable
+        )
         returns (uint48)
     {
         return SafeCast.toUint48(block.timestamp);
@@ -250,7 +303,9 @@ contract StormBitLending is
         return getPastVotes(account, block.timestamp - _votingPowerCoolDown);
     }
 
-    function isSupportedAgreement(address agreement) public view returns (bool) {
+    function isSupportedAgreement(
+        address agreement
+    ) public view returns (bool) {
         return _isSupportedAgreement[agreement];
     }
 
@@ -258,7 +313,11 @@ contract StormBitLending is
         return _userAgreement[user];
     }
 
-    function _getVotes(address account, uint256 timepoint, bytes memory /*params*/ )
+    function _getVotes(
+        address account,
+        uint256 timepoint,
+        bytes memory /*params*/
+    )
         internal
         view
         override(GovernorUpgradeable, GovernorVotesUpgradeable)
@@ -272,7 +331,11 @@ contract StormBitLending is
         public
         view
         virtual
-        override(GovernorUpgradeable, GovernorVotesUpgradeable, VotesUpgradeable)
+        override(
+            GovernorUpgradeable,
+            GovernorVotesUpgradeable,
+            VotesUpgradeable
+        )
         returns (string memory)
     {
         return "mode=blocktimestamp&from=default";
