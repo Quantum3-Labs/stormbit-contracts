@@ -6,7 +6,7 @@ import {StormBitCore} from "../StormBitCore.sol";
 import {StormBitLending} from "../StormBitLending.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-abstract contract FTAgreement is AgreementBedrock {
+contract FTAgreement is AgreementBedrock {
     uint256 internal _collateral;
 
     function initialize(bytes memory initData) public override initializer {
@@ -19,12 +19,11 @@ abstract contract FTAgreement is AgreementBedrock {
         _amounts = amounts;
         _times = times;
 
-        uint256 _totalLoanAmount;
-
+        uint256 total = 0;
         for (uint256 i = 0; i < _amounts.length; ++i) {
-            _totalLoanAmount += _amounts[i];
+            total += _amounts[i];
         }
-        _collateral = _totalLoanAmount * 2;
+        _collateral = total * 2;
     }
 
     function lateFee() public view override returns (uint256) {
