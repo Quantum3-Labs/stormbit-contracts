@@ -38,13 +38,8 @@ contract BaseAgreementScript is Script {
 
         // Deploy BaseAgreement proxy
         address agreementImpl = address(new SimpleAgreement());
-        bytes memory agreementData = abi.encodeWithSelector(
-            IAgreement.initialize.selector,
-            initData
-        );
-        address agreementProxy = address(
-            new ERC1967Proxy(agreementImpl, agreementData)
-        );
+        bytes memory agreementData = abi.encodeWithSelector(IAgreement.initialize.selector, initData);
+        address agreementProxy = address(new ERC1967Proxy(agreementImpl, agreementData));
         agreement = SimpleAgreement(payable(agreementProxy));
 
         vm.stopBroadcast();

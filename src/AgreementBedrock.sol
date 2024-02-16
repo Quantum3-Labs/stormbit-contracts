@@ -27,19 +27,9 @@ abstract contract AgreementBedrock is IAgreement, Initializable {
         _disableInitializers();
     }
 
-    function initialize(
-        bytes memory initData
-    ) public virtual override initializer {
-        (
-            uint256 lateFee,
-            address borrower,
-            address PaymentToken,
-            uint256[] memory amounts,
-            uint256[] memory times
-        ) = abi.decode(
-                initData,
-                (uint256, address, address, uint256[], uint256[])
-            );
+    function initialize(bytes memory initData) public virtual override initializer {
+        (uint256 lateFee, address borrower, address PaymentToken, uint256[] memory amounts, uint256[] memory times) =
+            abi.decode(initData, (uint256, address, address, uint256[], uint256[]));
         _lateFee = lateFee;
         _lender = msg.sender; // lender deploys this, aka lending pool
         _borrower = borrower;
@@ -64,29 +54,17 @@ abstract contract AgreementBedrock is IAgreement, Initializable {
         return _borrower;
     }
 
-    function nextPayment()
-        public
-        view
-        virtual
-        override
-        returns (uint256, uint256)
-    {
+    function nextPayment() public view virtual override returns (uint256, uint256) {
         return (_amounts[_paymentCount], _times[_paymentCount]);
     }
 
-    function getPaymentDates()
-        public
-        view
-        virtual
-        override
-        returns (uint256[] memory, uint256[] memory)
-    {
+    function getPaymentDates() public view virtual override returns (uint256[] memory, uint256[] memory) {
         return (_amounts, _times);
     }
 
     function totalLoanAmount() public view virtual override returns (uint256) {
         uint256 total = 0;
-        for (uint256 i = 0; i < _amounts.length; i++) {
+        for (uint256 i = 0; i < _amounts.length; ++i) {
             total += _amounts[i];
         }
         return total;
@@ -97,7 +75,7 @@ abstract contract AgreementBedrock is IAgreement, Initializable {
     }
 
     function payBack() public override returns (bool) {
-        (uint256 amount, ) = nextPayment();
+        (uint256 amount,) = nextPayment();
         uint256 fee = penalty();
         IERC20(_paymentToken).transfer(address(this), amount + fee);
         _paymentCount++;
@@ -117,10 +95,7 @@ abstract contract AgreementBedrock is IAgreement, Initializable {
 
     function withdraw() external virtual override onlyBorrower {
         _beforeLoan();
-        IERC20(_paymentToken).transfer(
-            _borrower,
-            IERC20(_paymentToken).balanceOf(address(this))
-        );
+        IERC20(_paymentToken).transfer(_borrower, IERC20(_paymentToken).balanceOf(address(this)));
     }
 
     // -------------------- CUSTOM FUNCTIONS --------------------

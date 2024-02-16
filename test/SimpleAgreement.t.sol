@@ -35,13 +35,8 @@ contract SimpleAgreementTest is Test {
 
         // Init the agreement
         address agreementImpl = address(new SimpleAgreement());
-        bytes memory agreementData = abi.encodeWithSelector(
-            IAgreement.initialize.selector,
-            initData
-        );
-        address agreementProxy = address(
-            new ERC1967Proxy(agreementImpl, agreementData)
-        );
+        bytes memory agreementData = abi.encodeWithSelector(IAgreement.initialize.selector, initData);
+        address agreementProxy = address(new ERC1967Proxy(agreementImpl, agreementData));
         agreement = SimpleAgreement(payable(agreementProxy));
 
         // Init the lending

@@ -9,10 +9,7 @@ interface IAgreement {
 
     function withdraw() external;
 
-    function getPaymentDates()
-        external
-        view
-        returns (uint256[] memory, uint256[] memory);
+    function getPaymentDates() external view returns (uint256[] memory, uint256[] memory);
 
     function payBack() external returns (bool);
 
