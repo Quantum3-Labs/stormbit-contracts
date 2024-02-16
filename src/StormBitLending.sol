@@ -2,21 +2,22 @@
 pragma solidity ^0.8.21;
 
 // import "./interfaces/IStormBitLending.sol";
-import "./interfaces/IStormBit.sol";
-import "./interfaces/IAgreement.sol";
-import "@openzeppelin/contracts/proxy/Clones.sol";
+import {IStormBit, IStormBitLending} from "./interfaces/IStormBit.sol";
+import {IAgreement} from "./interfaces/IAgreement.sol";
+import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 
 import {IStormBitLendingVotes} from "./interfaces/IStormBitLendingVotes.sol";
 
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-import "@openzeppelin/contracts-upgradeable/governance/GovernorUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorVotesUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorVotesQuorumFractionUpgradeable.sol";
+import {GovernorUpgradeable} from "@openzeppelin/contracts-upgradeable/governance/GovernorUpgradeable.sol";
+import {GovernorVotesUpgradeable, IVotes} from "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorVotesUpgradeable.sol";
+import {GovernorVotesQuorumFractionUpgradeable} from "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorVotesQuorumFractionUpgradeable.sol";
 
-import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorCountingSimpleUpgradeable.sol";
+import {GovernorCountingSimpleUpgradeable} from "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorCountingSimpleUpgradeable.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
