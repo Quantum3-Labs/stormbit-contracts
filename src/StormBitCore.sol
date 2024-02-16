@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.21;
 
-import "./interfaces/IStormBitLending.sol";
+import {IStormBitLending} from "./interfaces/IStormBitLending.sol";
+import {IStormBitLendingVotes} from "./interfaces/IStormBitLendingVotes.sol";
+
 import "./interfaces/IStormBit.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
@@ -21,21 +23,42 @@ contract StormBitCore is IStormBit, Ownable, Pausable {
     address public lastPool;
     EnumerableSet.AddressSet internal _lendingPools;
     address internal _lendingPoolImplementation;
+    address internal _lendingVotesImplementation;
 
     modifier onlyKYCVerified() {
         require(isKYCVerified(msg.sender), "StormBit: KYC not verified");
         _;
     }
 
-    constructor(address initialOwner, address lendingPoolImplementation) Ownable(initialOwner) {
+    constructor(
+        address initialOwner,
+        address lendingPoolImplementation,
+        address lendingVotesImplementation
+    ) Ownable(initialOwner) {
         _lendingPoolImplementation = lendingPoolImplementation;
+        _lendingVotesImplementation = lendingVotesImplementation;
     }
 
-    function createPool(IStormBitLending.InitParams memory params) external onlyKYCVerified {
+    function createPool(
+        IStormBitLending.InitParams memory params
+    ) external onlyKYCVerified {
         address newPool = Clones.clone(_lendingPoolImplementation);
+        address newLendingVotes = Clones.clone(_lendingVotesImplementation);
+
+        IStormBitLendingVotes(newLendingVotes).initialize(newPool);
+
         // transfer the tokens
-        IERC20(params.initToken).transferFrom(msg.sender, newPool, params.initAmount);
-        IStormBitLending(newPool).initializeLending(params, msg.sender);
+        IERC20(params.initToken).transferFrom(
+            msg.sender,
+            newPool,
+            params.initAmount
+        );
+
+        IStormBitLending(newPool).initializeLending(
+            params,
+            msg.sender,
+            newLendingVotes
+        );
 
         emit PoolCreated(newPool, msg.sender);
     }

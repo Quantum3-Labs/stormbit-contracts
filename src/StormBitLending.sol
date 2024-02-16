@@ -6,12 +6,11 @@ import "./interfaces/IStormBit.sol";
 import "./interfaces/IAgreement.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
 
+import {IStormBitLendingVotes} from "./interfaces/IStormBitLendingVotes.sol";
+
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20VotesUpgradeable.sol";
 
 import "@openzeppelin/contracts-upgradeable/governance/GovernorUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorVotesUpgradeable.sol";
@@ -19,7 +18,7 @@ import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorVotesQ
 
 import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorCountingSimpleUpgradeable.sol";
 
-import {console} from "forge-std/Console.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 // - StormBitLending: implementation contract to be used when creating new lending pools.
 //     - has a bunch of setters and getters that are only owner.
@@ -30,9 +29,6 @@ contract StormBitLending is
     Initializable,
     OwnableUpgradeable,
     ReentrancyGuard,
-    ERC20Upgradeable,
-    ERC20PermitUpgradeable,
-    ERC20VotesUpgradeable,
     GovernorUpgradeable,
     GovernorCountingSimpleUpgradeable,
     GovernorVotesUpgradeable,
@@ -46,6 +42,8 @@ contract StormBitLending is
     uint256 _maxPoolUsage;
     uint256 _votingPowerCoolDown;
     uint256 _loanRequestNonce = 0;
+    address internal _lendingVotes;
+
     IStormBit internal _stormBit;
     mapping(address => bool) public _isSupportedAsset;
     mapping(bytes4 => bool) public _isSupportedAction;
@@ -80,7 +78,8 @@ contract StormBitLending is
 
     function initializeLending(
         InitParams memory params,
-        address _firstOwner
+        address _firstOwner,
+        address stormBitLendingVotes
     ) external override initializer {
         _poolName = params.name;
         _stormBit = IStormBit(msg.sender);
@@ -89,12 +88,11 @@ contract StormBitLending is
         _votingQuorum = params.votingQuorum;
         _maxPoolUsage = params.maxPoolUsage;
         _votingPowerCoolDown = params.votingPowerCoolDown;
+        _lendingVotes = stormBitLendingVotes;
 
         __Ownable_init(_firstOwner);
-        __ERC20_init(_poolName, "SBL");
-        __ERC20Permit_init(_poolName);
         __Governor_init(_poolName);
-        __GovernorVotes_init(IVotes(address(this)));
+        __GovernorVotes_init(IVotes(stormBitLendingVotes));
         __GovernorVotesQuorumFraction_init(_votingQuorum);
 
         (
@@ -238,31 +236,11 @@ contract StormBitLending is
 
         // TODO : change this
         uint256 sharesInPool = amount;
-        _mint(staker, sharesInPool);
-        _delegate(staker, staker); // self delegate
+        IStormBitLendingVotes(_lendingVotes).mint(staker, sharesInPool);
+        IStormBitLendingVotes(_lendingVotes).delegate(staker, staker); // self delegate
     }
 
     // ---------- OVERRIDES ---------------------------
-
-    function _update(
-        address from,
-        address to,
-        uint256 value
-    ) internal virtual override(ERC20Upgradeable, ERC20VotesUpgradeable) {
-        super._update(from, to, value);
-    }
-
-    function nonces(
-        address owner
-    )
-        public
-        view
-        override(NoncesUpgradeable, ERC20PermitUpgradeable)
-        returns (uint256)
-    {
-        return super.nonces(owner);
-    }
-
     function votingDelay() public pure override returns (uint256) {
         return 0;
     }
@@ -274,7 +252,7 @@ contract StormBitLending is
     function name()
         public
         view
-        override(GovernorUpgradeable, ERC20Upgradeable)
+        override(GovernorUpgradeable)
         returns (string memory)
     {
         return _poolName;
@@ -283,11 +261,7 @@ contract StormBitLending is
     function clock()
         public
         view
-        override(
-            GovernorUpgradeable,
-            GovernorVotesUpgradeable,
-            VotesUpgradeable
-        )
+        override(GovernorUpgradeable, GovernorVotesUpgradeable)
         returns (uint48)
     {
         return SafeCast.toUint48(block.timestamp);
@@ -300,7 +274,11 @@ contract StormBitLending is
 
     function getValidVotes(address account) public view returns (uint256) {
         if (block.timestamp < _votingPowerCoolDown) return 0;
-        return getPastVotes(account, block.timestamp - _votingPowerCoolDown);
+        return
+            IVotes(_lendingVotes).getPastVotes(
+                account,
+                block.timestamp - _votingPowerCoolDown
+            );
     }
 
     function isSupportedAgreement(
@@ -331,11 +309,7 @@ contract StormBitLending is
         public
         view
         virtual
-        override(
-            GovernorUpgradeable,
-            GovernorVotesUpgradeable,
-            VotesUpgradeable
-        )
+        override(GovernorUpgradeable, GovernorVotesUpgradeable)
         returns (string memory)
     {
         return "mode=blocktimestamp&from=default";

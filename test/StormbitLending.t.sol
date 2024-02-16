@@ -3,6 +3,7 @@ pragma solidity ^0.8.21;
 import {Test, console} from "forge-std/Test.sol";
 import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 import {StormBitLending, IStormBitLending} from "../src/StormBitLending.sol";
+import {StormBitLendingVotes, IStormBitLendingVotes} from "../src/StormBitLendingVotes.sol";
 import {SimpleAgreement} from "../src/agreements/SimpleAgreement.sol";
 import {MockToken} from "src/mocks/MockToken.sol";
 import {IGovernor} from "@openzeppelin/contracts/governance/IGovernor.sol";
@@ -14,7 +15,9 @@ contract StormbitLendingTest is Test {
     uint256 constant VOTING_POWER_COOLDOWN = 1 days;
     address public stormbitLendingImplementation;
     address public simpleAgreementImplementation;
+    address public stormbitLendingVotesImplementation;
     StormBitLending public stormbitLending;
+    StormBitLendingVotes public stormbitLendingVotes;
     MockToken public mockToken;
 
     // sample test accounts
@@ -35,7 +38,17 @@ contract StormbitLendingTest is Test {
 
         // create a new pool
         stormbitLendingImplementation = address(new StormBitLending());
-        stormbitLending = StormBitLending(payable(Clones.clone(stormbitLendingImplementation)));
+        stormbitLendingVotesImplementation = address(
+            new StormBitLendingVotes()
+        );
+
+        stormbitLending = StormBitLending(
+            payable(Clones.clone(stormbitLendingImplementation))
+        );
+
+        stormbitLendingVotes = StormBitLendingVotes(
+            payable(Clones.clone(stormbitLendingVotesImplementation))
+        );
 
         // agreement implementations
         simpleAgreementImplementation = address(new SimpleAgreement());
@@ -47,32 +60,39 @@ contract StormbitLendingTest is Test {
 
         address[] memory supportedAssets = new address[](1);
         supportedAssets[0] = address(mockToken);
-        IStormBitLending.InitParams memory initParams = IStormBitLending.InitParams({
-            name: "StormBit Lending",
-            creditScore: 0,
-            maxAmountOfStakers: 10,
-            votingQuorum: 50,
-            maxPoolUsage: 100,
-            votingPowerCoolDown: VOTING_POWER_COOLDOWN,
-            initAmount: 5 * ONE_THOUSAND,
-            initToken: address(mockToken),
-            supportedAssets: supportedAssets,
-            supportedAgreements: supportedAgreements
-        });
-
+        IStormBitLending.InitParams memory initParams = IStormBitLending
+            .InitParams({
+                name: "StormBit Lending",
+                creditScore: 0,
+                maxAmountOfStakers: 10,
+                votingQuorum: 50,
+                maxPoolUsage: 100,
+                votingPowerCoolDown: VOTING_POWER_COOLDOWN,
+                initAmount: 5 * ONE_THOUSAND,
+                initToken: address(mockToken),
+                supportedAssets: supportedAssets,
+                supportedAgreements: supportedAgreements
+            });
+        stormbitLendingVotes.initialize(address(stormbitLending));
         vm.prank(staker1);
         mockToken.approve(address(stormbitLending), 5 * ONE_THOUSAND);
-        stormbitLending.initializeLending(initParams, staker1);
+        stormbitLending.initializeLending(
+            initParams,
+            staker1,
+            address(stormbitLendingVotes)
+        );
     }
 
     function testInitialize() public {
         _initializeLendingPool();
 
-        require(stormbitLending.isSupportedAgreement(simpleAgreementImplementation));
+        require(
+            stormbitLending.isSupportedAgreement(simpleAgreementImplementation)
+        );
 
-        require(stormbitLending.balanceOf(staker1) == 5 * ONE_THOUSAND);
+        require(stormbitLendingVotes.balanceOf(staker1) == 5 * ONE_THOUSAND);
         require(stormbitLending.getValidVotes(staker1) == 0);
-        skip(VOTING_POWER_COOLDOWN + 1);
+        skip(VOTING_POWER_COOLDOWN + 2);
         require(stormbitLending.getValidVotes(staker1) > 0);
     }
 
@@ -96,12 +116,19 @@ contract StormbitLendingTest is Test {
         times[1] = secondEndOfMonth;
 
         // build request loan params
-        IStormBitLending.LoanRequestParams memory loanRequestParams = IStormBitLending.LoanRequestParams({
-            amount: 1 * ONE_THOUSAND,
-            token: address(mockToken),
-            agreement: simpleAgreementImplementation,
-            agreementCalldata: abi.encode(1000, borrower1, address(mockToken), amounts, times)
-        });
+        IStormBitLending.LoanRequestParams
+            memory loanRequestParams = IStormBitLending.LoanRequestParams({
+                amount: 1 * ONE_THOUSAND,
+                token: address(mockToken),
+                agreement: simpleAgreementImplementation,
+                agreementCalldata: abi.encode(
+                    1000,
+                    borrower1,
+                    address(mockToken),
+                    amounts,
+                    times
+                )
+            });
 
         vm.prank(borrower1);
         // get the events
@@ -126,8 +153,19 @@ contract StormbitLendingTest is Test {
                 uint256 _voteEnd, // doesnt matter to me
                 string memory _description
             ) = abi.decode(
-                logs[0].data, (uint256, address, address[], uint256[], string[], bytes[], uint256, uint256, string)
-            );
+                    logs[0].data,
+                    (
+                        uint256,
+                        address,
+                        address[],
+                        uint256[],
+                        string[],
+                        bytes[],
+                        uint256,
+                        uint256,
+                        string
+                    )
+                );
 
             // dont check signatures
             require(logs.length == 1);
@@ -150,7 +188,9 @@ contract StormbitLendingTest is Test {
         // voting delay is zero we can start voting right away
         skip(1);
 
-        IGovernor.ProposalState proposalState = stormbitLending.state(proposalId);
+        IGovernor.ProposalState proposalState = stormbitLending.state(
+            proposalId
+        );
 
         require(proposalState == IGovernor.ProposalState.Active);
 
@@ -162,9 +202,10 @@ contract StormbitLendingTest is Test {
         uint256 votingPeriod = stormbitLending.votingPeriod();
         skip(votingPeriod);
 
-        (uint256 againstVotes, uint256 forVotes,) = stormbitLending.proposalVotes(proposalId);
+        (uint256 againstVotes, uint256 forVotes, ) = stormbitLending
+            .proposalVotes(proposalId);
         require(forVotes > againstVotes);
-        require(forVotes == stormbitLending.balanceOf(staker1));
+        require(forVotes == stormbitLendingVotes.balanceOf(staker1));
         proposalState = stormbitLending.state(proposalId);
 
         // proposal has been successfull
