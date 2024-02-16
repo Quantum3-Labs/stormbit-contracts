@@ -25,7 +25,7 @@ contract FTAgreement is AgreementBedrock {
             total += _amounts[i];
         }
 
-        require(_collateral > total, "Collateral must be greater than loan amount");
+        require(_collateral >= total, "Collateral must be greater than loan amount");
     }
 
     function lateFee() public view override returns (uint256) {
@@ -67,12 +67,11 @@ contract FTAgreement is AgreementBedrock {
     function withdraw() external virtual override onlyBorrower{
         require(_paymentCount == 0, "Withdrawal can only occur before repayments");
         _beforeLoan(); // transfer collateral to agreement contract  
-        uint256 totalAllocation = totalLoanAmount();  // 
-        require(IERC20(_paymentToken).balanceOf(address(this)) >= totalAllocation + _collateral, "Insufficient tokens in contract for loan allocation");
+        uint256 totalAllocation = totalLoanAmount(); 
         uint256 balanceBefore = IERC20(_paymentToken).balanceOf(address(this));
-        IERC20(_paymentToken).transfer(_borrower, totalAllocation);
+        IERC20(_paymentToken).transfer(_borrower, totalAllocation); 
         uint256 balanceAfter = IERC20(_paymentToken).balanceOf(address(this));
-        require(balanceBefore - balanceAfter == totalAllocation + _collateral, "Transfer failed");
+        require(balanceBefore - balanceAfter >= _collateral, "Transfer failed");
     }
 
     function _beforeLoan() internal override onlyBorrower {

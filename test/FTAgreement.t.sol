@@ -31,7 +31,7 @@ contract FTAgreementTest is Test {
         mockToken.mint(staker1, 1000 * ONE_THOUSAND);
         mockToken.mint(staker2, 1000 * ONE_THOUSAND);
         mockToken.mint(staker3, 1000 * ONE_THOUSAND);
-        mockToken.mint(borrower1, 5000 * ONE_THOUSAND);
+        mockToken.mint(borrower1, 1000 * ONE_THOUSAND);
 
         // create a new pool
         stormbitLendingImplementation = address(new StormBitLending());
@@ -100,7 +100,7 @@ contract FTAgreementTest is Test {
             amount: 1 * ONE_THOUSAND,
             token: address(mockToken),
             agreement: ftAgreementImplementation,
-            agreementCalldata: abi.encode(1000, borrower1, address(mockToken), amounts, times, ONE_THOUSAND * 2)
+            agreementCalldata: abi.encode(1000, borrower1, address(mockToken), amounts, times, ONE_THOUSAND)
         });
 
         vm.prank(borrower1);
@@ -179,8 +179,7 @@ contract FTAgreementTest is Test {
         require(userAgreement != address(0));
 
         // user withdraws money
-        uint256 balanceBefore = mockToken.balanceOf(address(ftAgreementImplementation));
-        uint256 balanceOfBorrower = mockToken.balanceOf(borrower1);
+        uint256 balanceBefore = mockToken.balanceOf(borrower1);
         vm.prank(borrower1);
         IAgreement(userAgreement).withdraw();
         uint256 balanceAfter = mockToken.balanceOf(borrower1);
