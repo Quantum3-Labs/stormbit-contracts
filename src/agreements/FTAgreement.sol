@@ -10,20 +10,22 @@ contract FTAgreement is AgreementBedrock {
     uint256 internal _collateral;
 
     function initialize(bytes memory initData) public override initializer {
-        (uint256 lateFee, address borrower, address PaymentToken, uint256[] memory amounts, uint256[] memory times) =
-            abi.decode(initData, (uint256, address, address, uint256[], uint256[]));
+        (uint256 lateFee, address borrower, address PaymentToken, uint256[] memory amounts, uint256[] memory times, uint256 collateral) =
+            abi.decode(initData, (uint256, address, address, uint256[], uint256[], uint256));
         _lateFee = lateFee;
         _lender = msg.sender; // lender deploys this, aka lending pool
         _borrower = borrower;
         _paymentToken = PaymentToken;
         _amounts = amounts;
         _times = times;
+        _collateral = collateral; 
 
         uint256 total = 0;
         for (uint256 i = 0; i < _amounts.length; ++i) {
             total += _amounts[i];
         }
-        _collateral = total * 2;
+
+        require(_collateral > total, "Collateral must be greater than loan amount");
     }
 
     function lateFee() public view override returns (uint256) {
@@ -62,12 +64,15 @@ contract FTAgreement is AgreementBedrock {
         return _paymentCount == _amounts.length;
     }
 
-    function withdraw() external virtual override onlyBorrower {
+    function withdraw() external virtual override onlyBorrower{
         require(_paymentCount == 0, "Withdrawal can only occur before repayments");
-        _beforeLoan();
-        uint256 loanAmount = totalLoanAmount();
-        require(IERC20(_paymentToken).balanceOf(address(this)) >= loanAmount, "Insufficient loan amount in contract");
-        IERC20(_paymentToken).transfer(_borrower, loanAmount);
+        _beforeLoan(); // transfer collateral to agreement contract  
+        uint256 totalAllocation = totalLoanAmount();  // 
+        require(IERC20(_paymentToken).balanceOf(address(this)) >= totalAllocation + _collateral, "Insufficient tokens in contract for loan allocation");
+        uint256 balanceBefore = IERC20(_paymentToken).balanceOf(address(this));
+        IERC20(_paymentToken).transfer(_borrower, totalAllocation);
+        uint256 balanceAfter = IERC20(_paymentToken).balanceOf(address(this));
+        require(balanceBefore - balanceAfter == totalAllocation + _collateral, "Transfer failed");
     }
 
     function _beforeLoan() internal override onlyBorrower {
