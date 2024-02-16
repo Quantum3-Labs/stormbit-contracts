@@ -71,7 +71,7 @@ contract NFTAgreement is AgreementBedrock, IERC721Receiver {
     }
 
     function _beforeLoan() internal override {
-        require(_nft.balanceOf(address(this)) == 1, "NFT not minted to borrower");
+        require(_nft.balanceOf(address(this)) > 0, "NFT not minted to borrower");
     }
 
     /**
