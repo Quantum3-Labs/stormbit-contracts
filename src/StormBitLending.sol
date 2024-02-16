@@ -122,8 +122,8 @@ contract StormBitLending is
             _isSupportedAgreement[params.supportedAgreements[i]] = true;
         }
         // check if this pool already has the amount of assets of the token in the ERC4626 of the main contract
-        // setup with first deposit
-        IERC20(initToken).transferFrom(_firstOwner, address(this), initAmount);
+        // setup with first deposit @notice Transfer is done from core.
+        // IERC20(initToken).transferFrom(_firstOwner, address(this), initAmount);
         _stake(initAmount, _firstOwner);
     }
 
@@ -259,6 +259,10 @@ contract StormBitLending is
         return _poolName;
     }
 
+    function creditScore() public view returns (uint256) {
+        return _creditScore;
+    }
+
     function clock()
         public
         view
@@ -280,6 +284,17 @@ contract StormBitLending is
                 account,
                 block.timestamp - _votingPowerCoolDown
             );
+    }
+
+    function getPoolData() public view returns (PoolData memory) {
+        return
+            PoolData({
+                name: _poolName,
+                creditScore: _creditScore,
+                maxAmountOfStakers: _maxAmountOfStakers,
+                votingQuorum: _votingQuorum,
+                maxPoolUsage: _maxPoolUsage
+            });
     }
 
     function isSupportedAgreement(

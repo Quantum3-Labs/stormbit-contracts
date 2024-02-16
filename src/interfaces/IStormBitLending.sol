@@ -3,6 +3,13 @@
 pragma solidity ^0.8.21;
 
 interface IStormBitLending {
+    struct PoolData {
+        string name;
+        uint256 creditScore;
+        uint256 maxAmountOfStakers;
+        uint256 votingQuorum; //  denominated in 100
+        uint256 maxPoolUsage;
+    }
     struct InitParams {
         string name;
         uint256 creditScore;

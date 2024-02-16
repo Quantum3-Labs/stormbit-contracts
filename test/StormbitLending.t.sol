@@ -55,6 +55,7 @@ contract StormbitLendingTest is Test {
     }
 
     function _initializeLendingPool() internal {
+        console.log(VOTING_POWER_COOLDOWN);
         address[] memory supportedAgreements = new address[](1);
         supportedAgreements[0] = simpleAgreementImplementation;
 
@@ -75,7 +76,7 @@ contract StormbitLendingTest is Test {
             });
         stormbitLendingVotes.initialize(address(stormbitLending));
         vm.prank(staker1);
-        mockToken.approve(address(stormbitLending), 5 * ONE_THOUSAND);
+        mockToken.transfer(address(stormbitLending), 5 * ONE_THOUSAND);
         stormbitLending.initializeLending(
             initParams,
             staker1,
