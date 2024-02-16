@@ -1,24 +1,27 @@
 pragma solidity ^0.8.21;
 
 import "../AgreementBedrock.sol";
-import "../interfaces/IStormBitLending.sol";
-import {StormBitCore} from "../StormBitCore.sol";
-import {StormBitLending} from "../StormBitLending.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract FTAgreement is AgreementBedrock {
     uint256 internal _collateral;
 
     function initialize(bytes memory initData) public override initializer {
-        (uint256 lateFee, address borrower, address PaymentToken, uint256[] memory amounts, uint256[] memory times, uint256 collateral) =
-            abi.decode(initData, (uint256, address, address, uint256[], uint256[], uint256));
+        (
+            uint256 lateFee,
+            address borrower,
+            address PaymentToken,
+            uint256[] memory amounts,
+            uint256[] memory times,
+            uint256 collateral
+        ) = abi.decode(initData, (uint256, address, address, uint256[], uint256[], uint256));
         _lateFee = lateFee;
         _lender = msg.sender; // lender deploys this, aka lending pool
         _borrower = borrower;
         _paymentToken = PaymentToken;
         _amounts = amounts;
         _times = times;
-        _collateral = collateral; 
+        _collateral = collateral;
 
         uint256 total = 0;
         for (uint256 i = 0; i < _amounts.length; ++i) {
@@ -64,12 +67,12 @@ contract FTAgreement is AgreementBedrock {
         return _paymentCount == _amounts.length;
     }
 
-    function withdraw() external virtual override onlyBorrower{
+    function withdraw() external override onlyBorrower {
         require(_paymentCount == 0, "Withdrawal can only occur before repayments");
-        _beforeLoan(); // transfer collateral to agreement contract  
-        uint256 totalAllocation = totalLoanAmount(); 
+        _beforeLoan(); // transfer collateral to agreement contract
+        uint256 totalAllocation = totalLoanAmount();
         uint256 balanceBefore = IERC20(_paymentToken).balanceOf(address(this));
-        IERC20(_paymentToken).transfer(_borrower, totalAllocation); 
+        IERC20(_paymentToken).transfer(_borrower, totalAllocation);
         uint256 balanceAfter = IERC20(_paymentToken).balanceOf(address(this));
         require(balanceBefore - balanceAfter >= _collateral, "Transfer failed");
     }
@@ -81,7 +84,10 @@ contract FTAgreement is AgreementBedrock {
     function _afterLoan() internal override onlyBorrower {
         require(isLoanFinished(), "Loan is not finished yet.");
         uint256 collateralAmount = _collateral;
-        require(IERC20(_paymentToken).balanceOf(address(this)) >= collateralAmount, "Insufficient tokens in contract for collateral return.");
+        require(
+            IERC20(_paymentToken).balanceOf(address(this)) >= collateralAmount,
+            "Insufficient tokens in contract for collateral return."
+        );
         IERC20(_paymentToken).transfer(_borrower, collateralAmount);
     }
 }

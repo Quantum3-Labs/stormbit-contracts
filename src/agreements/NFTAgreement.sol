@@ -1,82 +1,98 @@
-// pragma solidity ^0.8.21;
+pragma solidity ^0.8.21;
 
-// import "../AgreementBedrock.sol";
-// import "../interfaces/IStormBitLending.sol";
-// import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
-// import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "../AgreementBedrock.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
-// import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+contract NFTAgreement is AgreementBedrock, IERC721Receiver {
+    ERC721 public _nft;
+    mapping(address => mapping(uint256 => bool)) public stakedNFT;
+    mapping(address => uint256) public nftId;
 
-// abstract contract NFTAgreement is AgreementBedrock {
-//     mapping(address => NFTAggreement) public nftAgreements;
-//     mapping(address => bool) public hasNFTLocked;
-//     address borrower;
-//     mapping(address => uint256) public borrowerAllocation;
+    function initialize(bytes memory initData) public override initializer {
+        (
+            uint256 lateFee,
+            address borrower,
+            address PaymentToken,
+            uint256[] memory amounts,
+            uint256[] memory times,
+            address nft
+        ) = abi.decode(initData, (uint256, address, address, uint256[], uint256[], address));
+        _lateFee = lateFee;
+        _lender = msg.sender; // lender deploys this, aka lending pool
+        _borrower = borrower;
+        _paymentToken = PaymentToken;
+        _amounts = amounts;
+        _times = times;
+        _nft = ERC721(nft);
+    }
 
-//     struct NFTAggreement {
-//         address nftContract; // contract of the nft to transfer
-//         uint256[] paymentDeadlines;
-//         uint256[] paymentAmounts;
-//         uint256 borrowedAmount;
-//         uint256 penalty; // increments by timestamp, late payers.
-//     }
+    function lateFee() public view override returns (uint256) {
+        return _lateFee;
+    }
 
-//     function paymentToken() public view override returns (address) {
-//         return _paymentToken;
-//     }
+    function paymentToken() public view override returns (address) {
+        return _paymentToken;
+    }
 
-//     function withdraw(uint256 amount) public {
-//         payable(msg.sender).transfer(amount);
-//     }
+    function lender() public view override returns (address) {
+        return _lender;
+    }
 
-//     function penalty() public view override returns (uint256) {
-//         (uint256 amount, uint256 time) = nextPayment();
-//         if (_hasPenalty || time < block.timestamp) {
-//             return (_lateFee);
-//         }
-//         return 0;
-//     }
+    function borrower() public view override returns (address) {
+        return _borrower;
+    }
 
-//     function payBack() public override returns (bool) {
-//         // check if deadline has passed and apply fee on borrower
-//         (uint256 amount,) = nextPayment();
-//         uint256 fee = penalty();
-//         IERC20(_paymentToken).transfer(address(this), amount + fee);
-//         _paymentCount++;
-//         return true;
-//     }
+    function nextPayment() public view override returns (uint256, uint256) {
+        return (_amounts[_paymentCount], _times[_paymentCount]);
+    }
 
-//     function _withdraw() internal {
-//         IERC20(_paymentToken).transfer(borrower, borrowerAllocation[msg.sender]);
-//     }
+    function getPaymentDates() public view override returns (uint256[] memory, uint256[] memory) {
+        return (_amounts, _times);
+    }
 
-//     // You have to lock the NFT to submit a request for a loan.
-//     function lockNFT(uint256 tokenId) public {
-//         require(!hasNFTLocked[msg.sender], "NFT already locked");
-//         IERC721(_paymentToken).safeTransferFrom(msg.sender, address(this), tokenId); // transfer NFT to this contract
-//         (bool succes,) = address(this).call(
-//             abi.encodeWithSignature(
-//                 "onERC721Received(address,address,uint256,bytes)", msg.sender, address(this), tokenId, ""
-//             )
-//         );
-//     }
+    function totalLoanAmount() public view override returns (uint256) {
+        uint256 total = 0;
+        for (uint256 i = 0; i < _amounts.length; ++i) {
+            total += _amounts[i];
+        }
+        return total;
+    }
 
-//     function sendRequest(uint256 loanAmount, address token, bytes calldata agreementCalldata) internal {
-//         require(hasNFTLocked[msg.sender], "NFTAgreement: NFT not locked");
-//         // request loan
-//         IStormBitLending.LoanRequestParams memory params = IStormBitLending.LoanRequestParams({
-//             amount: loanAmount,
-//             token: token,
-//             agreement: address(this), // @note - this contract is the strategy used
-//             agreementCalldata: agreementCalldata
-//         });
-//     }
+    function isLoanFinished() public view override returns (bool) {
+        return _paymentCount == _amounts.length;
+    }
 
-//     function onERC721Received(address operator, address from, uint256 tokenId, bytes calldata data)
-//         external
-//         returns (bytes4)
-//     {
-//         return this.onERC721Received.selector;
-//     }
+    function withdraw() external override onlyBorrower {
+        require(_paymentCount == 0, "Withdrawal can only occur before repayments");
+        _beforeLoan();
+        IERC20(_paymentToken).transfer(_borrower, IERC20(_paymentToken).balanceOf(address(this)));
+    }
 
-// }
+    function _beforeLoan() internal override {
+        require(_nft.balanceOf(address(this)) == 1, "NFT not minted to borrower");
+    }
+
+    /**
+     * @dev Transfer NFT back to borrower
+     */
+    function _afterLoan() internal override onlyBorrower {
+        require(isLoanFinished(), "Loan must be finished");
+        _nft.safeTransferFrom(address(this), _borrower, nftId[_borrower]);
+    }
+
+    /**
+     * @dev Contract should be able to receive NFT
+     */
+    function onERC721Received(address operator, address from, uint256 tokenId, bytes calldata data)
+        external
+        override
+        returns (bytes4)
+    {
+        require(from == _borrower, "NFT: Sender must be borrower");
+        stakedNFT[msg.sender][tokenId] = true;
+        nftId[_borrower] = tokenId;
+        return this.onERC721Received.selector;
+    }
+}
