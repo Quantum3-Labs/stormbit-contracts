@@ -1,17 +1,21 @@
-#### THIS IS AN AVALANCHE CONSUMER BASED APPLICATION PROJECT 
-
-<img src="./docs/Avalanche.png" alt="Image Description" width="100" />
+## STORMBIT : A DECENTRALIZED CONSUMER BASED LENDING PROTOCOL 
 
 
-[!COMPLETE DOCUMENTATION IS AVAILABLE ON : [StormBit Documentation](https://app.gitbook.com/o/6Ba9JCvQ5qAfdGJBr4ud/s/85Jk3acx3jKwt2N6IWnB/)
+  <img src="./docs/Logo.png" alt="Stormbit Logo" width="200" class="logo">
 
+
+  THIS IS AN AVALANCHE CONSUMER BASED APPLICATION PROJECT BUILT DURING AVALANCHE FRONTIER HACKATHON 
+  
+## DOCUMENTATION 
+
+
+You can find the documentation here : [StormBit Documentation](https://app.gitbook.com/o/6Ba9JCvQ5qAfdGJBr4ud/s/85Jk3acx3jKwt2N6IWnB/)
 
 ## TL;DR:
 
 StormBit is a Lending Marketplace trageting the micro lending market.
 It is offering different types of agreements to allow the lenders and the borrowers to interact in a more real way and connect decentralized world to the real world. 
 
-<img src="./docs/Logo.png" alt="Stormbit Logo" width="100" />
 
 
 ## How it is made 
