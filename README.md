@@ -17,6 +17,10 @@ StormBit is a Lending Marketplace trageting the micro lending market.
 It is offering different types of agreements to allow the lenders and the borrowers to interact in a more real way and connect decentralized world to the real world. 
 
 
+## Architecture 
+
+// ADD DIAGRAM 
+
 
 ## How it is made 
 
@@ -29,9 +33,19 @@ StormBit protocol contracts are deployed on Avalanche and all the interactions a
 
 We have abstracted the way for users to connect without the need of a wallet, for scability and to attract web2 players also : 
 
-## Particle Auth 
+#### Particle Auth 
 
 Particle Auth is used to allow lenders and borrowers to use their email or mobile number to be able to login. StormBit by using Particle Auth is opening the door to web2 users to participate to DeFi. 
+
+#### Chainlink 
+
+
+
+## Tech Stack 
+
+
+
+
 
 
 ## Deployed Contracts
@@ -39,7 +53,10 @@ Particle Auth is used to allow lenders and borrowers to use their email or mobil
 
 
 
-## DEMO
+## Contact 
+
+
+@Build by Q3Labs with Love during Avalanche Frontier Hackathon. 
 
 
 
