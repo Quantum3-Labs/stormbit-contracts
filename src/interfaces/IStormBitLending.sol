@@ -9,6 +9,21 @@ interface IStormBitLending {
         uint256 maxAmountOfStakers;
         uint256 votingQuorum; //  denominated in 100
         uint256 maxPoolUsage;
+        uint256 totalBorrowed;
+        uint256 totalSupplied;
+        address[] stakers;
+        address[] supportedAssets;
+        address[] supportedAgreements;
+        uint256[] loanRequests;
+    }
+
+    struct LoanDetails {
+        address token;
+        uint256 amount;
+        address agreement; // this agreement is the implementation
+        bytes agreementCalldata;
+        uint256 loanId;
+        address borrower;
     }
     struct InitParams {
         string name;

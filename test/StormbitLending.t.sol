@@ -226,6 +226,72 @@ contract StormbitLendingTest is Test {
         IAgreement(userAgreement).withdraw();
         uint256 balanceAfter = mockToken.balanceOf(borrower1);
         require(balanceAfter - balanceBefore == 1 * ONE_THOUSAND); // user has withdrawn the money he requested
+
+        // check the loan details :
+        (
+            IStormBitLending.LoanDetails memory loanDetails,
+            IGovernor.ProposalState state,
+            address loanAgreement
+        ) = stormbitLending.getLoanData(proposalId);
+        require(loanDetails.amount == 1 * ONE_THOUSAND);
+        require(
+            loanDetails.agreement == address(simpleAgreementImplementation)
+        );
+        require(loanAgreement == userAgreement);
+        require(loanDetails.borrower == borrower1);
+        require(loanDetails.token == address(mockToken));
+        require(state == IGovernor.ProposalState.Executed);
+
+        // // check pool data
+        IStormBitLending.PoolData memory poolData = stormbitLending
+            .getPoolData();
+
+        require(poolData.totalBorrowed == 1 * ONE_THOUSAND);
+        require(poolData.totalSupplied == 5 * ONE_THOUSAND);
+        require(poolData.stakers.length == 1);
+        require(poolData.stakers[0] == staker1);
+        require(poolData.loanRequests.length == 1);
+        require(poolData.loanRequests[0] == proposalId);
+        require(poolData.supportedAgreements.length == 1);
+        require(
+            poolData.supportedAgreements[0] == simpleAgreementImplementation
+        );
+
+        uint256 staker1VotingPower = stormbitLending.getVotingPower(staker1);
+        require(staker1VotingPower == 100);
+    }
+
+    function testStake() public {
+        _initializeLendingPool();
+
+        // staker stakes
+        vm.startPrank(staker2);
+        mockToken.approve(address(stormbitLending), 1 * ONE_THOUSAND);
+        stormbitLending.stake(address(mockToken), 1 * ONE_THOUSAND);
+        vm.stopPrank();
+
+        require(stormbitLending.getValidVotes(staker2) == 0);
+        skip(VOTING_POWER_COOLDOWN + 2);
+        require(stormbitLending.getValidVotes(staker2) > 0);
+
+        require(stormbitLending.getValidVotes(staker2) == 1 * ONE_THOUSAND);
+        require(stormbitLendingVotes.balanceOf(staker1) == 5 * ONE_THOUSAND);
+
+        // get pool data
+        IStormBitLending.PoolData memory poolData = stormbitLending
+            .getPoolData();
+        require(poolData.stakers.length == 2);
+        require(poolData.stakers[1] == staker2);
+        require(poolData.stakers[0] == staker1);
+        require(poolData.totalSupplied == 6 * ONE_THOUSAND);
+        require(poolData.totalBorrowed == 0);
+        require(poolData.loanRequests.length == 0);
+
+        uint256 staker1VotingPower = stormbitLending.getVotingPower(staker1);
+        uint256 staker2VotingPower = stormbitLending.getVotingPower(staker2);
+
+        require(staker1VotingPower > 80);
+        require(staker2VotingPower < 20);
     }
 
     function testSimpleAgreement() public {

@@ -51,6 +51,15 @@ contract StormBitLending is
     mapping(address => bool) public _isSupportedAgreement;
 
     mapping(address => address) public _userAgreement;
+    mapping(uint256 => LoanDetails) public _loanDetails;
+
+    // ------------ TODO : dummy helpers in frontend remove ---------
+    uint256 _totalBorrowed;
+    uint256 _totalSupplied;
+    address[] public _supportedAssets;
+    address[] public _supportedAgreements;
+    address[] public _stakers;
+    uint256[] public _loanRequests;
 
     constructor() {
         _disableInitializers();
@@ -111,6 +120,7 @@ contract StormBitLending is
         // setup supported assets
         for (uint256 i = 0; i < supportedAssets.length; i++) {
             _isSupportedAsset[supportedAssets[i]] = true;
+            _supportedAssets.push(supportedAssets[i]);
         }
 
         // check if init token is supported
@@ -120,6 +130,7 @@ contract StormBitLending is
         );
         for (uint256 i = 0; i < params.supportedAgreements.length; i++) {
             _isSupportedAgreement[params.supportedAgreements[i]] = true;
+            _supportedAgreements.push(params.supportedAgreements[i]);
         }
         // check if this pool already has the amount of assets of the token in the ERC4626 of the main contract
         // setup with first deposit @notice Transfer is done from core.
@@ -130,6 +141,11 @@ contract StormBitLending is
     function stake(address token, uint256 amount) external onlyKYCVerified {
         // transfer the assets from the user into the ERC4626 of the main contract
         // stake the amount of shares in the pool
+        require(
+            _isSupportedAsset[token],
+            "StormBitLending: asset not supported"
+        );
+        IERC20(token).transferFrom(msg.sender, address(this), amount);
         _stake(amount, msg.sender);
     }
 
@@ -162,7 +178,23 @@ contract StormBitLending is
             params.agreementCalldata
         );
         _loanRequestNonce++;
-        return _propose(targets, values, calldatas, description, msg.sender);
+        uint256 loanRequestId = _propose(
+            targets,
+            values,
+            calldatas,
+            description,
+            msg.sender
+        );
+        _loanRequests.push(loanRequestId);
+        _loanDetails[loanRequestId] = LoanDetails({
+            token: params.token,
+            amount: params.amount,
+            agreement: params.agreement,
+            agreementCalldata: params.agreementCalldata,
+            loanId: loanRequestId,
+            borrower: msg.sender
+        });
+        return loanRequestId;
     }
 
     // ---------- STORMBIT CALLS ----------------
@@ -198,6 +230,8 @@ contract StormBitLending is
         IAgreement(newAgreement).initialize(agreementCalldata);
         IERC20(token).transfer(newAgreement, amount);
         _userAgreement[to] = newAgreement;
+
+        _totalBorrowed += amount;
     }
 
     function changeAgreementStatus(
@@ -239,6 +273,9 @@ contract StormBitLending is
         uint256 sharesInPool = amount;
         IStormBitLendingVotes(_lendingVotes).mint(staker, sharesInPool);
         IStormBitLendingVotes(_lendingVotes).delegate(staker, staker); // self delegate
+
+        _totalSupplied += amount;
+        _stakers.push(staker);
     }
 
     // ---------- OVERRIDES ---------------------------
@@ -293,8 +330,32 @@ contract StormBitLending is
                 creditScore: _creditScore,
                 maxAmountOfStakers: _maxAmountOfStakers,
                 votingQuorum: _votingQuorum,
-                maxPoolUsage: _maxPoolUsage
+                maxPoolUsage: _maxPoolUsage,
+                totalBorrowed: _totalBorrowed,
+                totalSupplied: _totalSupplied,
+                stakers: _stakers,
+                supportedAssets: _supportedAssets,
+                supportedAgreements: _supportedAgreements,
+                loanRequests: _loanRequests
             });
+    }
+
+    function getLoanData(
+        uint256 loanRequestId
+    ) public view returns (LoanDetails memory, ProposalState, address) {
+        // State. 0 - pending, 1 - active, 2 - canceled, 3 - defeated, 4 - succeeded
+        return (
+            _loanDetails[loanRequestId],
+            state(loanRequestId),
+            _userAgreement[_loanDetails[loanRequestId].borrower]
+        );
+    }
+
+    // in percentage
+    function getVotingPower(address staker) public view returns (uint256) {
+        uint256 tokenSupply = IERC20(_lendingVotes).totalSupply();
+        uint256 stakerValidVotes = getValidVotes(staker);
+        return (stakerValidVotes * 100) / tokenSupply;
     }
 
     function isSupportedAgreement(

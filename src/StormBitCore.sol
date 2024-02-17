@@ -25,6 +25,9 @@ contract StormBitCore is IStormBit, Ownable, Pausable {
     address internal _lendingPoolImplementation;
     address internal _lendingVotesImplementation;
 
+    // HELPERs
+    address[] public pools;
+
     modifier onlyKYCVerified() {
         require(isKYCVerified(msg.sender), "StormBit: KYC not verified");
         _;
@@ -60,7 +63,12 @@ contract StormBitCore is IStormBit, Ownable, Pausable {
             newLendingVotes
         );
 
+        pools.push(newPool);
         emit PoolCreated(newPool, msg.sender);
+    }
+
+    function getPools() external view returns (address[] memory) {
+        return pools;
     }
 
     function _validate(IStormBitLending.InitParams memory params) internal {
