@@ -19,7 +19,21 @@ It is offering different types of agreements to allow the lenders and the borrow
 
 ## Architecture 
 
-// ADD DIAGRAM 
+#### Actors 
+
+- Lender : a lender is a KYC-ed person who is willing to stake an amount in a shared pool and vote for giving or no a loan to a borrower. Lenders are able to manage all functionalities of their pools. 
+- Borrower : a borrower is a KYC-ed person who wants or has an active loan on a pool. Borrowers are able to manage all functionalities of their loans (such as repaying them). 
+- User : a user is non KYC-ed account who can visualize data on the app but cannot interact with the most of the pools. 
+- Pool Manager : a pool manager is a KYC-ed user who holds voting power inside a pool. Managers are only able to approve/reject loans on the pool they have voting power at. 
+
+#### Governance & Loans Allocation 
+
+- Loans allocations goes through a voting process. Each loan request is a loan proposal that is on Avalanche Fuji Testnet. The StormBitLending contract implementing the lending is inheriting from Openzeppelin necessary contracts for governance. Please refer to this official Openzeppelin documentation for any details. 
+
+- On-chain transactions include : 
+1. Proposal creation : a proposal is created when a borrower requests a loan after depositing a collateral (NFT or ERC-20 tokens) or without collateral (Simple Agreement). 
+2. Casting vote : voting on a loan allocation is reserved to the stakers only. 
+3. Voting cool down period : sets a delay before a voter's votes are considered valid for proposal consideration. Defined to mitigate potential manipulation or abrupt changes in voting power.
 
 
 ## How it is made 
@@ -49,6 +63,8 @@ Particle Auth is used to allow lenders and borrowers to use their email or mobil
 
 
 ## Deployed Contracts
+
+
 
 
 
