@@ -41,17 +41,17 @@ StormBit offers three types of loan agreements:
 
 - Simple Agreement: Focuses on trust and the borrower's reputation, allowing undercollateralized loans. It is streamlined for flexibility and simplicity, emphasizing financial terms over asset involvement.
 
-  <img src="./docs/SimpleAgreement.png" alt="SimpleAgreement" >
+  <img src="./docs/Simple.png" alt="SimpleAgreement" >
 
 
 - NFT Agreement: Uses NFTs as collateral, ensuring loan security. This agreement includes mechanisms for collateral management and secure NFT custody, allowing borrowers to reclaim their NFT upon fulfilling loan terms.
 
-  <img src="./docs/NFTAgreement.png" alt="NFTAgreement" >
+  <img src="./docs/NFTAgreement.jpeg" alt="NFTAgreement" >
 
 
 - FT Agreement: Requires collateral equal to or greater than the loan amount for security. It captures essential loan initiation details and manages collateral throughout the loan lifecycle.
 
-  <img src="./docs/FTAgreement.png" alt="FTAgreement Logo" >
+  <img src="./docs/FT.png" alt="FTAgreement Logo" >
 
 #### Security and Trust
 All agreements undergo rigorous security audits, including fuzzing tests, to ensure the highest security standards. Additional checks, such as a voting power cooldown variable, are implemented to safeguard against malicious activities.
@@ -73,6 +73,10 @@ Deployed on the Avalanche blockchain, StormBit leverages state-of-the-art techno
 
 
 ```StormBit, created with love by Q3 Labs during the Avalanche Frontier Hackathon, stands at the forefront of decentralized consumer lending, promising a more inclusive, secure, and transparent financial future```
+
+
+
+Submitted for Avalanche hackathon :   <img src="./docs/Avalanche.png" alt="Avalanche" width="80" >
 
 
 
