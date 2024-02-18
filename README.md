@@ -59,8 +59,13 @@ All agreements undergo rigorous security audits, including fuzzing tests, to ens
 
 ## How it works 
 
+#### Flow 
+
 StormBit facilitates credit access by offering diverse agreement types. Any KYC-verified user can request a loan and receive equitable treatment from the pool's owners, bridging the gap between DeFi and traditional finance.
 
+#### Credit Score Composite 
+
+Refer to this [documentation](https://stormbit.gitbook.io/stormbit/credit-score-composite) for credit score assessement used by StormBit. 
 
 ## Technologies and Innovations
 
