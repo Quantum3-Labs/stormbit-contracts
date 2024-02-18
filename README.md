@@ -46,7 +46,7 @@ StormBit offers three types of loan agreements:
 
 - NFT Agreement: Uses NFTs as collateral, ensuring loan security. This agreement includes mechanisms for collateral management and secure NFT custody, allowing borrowers to reclaim their NFT upon fulfilling loan terms.
 
-  <img src="./docs/NFTAgreement.jpeg" alt="NFTAgreement" >
+  <img src="./docs/NFTAgreement.png" alt="NFTAgreement" >
 
 
 - FT Agreement: Requires collateral equal to or greater than the loan amount for security. It captures essential loan initiation details and manages collateral throughout the loan lifecycle.
