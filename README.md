@@ -1,88 +1,87 @@
-## STORMBIT : A DECENTRALIZED CONSUMER BASED LENDING PROTOCOL 
+## STORMBIT: A DECENTRALIZED LENDING PROTOCOL FOR CONSUMERS
 
 
   <img src="./docs/Logo.png" alt="Stormbit Logo" width="200" class="logo">
 
 
-  THIS IS AN AVALANCHE CONSUMER BASED APPLICATION PROJECT BUILT DURING AVALANCHE FRONTIER HACKATHON 
-  
+StormBit is a pioneering project developed during the Avalanche Frontier Hackathon, designed to revolutionize consumer lending on the Avalanche blockchain. It introduces a unique lending marketplace targeting the micro-lending sector, seamlessly connecting decentralized finance (DeFi) with real-world financial transactions.
+
+
 ## DOCUMENTATION 
 
 
-You can find the documentation here : [StormBit Documentation](https://app.gitbook.com/o/6Ba9JCvQ5qAfdGJBr4ud/s/85Jk3acx3jKwt2N6IWnB/)
+For detailed information about StormBit, please visit our comprehensive  [StormBit Documentation](https://app.gitbook.com/o/6Ba9JCvQ5qAfdGJBr4ud/s/85Jk3acx3jKwt2N6IWnB/)
 
-## TL;DR:
+## Overview 
 
-StormBit is a Lending Marketplace trageting the micro lending market.
-It is offering different types of agreements to allow the lenders and the borrowers to interact in a more real way and connect decentralized world to the real world. 
+StormBit aims to democratize access to credit, especially targeting the 99% who are traditionally underserved by conventional financial institutions. It offers various agreement types, enabling lenders and borrowers to interact transparently and efficiently in a decentralized environment.
 
 
 ## Architecture 
 
 ### Actors 
 
-- **Lender** : a lender is a KYC-ed person who is willing to stake an amount in a shared pool and vote for giving or no a loan to a borrower. Lenders are able to manage all functionalities of their pools. 
-- **Borrower** : a borrower is a KYC-ed person who wants or has an active loan on a pool. Borrowers are able to manage all functionalities of their loans (such as repaying them). 
-- **User** : a user is non KYC-ed account who can visualize data on the app but cannot interact with the most of the pools. 
-- **Pool Manager** : a pool manager is a KYC-ed user who holds voting power inside a pool. Managers are only able to approve/reject loans on the pool they have voting power at. 
+- **Lender**: A KYC-verified individual willing to contribute to a shared pool and participate in voting to approve or deny loans. Lenders have full control over their pool's - functionalities.
+- **Borrower**: A KYC-verified individual seeking or currently managing a loan within a pool. Borrowers can oversee all aspects of their loans, including repayments.
+- **User**: Non-KYC-verified accounts with the ability to view data on the app but limited interaction capabilities with most pools.
+- **Pool Manager**: A KYC-verified user with the authority to vote on loan approvals within their designated pool.
 
 ### Governance & Loans Allocation 
 
-- Loans allocations goes through a voting process. Each loan request is a loan proposal that is on Avalanche Fuji Testnet. The StormBitLending contract implementing the lending is inheriting from Openzeppelin necessary contracts for governance. Please refer to this official Openzeppelin documentation for any details. 
+Loan allocation is governed by a voting process, with each loan request presented as a proposal on the Avalanche Fuji Testnet. The StormBitLending contract, inheriting necessary governance functionalities from OpenZeppelin, oversees this process. Key on-chain transactions include:
 
-- On-chain transactions include : 
-1. **Proposal creation** : a proposal is created when a borrower requests a loan after depositing a collateral (NFT or ERC-20 tokens) or without collateral (Simple Agreement). 
-2. **Casting vote** : voting on a loan allocation is reserved to the stakers only. 
-3. **Voting cool down period** : sets a delay before a voter's votes are considered valid for proposal consideration. Defined to mitigate potential manipulation or abrupt changes in voting power.
+- **Proposal Creation**: Initiated when a borrower requests a loan, either by depositing collateral (NFT or ERC-20 tokens) or opting for a collateral-free agreement (Simple Agreement).
+- **Casting Vote**: Exclusive to stakers, allowing them to vote on loan allocations. 
+- **Voting Cool Down Period**: Introduces a delay before considering a voter's input as valid, preventing potential voting power manipulation.
 
 
-### Agreements 
+### Agreements on StormBit
 
-There are 3 types of agreements : 
+StormBit offers three types of loan agreements:
 
-#### FTAgreement 
+- Simple Agreement: Focuses on trust and the borrower's reputation, allowing undercollateralized loans. It is streamlined for flexibility and simplicity, emphasizing financial terms over asset involvement.
+
+  <img src="./docs/SimpleAgreement.png" alt="SimpleAgreement" >
+
+
+- NFT Agreement: Uses NFTs as collateral, ensuring loan security. This agreement includes mechanisms for collateral management and secure NFT custody, allowing borrowers to reclaim their NFT upon fulfilling loan terms.
+
+  <img src="./docs/NFTAgreement.png" alt="NFTAgreement" >
+
+
+- FT Agreement: Requires collateral equal to or greater than the loan amount for security. It captures essential loan initiation details and manages collateral throughout the loan lifecycle.
 
   <img src="./docs/FTAgreement.png" alt="FTAgreement Logo" >
 
-
-## How it is made 
-
-StormBit protocol aims to facilitate the access of credit allocation to the 99%. By providing different types of agreements, any KYC-ed user can request a loan and receive a fair answer from the owners of a shared pool. 
+#### Security and Trust
+All agreements undergo rigorous security audits, including fuzzing tests, to ensure the highest security standards. Additional checks, such as a voting power cooldown variable, are implemented to safeguard against malicious activities.
 
 
+## How it works 
 
-## Technologies Used
-
-StormBit protocol contracts are deployed on Avalanche and all the interactions are on the Avalanche blockchain. 
-
-We have abstracted the way for users to connect without the need of a wallet, for scability and to attract web2 players also : 
-
-#### Particle Auth 
-
-Particle Auth is used to allow lenders and borrowers to use their email or mobile number to be able to login. StormBit by using Particle Auth is opening the door to web2 users to participate to DeFi. 
-
-#### Chainlink 
+StormBit facilitates credit access by offering diverse agreement types. Any KYC-verified user can request a loan and receive equitable treatment from the pool's owners, bridging the gap between DeFi and traditional finance.
 
 
+## Technologies and Innovations
 
-## Tech Stack 
+Deployed on the Avalanche blockchain, StormBit leverages state-of-the-art technologies to enhance scalability and inclusivity:
+
+- **Particle Auth**: Enables login via email or mobile, inviting Web2 users to participate in DeFi.
+- **Chainlink**: Integrates with Chainlink for decentralized oracle services, although specific uses are not detailed in the original text.
 
 
 
 
-
-
-## Deployed Contracts
-
-
-
+```StormBit, created with love by Q3 Labs during the Avalanche Frontier Hackathon, stands at the forefront of decentralized consumer lending, promising a more inclusive, secure, and transparent financial future```
 
 
 
 ## Contact 
+For any inquiries or further information, feel free to contact the StormBit team at contact@quantum3labs.com 
 
 
-@Build by Q3Labs with Love during Avalanche Frontier Hackathon. 
+
+
 
 
 
