@@ -41,7 +41,7 @@ StormBit offers three types of loan agreements:
 
 - Simple Agreement: Focuses on trust and the borrower's reputation, allowing undercollateralized loans. It is streamlined for flexibility and simplicity, emphasizing financial terms over asset involvement.
 
-  <img src="./docs/Simple.png" alt="SimpleAgreement" >
+  <img src="./docs/SimpleAgreement.png" alt="SimpleAgreement" >
 
 
 - NFT Agreement: Uses NFTs as collateral, ensuring loan security. This agreement includes mechanisms for collateral management and secure NFT custody, allowing borrowers to reclaim their NFT upon fulfilling loan terms.
