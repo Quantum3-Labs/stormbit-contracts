@@ -67,8 +67,10 @@ StormBit facilitates credit access by offering diverse agreement types. Any KYC-
 Deployed on the Avalanche blockchain, StormBit leverages state-of-the-art technologies to enhance scalability and inclusivity:
 
 - **Particle Auth**: Enables login via email or mobile, inviting Web2 users to participate in DeFi.
-- **Chainlink**: Integrates with Chainlink for decentralized oracle services, although specific uses are not detailed in the original text.
 
+<img src="./docs/Particle.png" alt="Particle Auth" width=78" >
+
+- **Chainlink**: Integrates with Chainlink for decentralized oracle services, although specific uses are not detailed in the original text.
 
 
 
@@ -76,7 +78,7 @@ Deployed on the Avalanche blockchain, StormBit leverages state-of-the-art techno
 
 
 
-Submitted for Avalanche hackathon :   <img src="./docs/Avalanche.png" alt="Avalanche" width="80" >
+Submitted for Avalanche hackathon :   <img src="./docs/Avalanche.png" alt="Avalanche" width=40" >
 
 
 
