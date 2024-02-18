@@ -51,7 +51,7 @@ StormBit offers three types of loan agreements:
 
 - FT Agreement: Requires collateral equal to or greater than the loan amount for security. It captures essential loan initiation details and manages collateral throughout the loan lifecycle.
 
-  <img src="./docs/FT.png" alt="FTAgreement Logo" >
+  <img src="./docs/FTAgreement.png" alt="FTAgreement Logo" >
 
 #### Security and Trust
 All agreements undergo rigorous security audits, including fuzzing tests, to ensure the highest security standards. Additional checks, such as a voting power cooldown variable, are implemented to safeguard against malicious activities.
