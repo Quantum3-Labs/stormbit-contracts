@@ -10,7 +10,7 @@ StormBit is a pioneering project developed during the Avalanche Frontier Hackath
 ## DOCUMENTATION 
 
 
-For detailed information about StormBit, please visit our comprehensive  [StormBit Documentation](https://app.gitbook.com/o/6Ba9JCvQ5qAfdGJBr4ud/s/85Jk3acx3jKwt2N6IWnB/)
+For detailed information about StormBit, please visit our comprehensive  [StormBit Documentation](https://stormbit.gitbook.io/stormbit/)
 
 ## Overview 
 
