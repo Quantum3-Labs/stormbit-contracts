@@ -68,7 +68,7 @@ Deployed on the Avalanche blockchain, StormBit leverages state-of-the-art techno
 
 - **Particle Auth**: Enables login via email or mobile, inviting Web2 users to participate in DeFi.
 
-<img src="./docs/Particle.png" alt="Particle Auth" width="78" >
+<img src="./docs/Particle.png" alt="Particle Auth" width="290" >
 
 
 
@@ -80,8 +80,7 @@ Deployed on the Avalanche blockchain, StormBit leverages state-of-the-art techno
 
 
 
-Submitted for Avalanche hackathon :   
-<img src="./docs/Avalanche.png" alt="Avalanche" width="40" >
+Submitted for Avalanche hackathon :   <img src="./docs/Avalanche.png" alt="Avalanche" width="40" >
 
 
 
