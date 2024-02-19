@@ -83,7 +83,7 @@ Deployed on the Avalanche blockchain, StormBit leverages state-of-the-art techno
 
 
 
-- **Chainlink**: Integrates with Chainlink for decentralized oracle services, although specific uses are not detailed in the original text.
+- **Chainlink**: Integration of credit score with Chainlink Functions. 
 
 
 
