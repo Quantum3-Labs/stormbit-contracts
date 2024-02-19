@@ -75,7 +75,7 @@ Deployed on the Avalanche blockchain, StormBit leverages state-of-the-art techno
 
 
 #### Particle Architecture 
-<img src="./docs/ParticleArchitecture.png" alt="Particle Architecture" >
+<img src="./docs/Screenshot 2024-02-19 at 09.28.11.png" alt="Particle Architecture" >
 
 
 #### Particle Integration on UI 
