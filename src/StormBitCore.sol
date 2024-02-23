@@ -33,35 +33,23 @@ contract StormBitCore is IStormBit, Ownable, Pausable {
         _;
     }
 
-    constructor(
-        address initialOwner,
-        address lendingPoolImplementation,
-        address lendingVotesImplementation
-    ) Ownable(initialOwner) {
+    constructor(address initialOwner, address lendingPoolImplementation, address lendingVotesImplementation)
+        Ownable(initialOwner)
+    {
         _lendingPoolImplementation = lendingPoolImplementation;
         _lendingVotesImplementation = lendingVotesImplementation;
     }
 
-    function createPool(
-        IStormBitLending.InitParams memory params
-    ) external onlyKYCVerified {
+    function createPool(IStormBitLending.InitParams memory params) external onlyKYCVerified {
         address newPool = Clones.clone(_lendingPoolImplementation);
         address newLendingVotes = Clones.clone(_lendingVotesImplementation);
 
         IStormBitLendingVotes(newLendingVotes).initialize(newPool);
 
         // transfer the tokens
-        IERC20(params.initToken).transferFrom(
-            msg.sender,
-            newPool,
-            params.initAmount
-        );
+        IERC20(params.initToken).transferFrom(msg.sender, newPool, params.initAmount);
 
-        IStormBitLending(newPool).initializeLending(
-            params,
-            msg.sender,
-            newLendingVotes
-        );
+        IStormBitLending(newPool).initializeLending(params, msg.sender, newLendingVotes);
 
         pools.push(newPool);
         emit PoolCreated(newPool, msg.sender);

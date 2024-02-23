@@ -8,11 +8,10 @@
 // import {MockToken} from "src/mocks/MockToken.sol";
 // import {MockNFT} from "src/mocks/MockNFT.sol";
 
-
 // contract BaseAgreementScript is Script {
 //     SimpleAgreement public agreement;
 //     MockToken public mockToken;
-//     MockNFT public mockNFT; 
+//     MockNFT public mockNFT;
 
 //     function run() external {
 //         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
