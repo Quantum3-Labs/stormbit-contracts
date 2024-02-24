@@ -10,7 +10,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 // ----- : interest paid by protocol to lenders <= interest paid by borrowers to protocol
 // ----- : reserve factor => % of interest paid by borrowers that goes to the protocol
 
-
 contract StormBitERC4626 is ERC4626 {
     IERC20 private _underlyingToken;
     uint256 public totalDeposits;
@@ -27,7 +26,7 @@ contract StormBitERC4626 is ERC4626 {
     // How is the spread calculated ? => Interet earned by the protocol
 
     function deposit(uint256 _amount) external {
-        _underlyingToken.transferFrom(msg.sender, address(this), _amount);  
+        _underlyingToken.transferFrom(msg.sender, address(this), _amount);
         totalDeposits += _amount;
     }
 
@@ -37,18 +36,17 @@ contract StormBitERC4626 is ERC4626 {
         totalBorrowed += _amount;
     }
 
-
     /**
      * @notice Returns the utilization of the pool
      *     @dev utilization =  borrowed / total deposits
      */
     function getUtilization() public view returns (uint256) {
         uint256 utilization = totalBorrowed / totalDeposits;
-        return utilization; 
+        return utilization;
     }
 
     /**
-     * @notice returns intereste rates 
+     * @notice returns intereste rates
      *     @dev  interest rates are calculated based on the utilization of the pool
      */
     function getInterestRates() public view returns (uint256) {
@@ -62,4 +60,35 @@ contract StormBitERC4626 is ERC4626 {
     function getSupplyRate() public view returns (uint256) {
         return getInterestRates() * getUtilization();
     }
+
+    // --------------- Liquidition management -------------------------- //
+
+    // TO DO : Protect Lenders from liquidation
+
+    //
+    struct Collateral {
+        uint256 collateralType;
+    }
+
+    function getCollateralValue(Collateral memory _collateral, uint256 _DAIAmount) public view returns (uint256) {
+        if (_collateral.collateralType == 1) {
+            return _DAIAmount;
+        }
+        // } else {
+        //     // TO DO : use API to price the NFT
+        // }
+
+        return _DAIAmount;
+    }
+
+    function getCollateralFactor(uint256 _loanValue) public view returns (uint256) {
+        Collateral memory _collateral = Collateral(1);
+        return _loanValue / getCollateralValue(_collateral, 20000);
+    }
+
+    /**
+     * @notice returns the liquidation factor
+     * @dev  liquidation factor is the ratio of the value of the collateral to the value of the loan
+     */
+    function getLiquidationFactor() public view returns (uint256) {}
 }
