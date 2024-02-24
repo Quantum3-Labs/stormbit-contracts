@@ -3,29 +3,6 @@
 pragma solidity ^0.8.21;
 
 interface IStormBitLending {
-    struct PoolData {
-        string name;
-        uint256 creditScore;
-        uint256 maxAmountOfStakers;
-        uint256 votingQuorum; //  denominated in 100
-        uint256 maxPoolUsage;
-        uint256 totalBorrowed;
-        uint256 totalSupplied;
-        address[] stakers;
-        address[] supportedAssets;
-        address[] supportedAgreements;
-        uint256[] loanRequests;
-    }
-
-    struct LoanDetails {
-        address token;
-        uint256 amount;
-        address agreement; // this agreement is the implementation
-        bytes agreementCalldata;
-        uint256 loanId;
-        address borrower;
-    }
-
     struct InitParams {
         string name;
         uint256 creditScore;
@@ -46,12 +23,23 @@ interface IStormBitLending {
         bytes agreementCalldata;
     }
 
-    function initializeLending(InitParams memory params, address _firstOwner, address stormBitLendingVotes) external;
+    function initializeLending(
+        InitParams memory params,
+        address _firstOwner,
+        address stormBitLendingVotes
+    ) external;
 
     function stake(address token, uint256 amount) external;
 
-    function requestLoan(LoanRequestParams memory params) external returns (uint256);
+    function requestLoan(
+        LoanRequestParams memory params
+    ) external returns (uint256);
 
-    function executeLoan(address token, address to, uint256 amount, address strategy, bytes calldata agreementCalldata)
-        external;
+    function executeLoan(
+        address token,
+        address to,
+        uint256 amount,
+        address strategy,
+        bytes calldata agreementCalldata
+    ) external;
 }
