@@ -13,10 +13,15 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 import {GovernorUpgradeable} from "@openzeppelin/contracts-upgradeable/governance/GovernorUpgradeable.sol";
-import {GovernorVotesUpgradeable, IVotes} from "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorVotesUpgradeable.sol";
-import {GovernorVotesQuorumFractionUpgradeable} from "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorVotesQuorumFractionUpgradeable.sol";
+import {
+    GovernorVotesUpgradeable,
+    IVotes
+} from "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorVotesUpgradeable.sol";
+import {GovernorVotesQuorumFractionUpgradeable} from
+    "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorVotesQuorumFractionUpgradeable.sol";
 
-import {GovernorCountingSimpleUpgradeable} from "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorCountingSimpleUpgradeable.sol";
+import {GovernorCountingSimpleUpgradeable} from
+    "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorCountingSimpleUpgradeable.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -41,7 +46,7 @@ contract StormBitLending is
     uint256 _maxAmountOfStakers;
     uint256 _votingQuorum;
     uint256 _maxPoolUsage;
-    uint256 _votingPowerCoolDown;
+    uint256 public _votingPowerCoolDown;
     uint256 _loanRequestNonce = 0;
     address internal _lendingVotes;
 
@@ -71,26 +76,20 @@ contract StormBitLending is
     }
 
     modifier onlyStormBit() {
-        require(
-            msg.sender == address(_stormBit),
-            "StormBitLending: not StormBit"
-        );
+        require(msg.sender == address(_stormBit), "StormBitLending: not StormBit");
         _;
     }
 
     modifier onlyKYCVerified() {
-        require(
-            _stormBit.isKYCVerified(msg.sender),
-            "StormBitLending: KYC not verified"
-        );
+        require(_stormBit.isKYCVerified(msg.sender), "StormBitLending: KYC not verified");
         _;
     }
 
-    function initializeLending(
-        InitParams memory params,
-        address _firstOwner,
-        address stormBitLendingVotes
-    ) external override initializer {
+    function initializeLending(InitParams memory params, address _firstOwner, address stormBitLendingVotes)
+        external
+        override
+        initializer
+    {
         _poolName = params.name;
         _stormBit = IStormBit(msg.sender);
         _creditScore = params.creditScore;
@@ -105,11 +104,8 @@ contract StormBitLending is
         __GovernorVotes_init(IVotes(stormBitLendingVotes));
         __GovernorVotesQuorumFraction_init(_votingQuorum);
 
-        (
-            address initToken,
-            uint256 initAmount,
-            address[] memory supportedAssets
-        ) = (params.initToken, params.initAmount, params.supportedAssets);
+        (address initToken, uint256 initAmount, address[] memory supportedAssets) =
+            (params.initToken, params.initAmount, params.supportedAssets);
 
         // setup supported calls
         _isSupportedAction[this.changeVotingQuorum.selector] = true;
@@ -124,10 +120,7 @@ contract StormBitLending is
         }
 
         // check if init token is supported
-        require(
-            _isSupportedAsset[initToken],
-            "StormBitLending: init token not supported"
-        );
+        require(_isSupportedAsset[initToken], "StormBitLending: init token not supported");
         for (uint256 i = 0; i < params.supportedAgreements.length; i++) {
             _isSupportedAgreement[params.supportedAgreements[i]] = true;
             _supportedAgreements.push(params.supportedAgreements[i]);
@@ -141,32 +134,24 @@ contract StormBitLending is
     function stake(address token, uint256 amount) external onlyKYCVerified {
         // transfer the assets from the user into the ERC4626 of the main contract
         // stake the amount of shares in the pool
-        require(
-            _isSupportedAsset[token],
-            "StormBitLending: asset not supported"
-        );
+        require(_isSupportedAsset[token], "StormBitLending: asset not supported");
         IERC20(token).transferFrom(msg.sender, address(this), amount);
         _stake(amount, msg.sender);
     }
 
-    function requestLoan(
-        LoanRequestParams memory params
-    ) external virtual onlyKYCVerified returns (uint256 proposalId) {
+    function requestLoan(LoanRequestParams memory params)
+        external
+        virtual
+        onlyKYCVerified
+        returns (uint256 proposalId)
+    {
         // TODO perform checks on the amounts that are requested on the agreement contract
-        require(
-            _isSupportedAgreement[params.agreement],
-            "StormBitLending: agreement not supported"
-        );
-        require(
-            _isSupportedAsset[params.token],
-            "StormBitLending: asset not supported"
-        );
+        require(_isSupportedAgreement[params.agreement], "StormBitLending: agreement not supported");
+        require(_isSupportedAsset[params.token], "StormBitLending: asset not supported");
         address[] memory targets = new address[](1);
         uint256[] memory values = new uint256[](1);
         bytes[] memory calldatas = new bytes[](1);
-        string memory description = string(
-            abi.encode("Request Loan at ", _loanRequestNonce)
-        );
+        string memory description = "Loan Request";
         targets[0] = address(this);
         values[0] = 0;
         calldatas[0] = abi.encodeWithSelector(
@@ -178,13 +163,7 @@ contract StormBitLending is
             params.agreementCalldata
         );
         _loanRequestNonce++;
-        uint256 loanRequestId = _propose(
-            targets,
-            values,
-            calldatas,
-            description,
-            msg.sender
-        );
+        uint256 loanRequestId = _propose(targets, values, calldatas, description, msg.sender);
         _loanRequests.push(loanRequestId);
         _loanDetails[loanRequestId] = LoanDetails({
             token: params.token,
@@ -207,25 +186,21 @@ contract StormBitLending is
         public
         payable
         override(GovernorUpgradeable)
-        onlyStormBit
-        returns (uint256)
+        returns (
+            // onlyStormBit - for demo purposes we wont be using this
+            uint256
+        )
     {
         return super.execute(targets, values, calldatas, descriptionHash);
     }
 
     // ---------- SELF CALLABLE - GOV FUNCTIONS ----------------
 
-    function executeLoan(
-        address token,
-        address to,
-        uint256 amount,
-        address agreement,
-        bytes calldata agreementCalldata
-    ) external onlySelf {
-        require(
-            _userAgreement[to] == address(0),
-            "StormBitLending: user has loan"
-        );
+    function executeLoan(address token, address to, uint256 amount, address agreement, bytes calldata agreementCalldata)
+        external
+        onlySelf
+    {
+        require(_userAgreement[to] == address(0), "StormBitLending: user has loan");
         address newAgreement = Clones.clone(agreement);
         IAgreement(newAgreement).initialize(agreementCalldata);
         IERC20(token).transfer(newAgreement, amount);
@@ -234,10 +209,7 @@ contract StormBitLending is
         _totalBorrowed += amount;
     }
 
-    function changeAgreementStatus(
-        address agreement,
-        bool status
-    ) external onlySelf {
+    function changeAgreementStatus(address agreement, bool status) external onlySelf {
         _changeAgreementStatus(agreement, status);
     }
 
@@ -253,9 +225,7 @@ contract StormBitLending is
         _votingPowerCoolDown = newCoolDown;
     }
 
-    function changeMaxAmountOfStakers(
-        uint256 newMaxAmountOfStakers
-    ) external onlySelf {
+    function changeMaxAmountOfStakers(uint256 newMaxAmountOfStakers) external onlySelf {
         _maxAmountOfStakers = newMaxAmountOfStakers;
     }
 
@@ -284,15 +254,12 @@ contract StormBitLending is
     }
 
     function votingPeriod() public pure override returns (uint256) {
-        return 7 days; // 1 week
+        // return 7 days; // 1 week
+        // for demo purposes we will use 5 minutes
+        return 5 * 60;
     }
 
-    function name()
-        public
-        view
-        override(GovernorUpgradeable)
-        returns (string memory)
-    {
+    function name() public view override(GovernorUpgradeable) returns (string memory) {
         return _poolName;
     }
 
@@ -300,12 +267,7 @@ contract StormBitLending is
         return _creditScore;
     }
 
-    function clock()
-        public
-        view
-        override(GovernorUpgradeable, GovernorVotesUpgradeable)
-        returns (uint48)
-    {
+    function clock() public view override(GovernorUpgradeable, GovernorVotesUpgradeable) returns (uint48) {
         return SafeCast.toUint48(block.timestamp);
     }
 
@@ -313,42 +275,40 @@ contract StormBitLending is
     /**
      * function getPastVotes(address account, uint256 timepoint) where timepoint is block timestamp - cool down
      */
-
     function getValidVotes(address account) public view returns (uint256) {
         if (block.timestamp < _votingPowerCoolDown) return 0;
-        return
-            IVotes(_lendingVotes).getPastVotes(
-                account,
-                block.timestamp - _votingPowerCoolDown
-            );
+        return IVotes(_lendingVotes).getPastVotes(account, block.timestamp - _votingPowerCoolDown);
     }
 
     function getPoolData() public view returns (PoolData memory) {
-        return
-            PoolData({
-                name: _poolName,
-                creditScore: _creditScore,
-                maxAmountOfStakers: _maxAmountOfStakers,
-                votingQuorum: _votingQuorum,
-                maxPoolUsage: _maxPoolUsage,
-                totalBorrowed: _totalBorrowed,
-                totalSupplied: _totalSupplied,
-                stakers: _stakers,
-                supportedAssets: _supportedAssets,
-                supportedAgreements: _supportedAgreements,
-                loanRequests: _loanRequests
-            });
+        return PoolData({
+            name: _poolName,
+            creditScore: _creditScore,
+            maxAmountOfStakers: _maxAmountOfStakers,
+            votingQuorum: _votingQuorum,
+            maxPoolUsage: _maxPoolUsage,
+            totalBorrowed: _totalBorrowed,
+            totalSupplied: _totalSupplied,
+            stakers: _stakers,
+            supportedAssets: _supportedAssets,
+            supportedAgreements: _supportedAgreements,
+            loanRequests: _loanRequests
+        });
     }
 
-    function getLoanData(
-        uint256 loanRequestId
-    ) public view returns (LoanDetails memory, ProposalState, address) {
+    function getLoansDatas() public view returns (LoanDetails[] memory, ProposalState[] memory, address[] memory) {
+        LoanDetails[] memory loans = new LoanDetails[](_loanRequests.length);
+        ProposalState[] memory states = new ProposalState[](_loanRequests.length);
+        address[] memory agreements = new address[](_loanRequests.length);
+        for (uint256 i = 0; i < _loanRequests.length; i++) {
+            (loans[i], states[i], agreements[i]) = getLoanData(_loanRequests[i]);
+        }
+        return (loans, states, agreements);
+    }
+
+    function getLoanData(uint256 loanRequestId) public view returns (LoanDetails memory, ProposalState, address) {
         // State. 0 - pending, 1 - active, 2 - canceled, 3 - defeated, 4 - succeeded
-        return (
-            _loanDetails[loanRequestId],
-            state(loanRequestId),
-            _userAgreement[_loanDetails[loanRequestId].borrower]
-        );
+        return (_loanDetails[loanRequestId], state(loanRequestId), _userAgreement[_loanDetails[loanRequestId].borrower]);
     }
 
     // in percentage
@@ -358,21 +318,11 @@ contract StormBitLending is
         return (stakerValidVotes * 100) / tokenSupply;
     }
 
-    function isSupportedAgreement(
-        address agreement
-    ) public view returns (bool) {
-        return _isSupportedAgreement[agreement];
-    }
-
     function userAgreement(address user) public view returns (address) {
         return _userAgreement[user];
     }
 
-    function _getVotes(
-        address account,
-        uint256 timepoint,
-        bytes memory /*params*/
-    )
+    function _getVotes(address account, uint256 timepoint, bytes memory /*params*/ )
         internal
         view
         override(GovernorUpgradeable, GovernorVotesUpgradeable)
