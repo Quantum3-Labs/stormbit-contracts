@@ -6,6 +6,11 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 // an ERC4626 with an underlying asset and with a fee for each deposit, fee is credited to StormBit Core
 
+// TO DO : balance the interest rate model
+// ----- : interest paid by protocol to lenders <= interest paid by borrowers to protocol
+// ----- : reserve factor => % of interest paid by borrowers that goes to the protocol
+
+
 contract StormBitERC4626 is ERC4626 {
     IERC20 private _underlyingToken;
     uint256 public totalDeposits;
@@ -16,12 +21,10 @@ contract StormBitERC4626 is ERC4626 {
         _mint(msg.sender, 10000000);
     }
 
-
     // Interest rate following Compound model
     // Lenders earn interest based on the liquidity they provide.
     // Borrowers pay interest on their loan.
     // How is the spread calculated ? => Interet earned by the protocol
-
 
     function deposit(uint256 _amount) external {
         _underlyingToken.transferFrom(msg.sender, address(this), _amount);  
