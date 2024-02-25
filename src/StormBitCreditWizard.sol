@@ -53,7 +53,7 @@ contract StormBitCreditWizard is FunctionsClient {
         latestRequestId = _sendRequest(req.encodeCBOR(), subscriptionId, 0, "");
 
         for (uint256 i = 0; i < creditScores.length; i++) {
-            finalScore[borrower] += creditScores[i];
+            finalScore[borrower] += creditScores[i] / creditScores.length;
         }
     }
 
