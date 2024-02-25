@@ -76,14 +76,14 @@ contract StormBitVault is IStormBitVault, AccessManagedUpgradeable, ERC4626Upgra
     /**
      * Not allowed
      */
-    function redeem(uint256, address, address) public virtual override returns (uint256) {
+    function redeem(uint256, address, address) public virtual override returns (bytes4) {
         revert WithdrawalsAreDisabled();
     }
 
     /**
      * @notice Not allowed
      */
-    function withdraw(uint256, address, address) public virtual override returns (uint256) {
+    function withdraw(uint256, address, address) public virtual override returns (bytes4) {
         revert WithdrawalsAreDisabled();
     }
 
