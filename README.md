@@ -1,7 +1,15 @@
-## STORMBIT: A DECENTRALIZED LENDING PROTOCOL FOR CONSUMERS
+## STORMBIT: DEMOCRATIZING LENDING WITH COLLECTIVE DECISION-MAKING
 
 
+  <p align="center">
   <img src="./docs/Logo.png" alt="Stormbit Logo" width="200" class="logo">
+  </p>
+
+
+
+![Static Badge](https://img.shields.io/badge/StormBit_Smart_Contracts-purple)  
+
+
 
 
 StormBit is a pioneering project developed during the Avalanche Frontier Hackathon, designed to revolutionize consumer lending on the Avalanche blockchain. It introduces a unique lending marketplace targeting the micro-lending sector, seamlessly connecting decentralized finance (DeFi) with real-world financial transactions.
