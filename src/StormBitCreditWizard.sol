@@ -43,12 +43,12 @@ contract StormBitCreditWizard is FunctionsClient {
     function aggregateCreditScore(address borrower, uint256[] memory creditScores) public {
         FunctionsRequest.Request memory req;
         req.initializeRequestForInlineJavaScript(postRequestSrc);
-        string[] memory args = new string[](3);
+        string[] memory args = new string[](2);
         string memory creditScoresString = _arrayToString(creditScores);
         string memory borrowerString = Strings.toHexString(uint256(uint160(borrower)), 20);
-        
+
         args[0] = creditScoresString;
-        args[1] = borrowerString; 
+        args[1] = borrowerString;
         req.setArgs(args);
         latestRequestId = _sendRequest(req.encodeCBOR(), subscriptionId, 0, "");
 
