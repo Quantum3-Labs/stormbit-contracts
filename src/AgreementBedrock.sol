@@ -77,7 +77,7 @@ abstract contract AgreementBedrock is IAgreement, Initializable {
     function payBack() public override returns (bool) {
         (uint256 amount,) = nextPayment();
         uint256 fee = penalty();
-        IERC20(_paymentToken).transfer(address(this), amount + fee);
+        IERC20(_paymentToken).transferFrom(msg.sender, address(this), amount + fee);
         _paymentCount++;
         if (isLoanFinished()) {
             _afterLoan();
