@@ -11,8 +11,7 @@ struct PoolStorage {
     uint256 votingQuorum;
     uint256 maxPoolUsage;
     uint256 votingPowerCoolDown;
-    mapping(address => bool) supportedAssets;
-    mapping(address => bool) supportedAgreements;
+    mapping(address => mapping(address => uint256)) balances; // maps user to token to balance
 }
 
 struct AppStorage {
@@ -24,7 +23,7 @@ struct AppStorage {
     mapping(bytes32 => bool) usedUsernames; // Mapping of used usernames
     // Pools
     mapping(uint256 => PoolStorage) pools; // Mapping of lending pools
-    mapping(uint256 => mapping(address => uint256)) balance; // maps poolId to token to balance
+    mapping(uint256 => mapping(address => uint256)) balances; // maps poolId to token to balance
     uint256 poolCount; // Count of lending pools
 }
 

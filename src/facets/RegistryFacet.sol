@@ -3,6 +3,7 @@ pragma solidity 0.8.20;
 
 import {IRegistry} from "../interfaces/IRegistry.sol";
 import {LibAppStorage, AppStorage} from "../libraries/LibAppStorage.sol";
+import {Errors} from "../libraries/Common.sol";
 import {Base} from "./Base.sol";
 
 contract RegistryFacet is IRegistry, Base {
@@ -12,11 +13,11 @@ contract RegistryFacet is IRegistry, Base {
         AppStorage storage s = LibAppStorage.diamondStorage();
         // perform some logic here to register the user
         if (_hasUsername(msg.sender)) {
-            revert UserAlreadyRegistered();
+            revert Errors.UserAlreadyRegistered();
         }
         // check length of username
         if (bytes(username).length > 32 || s.usedUsernames[keccak256(bytes(username))]) {
-            revert InvalidUsername();
+            revert Errors.InvalidUsername();
         }
 
         s.usernames[msg.sender] = username;
