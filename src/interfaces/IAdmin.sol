@@ -5,9 +5,9 @@ import {IBase} from "./IBase.sol";
 interface IAdmin is IBase {
     function setNewGovernor(address _newGov) external;
 
-    function addSupportedToken(address _token) external;
+    function addSupportedAsset(address _token) external;
 
-    function removeSupportedToken(address _token) external;
+    function removeSupportedAsset(address _token) external;
 
     function addSupportedAgreement(address _agreement) external;
 
