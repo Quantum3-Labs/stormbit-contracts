@@ -11,11 +11,7 @@ import {LibDiamond} from "./libraries/LibDiamond.sol";
 error FunctionNotFound(bytes4 _functionSelector);
 
 contract DiamondProxy {
-    constructor(
-        LibDiamond.FacetCut[] memory _diamondCut,
-        address _diamontInit,
-        bytes memory _initCalldata
-    ) {
+    constructor(LibDiamond.FacetCut[] memory _diamondCut, address _diamontInit, bytes memory _initCalldata) {
         LibDiamond.diamondCut(_diamondCut, _diamontInit, _initCalldata);
     }
 
@@ -41,12 +37,8 @@ contract DiamondProxy {
             returndatacopy(0, 0, returndatasize())
             // return any return value or error back to the caller
             switch result
-            case 0 {
-                revert(0, returndatasize())
-            }
-            default {
-                return(0, returndatasize())
-            }
+            case 0 { revert(0, returndatasize()) }
+            default { return(0, returndatasize()) }
         }
     }
 }

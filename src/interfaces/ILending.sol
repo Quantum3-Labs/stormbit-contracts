@@ -11,16 +11,9 @@ struct LoanRequestParams {
 
 /// @dev core interface for Stormbit protocol
 interface ILending is IBase {
-    function requestLoan(
-        uint256 poolId,
-        LoanRequestParams memory loanParams
-    ) external returns (uint256);
+    function requestLoan(uint256 poolId, LoanRequestParams memory loanParams) external returns (uint256);
 
-    function castVote(
-        uint256 poolId,
-        uint256 loanId,
-        bool vote
-    ) external returns (bool);
+    function castVote(uint256 poolId, uint256 loanId, bool vote) external returns (bool);
 
     function initAgreement(
         uint256 poolId,

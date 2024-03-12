@@ -1,4 +1,5 @@
 pragma solidity 0.8.20;
+
 import {IBase} from "./IBase.sol";
 
 /// @dev Admin interface for Config facet

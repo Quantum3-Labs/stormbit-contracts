@@ -39,6 +39,7 @@ contract Base is CustomErrors, Events {
         }
         _;
     }
+
     modifier onlyRegisteredUser() {
         require(_hasUsername(msg.sender), "User is not registered");
         _;

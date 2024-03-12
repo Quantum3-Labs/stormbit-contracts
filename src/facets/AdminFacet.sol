@@ -23,18 +23,14 @@ contract AdminFacet is IAdmin, Base {
         emit AddSupportedToken(_token);
     }
 
-    function removeSupportedAsset(
-        address _token
-    ) external override onlyGovernor {
+    function removeSupportedAsset(address _token) external override onlyGovernor {
         AppStorage storage s = LibAppStorage.diamondStorage();
         s.supportedAssets[_token] = false;
 
         emit RemoveSupportedToken(_token);
     }
 
-    function addSupportedAgreement(
-        address _agreement
-    ) external override onlyGovernor {
+    function addSupportedAgreement(address _agreement) external override onlyGovernor {
         AppStorage storage s = LibAppStorage.diamondStorage();
         s.supportedAgreements[_agreement] = true;
         emit AddSuppportedAgreement(_agreement);

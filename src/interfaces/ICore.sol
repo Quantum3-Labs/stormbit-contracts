@@ -17,7 +17,5 @@ struct PoolInitData {
 
 /// @dev core interface for Stormbit protocol
 interface ICore is IBase {
-    function createPool(
-        PoolInitData memory poolInitData
-    ) external returns (uint256);
+    function createPool(PoolInitData memory poolInitData) external returns (uint256);
 }

@@ -28,13 +28,9 @@ contract DeployScript is Script {
         });
 
         // ------- DIAMOND INIT PARAMS --------
-        InitParams memory _initParams = InitParams({
-            initialGovernor: vm.addr(pk)
-        });
+        InitParams memory _initParams = InitParams({initialGovernor: vm.addr(pk)});
         DiamondProxy stormbit = new DiamondProxy(
-            _diamondCut,
-            address(diamondInit),
-            abi.encodeWithSelector(DiamondInit.initialize.selector, _initParams)
+            _diamondCut, address(diamondInit), abi.encodeWithSelector(DiamondInit.initialize.selector, _initParams)
         );
         vm.stopBroadcast;
     }

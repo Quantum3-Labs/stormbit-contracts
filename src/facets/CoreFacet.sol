@@ -8,9 +8,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 contract AdminFacet is ICore, Base {
     string public constant override name = "Core";
 
-    function createPool(
-        PoolInitData memory poolInitData
-    ) public override onlyRegisteredUser returns (uint256 poolId) {
+    function createPool(PoolInitData memory poolInitData) public override onlyRegisteredUser returns (uint256 poolId) {
         AppStorage storage s = LibAppStorage.diamondStorage();
         s.poolCount++;
         poolId = s.poolCount;
@@ -25,18 +23,16 @@ contract AdminFacet is ICore, Base {
         ps.maxPoolUsage = poolInitData.maxPoolUsage;
         ps.votingPowerCoolDown = poolInitData.votingPowerCoolDown;
 
-        for (uint i = 0; i < poolInitData.supportedAssets.length; i++) {
+        for (uint256 i = 0; i < poolInitData.supportedAssets.length; i++) {
             if (!s.supportedAssets[poolInitData.supportedAssets[i]]) {
                 revert TokenNotSupported(poolInitData.initToken);
             }
             ps.supportedAssets[poolInitData.supportedAssets[i]] = true;
         }
 
-        for (uint i = 0; i < poolInitData.supportedAgreements.length; i++) {
+        for (uint256 i = 0; i < poolInitData.supportedAgreements.length; i++) {
             if (!s.supportedAgreements[poolInitData.supportedAgreements[i]]) {
-                revert AgreementNotSupported(
-                    poolInitData.supportedAgreements[i]
-                );
+                revert AgreementNotSupported(poolInitData.supportedAgreements[i]);
             }
             ps.supportedAgreements[poolInitData.supportedAgreements[i]] = true;
         }
@@ -45,11 +41,7 @@ contract AdminFacet is ICore, Base {
             revert TokenNotSupported(poolInitData.initToken);
         }
 
-        IERC20(poolInitData.initToken).transferFrom(
-            msg.sender,
-            address(this),
-            poolInitData.initAmount
-        );
+        IERC20(poolInitData.initToken).transferFrom(msg.sender, address(this), poolInitData.initAmount);
 
         s.balance[poolId][poolInitData.initToken] = poolInitData.initAmount;
     }

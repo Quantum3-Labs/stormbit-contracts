@@ -6,6 +6,7 @@ pragma solidity 0.8.20;
 
 import {LibAppStorage, AppStorage} from "../libraries/LibAppStorage.sol";
 import {Base} from "../facets/Base.sol";
+
 struct InitParams {
     address initialGovernor;
 }

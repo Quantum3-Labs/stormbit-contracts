@@ -14,10 +14,7 @@ contract RegistryFacet is IRegistry, Base {
             revert UserAlreadyRegistered();
         }
         // check length of username
-        if (
-            bytes(username).length > 32 ||
-            s.usedUsernames[keccak256(bytes(username))]
-        ) {
+        if (bytes(username).length > 32 || s.usedUsernames[keccak256(bytes(username))]) {
             revert InvalidUsername();
         }
 
