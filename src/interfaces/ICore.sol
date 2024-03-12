@@ -2,7 +2,7 @@ pragma solidity 0.8.20;
 
 import {IBase} from "./IBase.sol";
 
-struct LendingPoolInitData {
+struct PoolInitData {
     string name;
     uint256 creditScore;
     uint256 maxAmountOfStakers;
@@ -17,7 +17,7 @@ struct LendingPoolInitData {
 
 /// @dev core interface for Stormbit protocol
 interface ICore is IBase {
-    function createLendingPool(
-        LendingPoolInitData memory initData
+    function createPool(
+        PoolInitData memory poolInitData
     ) external returns (uint256);
 }
