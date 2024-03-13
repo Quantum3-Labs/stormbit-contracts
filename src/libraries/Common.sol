@@ -17,6 +17,7 @@ library Errors {
 }
 
 library Events {
+    event UserRegistered(address user, string username);
     event NewGovernor(address newGovernor);
     event AddSupportedToken(address token);
     event RemoveSupportedToken(address token);

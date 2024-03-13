@@ -8,4 +8,6 @@ interface IRegistry is IBase {
     function register(string memory username) external;
 
     function isRegistered(address user) external view returns (bool);
+
+    function isUsernameUsed(string memory username) external view returns (bool);
 }
