@@ -9,10 +9,10 @@ import {ILending} from "../src/interfaces/ILending.sol";
 import {IRegistry} from "../src/interfaces/IRegistry.sol";
 
 contract SomeScript is Script {
-    address public stormbit = 0x6bdB8053b6fb40DFF3cBf7D7f9A2Cb108CD3F772;
+    address public stormbit = 0x29c3Ebf46731c08fD4481110b06Ae41b7A52A85A;
     uint256 public poolId = 1;
-    MockToken usdt = MockToken(0xd53631221589444F712c30945294b7DcaB2f1A28);
-    BaseVault usdtVault = BaseVault(0x0367dAA24B948A833dFC1783FE6ef42b351e7706);
+    MockToken usdt = MockToken(0xA63184B6e04EF4f9D516feaF6Df65dF602B07a13);
+    BaseVault usdtVault = BaseVault(0xf0A206DCAF5668Fa5C824A01a2039D4cf07b771c);
 
     function run() public {
         uint256 pk = vm.envUint("PRIVATE_KEY_2");
