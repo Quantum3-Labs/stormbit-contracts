@@ -3,6 +3,12 @@ pragma solidity 0.8.20;
 
 import {LibDiamond} from "../libraries/LibDiamond.sol";
 
+struct Loan {
+    uint256 loanId;
+    uint256 support;
+    mapping(address => uint256) supporters;
+}
+
 struct PoolStorage {
     string name;
     address owner;
@@ -11,7 +17,9 @@ struct PoolStorage {
     uint256 votingQuorum;
     uint256 maxPoolUsage;
     uint256 votingPowerCoolDown;
-    mapping(address => mapping(address => uint256)) balances; // maps user to token to balance
+    uint256 totalShares; // Total shares of the pool
+    mapping(address => mapping(address => uint256)) balances; // maps user to token to shares ( USER SHARES ON THE POOL )
+    mapping(uint256 => Loan) loans;
 }
 
 struct AppStorage {
@@ -23,7 +31,7 @@ struct AppStorage {
     mapping(bytes32 => bool) usedUsernames; // Mapping of used usernames
     // Pools
     mapping(uint256 => PoolStorage) pools; // Mapping of lending pools
-    mapping(uint256 => mapping(address => uint256)) balances; // maps poolId to token to balance
+    mapping(uint256 => mapping(address => uint256)) balances; // maps pool to token to balance ( UNDERLYING BALANCE of each pool)
     uint256 poolCount; // Count of lending pools
 }
 

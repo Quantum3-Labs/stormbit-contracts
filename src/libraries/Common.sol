@@ -13,6 +13,7 @@ library Errors {
     error TokenNotSupported(address token);
     error AgreementNotSupported(address agreement);
     error InsuficientBalance(uint256 amount);
+    error InvalidLoan();
 }
 
 library Events {
