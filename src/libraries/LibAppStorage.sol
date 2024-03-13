@@ -32,6 +32,7 @@ struct AppStorage {
     // Pools
     mapping(uint256 => PoolStorage) pools; // Mapping of lending pools
     mapping(uint256 => mapping(address => uint256)) balances; // maps pool to token to balance ( UNDERLYING BALANCE of each pool)
+    mapping(uint256 => mapping(address => uint256)) usedBalances; // maps pool to token to used balance
     uint256 poolCount; // Count of lending pools
 }
 
