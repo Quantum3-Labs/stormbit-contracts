@@ -2,6 +2,7 @@
 pragma solidity 0.8.20;
 
 import {LibAppStorage, AppStorage, PoolStorage} from "../libraries/LibAppStorage.sol";
+import {PoolInitData} from "../interfaces/ICore.sol";
 
 library Errors {
     error CallerIsNotGovernor();
@@ -20,6 +21,7 @@ library Events {
     event RemoveSupportedToken(address token);
     event AddSuppportedAgreement(address agreement);
     event RemoveSupportedAgreement(address agreement);
+    event PoolCreated(uint256 indexed poolId, address indexed creator, PoolInitData poolInitData);
     event PoolDeposit(uint256 indexed poolId, address indexed user, address token, uint256 amount);
     event PoolWithdraw(uint256 indexed poolId, address indexed user, address token, uint256 amount);
 }

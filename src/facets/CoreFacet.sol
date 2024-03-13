@@ -2,6 +2,7 @@
 pragma solidity 0.8.20;
 
 import {ICore, PoolInitData} from "../interfaces/ICore.sol";
+import {Events} from "../libraries/Common.sol";
 import {LibAppStorage, AppStorage, PoolStorage} from "../libraries/LibAppStorage.sol";
 import {LibLending} from "../libraries/LibLending.sol";
 import {Base} from "./Base.sol";
@@ -14,6 +15,8 @@ contract CoreFacet is ICore, Base {
         s.poolCount++;
         poolId = s.poolCount;
 
+        // perform some checks on pool init data
+
         // create and setup the pool
         PoolStorage storage ps = s.pools[poolId];
         ps.name = poolInitData.name;
@@ -23,6 +26,8 @@ contract CoreFacet is ICore, Base {
         ps.votingQuorum = poolInitData.votingQuorum;
         ps.maxPoolUsage = poolInitData.maxPoolUsage;
         ps.votingPowerCoolDown = poolInitData.votingPowerCoolDown;
+
+        emit Events.PoolCreated(poolId, msg.sender, poolInitData);
 
         LibLending._deposit(poolId, poolInitData.initAmount, poolInitData.initToken);
     }
