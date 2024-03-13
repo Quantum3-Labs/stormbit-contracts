@@ -2,7 +2,7 @@
 pragma solidity 0.8.20;
 
 import {LibAppStorage, AppStorage, PoolStorage} from "../libraries/LibAppStorage.sol";
-import {Errors} from "../libraries/Common.sol";
+import {Errors, Events} from "../libraries/Common.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 library LibLending {
@@ -15,5 +15,23 @@ library LibLending {
         IERC20(token).transferFrom(msg.sender, address(this), amount);
         s.balances[poolId][token] += amount;
         ps.balances[msg.sender][token] += amount;
+
+        emit Events.PoolDeposit(poolId, msg.sender, token, amount);
+    }
+
+    function _withdraw(uint256 poolId, uint256 amount, address token) internal returns (bool) {
+        AppStorage storage s = LibAppStorage.diamondStorage();
+        PoolStorage storage ps = s.pools[poolId];
+        if (s.supportedAssets[token] == false) {
+            revert Errors.TokenNotSupported(token);
+        }
+        if (ps.balances[msg.sender][token] < amount) {
+            revert Errors.InsuficientBalance(amount);
+        }
+        IERC20(token).transfer(msg.sender, amount);
+        s.balances[poolId][token] -= amount;
+        ps.balances[msg.sender][token] -= amount;
+
+        emit Events.PoolWithdraw(poolId, msg.sender, token, amount);
     }
 }

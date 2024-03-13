@@ -11,6 +11,7 @@ library Errors {
     error InvalidUsername();
     error TokenNotSupported(address token);
     error AgreementNotSupported(address agreement);
+    error InsuficientBalance(uint256 amount);
 }
 
 library Events {
@@ -19,4 +20,6 @@ library Events {
     event RemoveSupportedToken(address token);
     event AddSuppportedAgreement(address agreement);
     event RemoveSupportedAgreement(address agreement);
+    event PoolDeposit(uint256 indexed poolId, address indexed user, address token, uint256 amount);
+    event PoolWithdraw(uint256 indexed poolId, address indexed user, address token, uint256 amount);
 }
