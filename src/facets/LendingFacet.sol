@@ -37,13 +37,13 @@ contract LendingFacet is ILending, Base {
         LibLending._deposit(poolId, amount, token);
     }
 
-    function withdraw(uint256 poolId, uint256 amount, address token)
+    function withdraw(uint256 poolId, uint256 shares, address token)
         external
         override
         onlyRegisteredUser
         returns (bool)
     {
-        LibLending._withdraw(poolId, amount, token);
+        LibLending._withdraw(poolId, shares, token);
     }
 
     function castVote(uint256 poolId, uint256 loanId, uint256 power)
@@ -58,7 +58,12 @@ contract LendingFacet is ILending, Base {
         if (_loanId == 0) {
             revert Errors.InvalidLoan();
         }
+
         ps.loans[_loanId].support += power;
+    }
+
+    function getTotalShares(uint256 poolId) external view returns (uint256) {
+        return LibLending._totalShares(poolId);
     }
 
     function initAgreement(

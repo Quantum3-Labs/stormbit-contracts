@@ -37,4 +37,6 @@ interface ILending is IBase {
     ) external returns (bool);
 
     // TODO : add getter functions
+
+    function getTotalShares(uint256 poolId) external view returns (uint256);
 }

@@ -6,6 +6,7 @@ import {Errors, Events} from "../libraries/Common.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
+/// TODO : remove msg.sender from all functions here, pass as function argument
 library LibLending {
     using Math for uint256;
 
@@ -29,7 +30,10 @@ library LibLending {
         AppStorage storage s = LibAppStorage.diamondStorage();
         PoolStorage storage ps = s.pools[poolId];
         uint256 requestedAssets = _convertToAssets(poolId, shares, token, Math.Rounding.Ceil);
-        uint256 userAvailableAssets = convertToAvailableAssets(poolId, shares, token, Math.Rounding.Ceil);
+
+        uint256 userAvailableAssets =
+            convertToAvailableAssets(poolId, ps.balances[msg.sender][token], token, Math.Rounding.Ceil);
+
         if (s.supportedAssets[token] == false) {
             revert Errors.TokenNotSupported(token);
         }
@@ -43,6 +47,12 @@ library LibLending {
         ps.totalShares -= shares;
 
         emit Events.PoolWithdraw(poolId, msg.sender, token, requestedAssets);
+    }
+
+    function _totalShares(uint256 poolId) internal view returns (uint256) {
+        AppStorage storage s = LibAppStorage.diamondStorage();
+        PoolStorage storage ps = s.pools[poolId];
+        return ps.totalShares;
     }
 
     function _convertToShares(uint256 poolId, uint256 amount, address token, Math.Rounding rounding)
@@ -64,7 +74,7 @@ library LibLending {
         AppStorage storage s = LibAppStorage.diamondStorage();
         PoolStorage storage ps = s.pools[poolId];
         uint256 availableUnderlyingBalance = s.balances[poolId][token] - s.usedBalances[poolId][token];
-        return shares.mulDiv(availableUnderlyingBalance + 1, ps.totalShares + 10 ** 18, rounding);
+        return shares.mulDiv(availableUnderlyingBalance + 1, ps.totalShares + 10 ** _decimalOffset(), rounding);
     }
 
     function _convertToAssets(uint256 poolId, uint256 shares, address token, Math.Rounding rounding)
@@ -75,6 +85,11 @@ library LibLending {
         AppStorage storage s = LibAppStorage.diamondStorage();
         PoolStorage storage ps = s.pools[poolId];
         uint256 underlyingBalance = s.balances[poolId][token];
-        return shares.mulDiv(underlyingBalance + 1, ps.totalShares + 10 ** 18, rounding);
+        return shares.mulDiv(underlyingBalance + 1, ps.totalShares + 10 ** _decimalOffset(), rounding);
+    }
+
+    // TODO: check if this is the correct decimal offset
+    function _decimalOffset() internal pure returns (uint8) {
+        return 18;
     }
 }
