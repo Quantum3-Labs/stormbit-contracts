@@ -11,7 +11,6 @@ import {BaseVault} from "../src/vaults/BaseVault.sol";
 import {MockToken} from "../src/mocks/MockToken.sol";
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IAdmin} from "../src/interfaces/IAdmin.sol";
 
 contract Setup is Test {
     DiamondProxy public stormbit;
@@ -98,7 +97,7 @@ contract Setup is Test {
 
         // ------- Aditional Setup --------
         vm.startPrank(governor);
-        IAdmin(address(stormbit)).addSupportedAsset(address(usdtVault));
+        AdminFacet(address(stormbit)).addSupportedAsset(address(usdtVault));
         vm.stopPrank();
     }
 }
