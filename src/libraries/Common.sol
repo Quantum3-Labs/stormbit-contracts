@@ -28,3 +28,9 @@ library Events {
     event PoolDeposit(uint256 indexed poolId, address indexed user, address asset, uint256 assets);
     event PoolWithdraw(uint256 indexed poolId, address indexed user, address asset, uint256 assets);
 }
+
+enum Timelock {
+    THREE_DAYS,
+    ONE_WEEK,
+    TWO_WEEKS
+}

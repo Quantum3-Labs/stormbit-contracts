@@ -27,6 +27,7 @@ contract CoreFacet is ICore, Base {
         ps.votingQuorum = poolInitData.votingQuorum;
         ps.maxPoolUsage = poolInitData.maxPoolUsage;
         ps.votingPowerCoolDown = poolInitData.votingPowerCoolDown;
+        ps.timelock = poolInitData.timelock;
 
         emit Events.PoolCreated(poolId, msg.sender, poolInitData);
 

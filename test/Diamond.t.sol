@@ -7,6 +7,7 @@ import {ILending} from "../src/interfaces/ILending.sol";
 import {IRegistry} from "../src/interfaces/IRegistry.sol";
 import {Errors} from "../src/libraries/Common.sol";
 import {MockToken} from "../src/mocks/MockToken.sol";
+import {Timelock} from "../src/libraries/common.sol";
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
@@ -53,7 +54,8 @@ contract DiamondTest is Setup {
                 maxPoolUsage: 100,
                 votingPowerCoolDown: 10,
                 assets: 100 * DECIMALS,
-                assetVault: address(usdtVault)
+                assetVault: address(usdtVault),
+                timelock: Timelock.ONE_WEEK
             })
         );
         vm.stopPrank();

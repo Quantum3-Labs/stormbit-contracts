@@ -2,6 +2,7 @@
 pragma solidity 0.8.20;
 
 import {IBase} from "./IBase.sol";
+import {Timelock} from "../libraries/common.sol";
 
 struct PoolInitData {
     string name;
@@ -12,6 +13,7 @@ struct PoolInitData {
     uint256 votingPowerCoolDown;
     uint256 assets;
     address assetVault;
+    Timelock timelock;
 }
 
 /// @dev core interface for Stormbit protocol

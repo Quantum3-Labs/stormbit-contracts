@@ -2,6 +2,7 @@
 pragma solidity 0.8.20;
 
 import {LibDiamond} from "../libraries/LibDiamond.sol";
+import {Timelock} from "./common.sol";
 
 struct Loan {
     uint256 loanId;
@@ -19,6 +20,7 @@ struct PoolStorage {
     uint256 maxPoolUsage;
     uint256 votingPowerCoolDown;
     uint256 totalShares; // Total shares of the pool
+    Timelock timelock;
     mapping(address => uint256) userShare; // maps user to token to shares ( USER SHARES ON THE POOL )
     mapping(uint256 => Loan) loans;
 }

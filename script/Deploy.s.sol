@@ -12,6 +12,7 @@ import {RegistryFacet} from "../src/facets/RegistryFacet.sol";
 import {BaseVault} from "../src/vaults/BaseVault.sol";
 import {MockToken} from "../src/mocks/MockToken.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {Timelock} from "../src/libraries/common.sol";
 
 contract DeployScript is Script {
     function run() public {
@@ -115,7 +116,8 @@ contract DeployScript is Script {
                 maxPoolUsage: 100,
                 votingPowerCoolDown: 10,
                 assets: 100 * 10 ** 18,
-                assetVault: address(usdtVault)
+                assetVault: address(usdtVault),
+                timelock: Timelock.ONE_WEEK
             })
         );
 
