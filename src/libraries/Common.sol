@@ -24,21 +24,7 @@ library Events {
     event RemoveSupportedToken(address token);
     event AddSuppportedAgreement(address agreement);
     event RemoveSupportedAgreement(address agreement);
-    event PoolCreated(
-        uint256 indexed poolId,
-        address indexed creator,
-        PoolInitData poolInitData
-    );
-    event PoolDeposit(
-        uint256 indexed poolId,
-        address indexed user,
-        address asset,
-        uint256 assets
-    );
-    event PoolWithdraw(
-        uint256 indexed poolId,
-        address indexed user,
-        address asset,
-        uint256 assets
-    );
+    event PoolCreated(uint256 indexed poolId, address indexed creator, PoolInitData poolInitData);
+    event PoolDeposit(uint256 indexed poolId, address indexed user, address asset, uint256 assets);
+    event PoolWithdraw(uint256 indexed poolId, address indexed user, address asset, uint256 assets);
 }

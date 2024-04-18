@@ -30,19 +30,13 @@ contract DiamondTest is Setup {
 
     function test_AdminFacet() public {
         IAdmin admin = IAdmin(address(stormbit));
-        require(
-            admin.governor() == governor,
-            "governor should be equal to the setup governor"
-        );
+        require(admin.governor() == governor, "governor should be equal to the setup governor");
         vm.expectRevert(Errors.CallerIsNotGovernor.selector);
         admin.setNewGovernor(address(0));
 
         vm.prank(governor);
         admin.setNewGovernor(address(this));
-        require(
-            admin.governor() == address(this),
-            "governor should be equal to the new governor"
-        );
+        require(admin.governor() == address(this), "governor should be equal to the new governor");
     }
 
     function test_simpleDepositWithdraw() public {
@@ -73,8 +67,7 @@ contract DiamondTest is Setup {
 
         // check balance of stormbit
         require(
-            usdtVault.balanceOf(address(stormbit)) ==
-                200 * DECIMALS * 10 ** _decimalsOffset(usdtVault),
+            usdtVault.balanceOf(address(stormbit)) == 200 * DECIMALS * 10 ** _decimalsOffset(usdtVault),
             "stormbit should have 100 USDT"
         );
 
@@ -94,19 +87,13 @@ contract DiamondTest is Setup {
         lending.withdraw(poolId, totalSharesOfPool / 4);
 
         require(
-            usdtVault.balanceOf(address(stormbit)) >=
-                99 * DECIMALS * 10 ** _decimalsOffset(usdtVault) &&
-                usdtVault.balanceOf(address(stormbit)) <=
-                101 * DECIMALS * 10 ** _decimalsOffset(usdtVault),
+            usdtVault.balanceOf(address(stormbit)) >= 99 * DECIMALS * 10 ** _decimalsOffset(usdtVault)
+                && usdtVault.balanceOf(address(stormbit)) <= 101 * DECIMALS * 10 ** _decimalsOffset(usdtVault),
             "stormbit should have 100 USDT"
         );
     }
 
-    function _dealTokensAndDeposit(
-        address _user,
-        MockToken _mockToken,
-        uint256 amount
-    ) internal {
+    function _dealTokensAndDeposit(address _user, MockToken _mockToken, uint256 amount) internal {
         vm.startPrank(_user);
         _mockToken.mint(_user, amount);
         usdt.approve(address(usdtVault), amount);
@@ -114,11 +101,7 @@ contract DiamondTest is Setup {
         vm.stopPrank();
     }
 
-    function _dealTokens(
-        address _user,
-        MockToken _mockToken,
-        uint256 amount
-    ) internal {
+    function _dealTokens(address _user, MockToken _mockToken, uint256 amount) internal {
         vm.startPrank(_user);
         _mockToken.mint(_user, amount);
         vm.stopPrank();

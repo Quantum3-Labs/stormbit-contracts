@@ -11,17 +11,12 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 contract LendingFacet is ILending, Base {
     string public constant override name = "Lending";
 
-    function requestLoan(
-        uint256 poolId,
-        LoanRequestParams memory loanParams
-    ) external returns (uint256) {
+    function requestLoan(uint256 poolId, LoanRequestParams memory loanParams) external returns (uint256) {
         AppStorage storage s = LibAppStorage.diamondStorage();
         PoolStorage storage ps = s.pools[poolId];
 
         //TODO : perform a safer hashing
-        uint256 loanHash = uint256(
-            keccak256(abi.encode(msg.sender, poolId, loanParams))
-        );
+        uint256 loanHash = uint256(keccak256(abi.encode(msg.sender, poolId, loanParams)));
 
         if (ps.loans[loanHash].loanId != 0) {
             revert Errors.InvalidLoan();
@@ -33,25 +28,20 @@ contract LendingFacet is ILending, Base {
         return loanHash;
     }
 
-    function deposit(
-        uint256 poolId,
-        uint256 assets
-    ) external override onlyRegisteredUser returns (bool) {
+    function deposit(uint256 poolId, uint256 assets) external override onlyRegisteredUser returns (bool) {
         LibLending._deposit(poolId, assets);
     }
 
-    function withdraw(
-        uint256 poolId,
-        uint256 shares
-    ) external override onlyRegisteredUser returns (bool) {
+    function withdraw(uint256 poolId, uint256 shares) external override onlyRegisteredUser returns (bool) {
         LibLending._withdraw(poolId, shares);
     }
 
-    function castVote(
-        uint256 poolId,
-        uint256 loanId,
-        uint256 power
-    ) external override onlyRegisteredUser returns (bool) {
+    function castVote(uint256 poolId, uint256 loanId, uint256 power)
+        external
+        override
+        onlyRegisteredUser
+        returns (bool)
+    {
         AppStorage storage s = LibAppStorage.diamondStorage();
         PoolStorage storage ps = s.pools[poolId];
         uint256 _loanId = ps.loans[loanId].loanId;

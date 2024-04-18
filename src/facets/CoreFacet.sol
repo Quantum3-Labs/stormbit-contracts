@@ -10,9 +10,7 @@ import {Base} from "./Base.sol";
 contract CoreFacet is ICore, Base {
     string public constant override name = "Core";
 
-    function createPool(
-        PoolInitData memory poolInitData
-    ) public override onlyRegisteredUser returns (uint256 poolId) {
+    function createPool(PoolInitData memory poolInitData) public override onlyRegisteredUser returns (uint256 poolId) {
         AppStorage storage s = LibAppStorage.diamondStorage();
         s.poolCount++;
         poolId = s.poolCount;
