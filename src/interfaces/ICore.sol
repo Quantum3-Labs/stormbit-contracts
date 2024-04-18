@@ -10,8 +10,8 @@ struct PoolInitData {
     uint256 votingQuorum;
     uint256 maxPoolUsage;
     uint256 votingPowerCoolDown;
-    uint256 initAmount;
-    address initToken;
+    uint256 assets;
+    address asset;
 }
 
 /// @dev core interface for Stormbit protocol

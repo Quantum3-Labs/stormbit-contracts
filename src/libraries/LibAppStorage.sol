@@ -12,6 +12,7 @@ struct Loan {
 struct PoolStorage {
     string name;
     address owner;
+    address asset;
     uint256 creditScore;
     uint256 maxAmountOfStakers;
     uint256 votingQuorum;

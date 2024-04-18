@@ -15,7 +15,7 @@ contract CoreFacet is ICore, Base {
         s.poolCount++;
         poolId = s.poolCount;
 
-        // perform some checks on pool init data
+        // TODO : perform some checks on pool init data
 
         // create and setup the pool
         PoolStorage storage ps = s.pools[poolId];
@@ -26,9 +26,10 @@ contract CoreFacet is ICore, Base {
         ps.votingQuorum = poolInitData.votingQuorum;
         ps.maxPoolUsage = poolInitData.maxPoolUsage;
         ps.votingPowerCoolDown = poolInitData.votingPowerCoolDown;
+        ps.asset = poolInitData.asset;
 
         emit Events.PoolCreated(poolId, msg.sender, poolInitData);
 
-        LibLending._deposit(poolId, poolInitData.initAmount, poolInitData.initToken);
+        LibLending._deposit(poolId, poolInitData.assets, poolInitData.asset);
     }
 }

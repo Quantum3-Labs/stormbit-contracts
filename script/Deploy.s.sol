@@ -114,8 +114,8 @@ contract DeployScript is Script {
                 votingQuorum: 5,
                 maxPoolUsage: 100,
                 votingPowerCoolDown: 10,
-                initAmount: 100 * 10 ** 18,
-                initToken: address(usdtVault)
+                assets: 100 * 10 ** 18,
+                asset: address(usdtVault)
             })
         );
 

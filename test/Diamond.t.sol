@@ -50,8 +50,8 @@ contract DiamondTest is Setup {
                 votingQuorum: 5,
                 maxPoolUsage: 100,
                 votingPowerCoolDown: 10,
-                initAmount: 100 * DECIMALS,
-                initToken: address(usdtVault)
+                assets: 100 * DECIMALS,
+                asset: address(usdtVault)
             })
         );
         vm.stopPrank();
