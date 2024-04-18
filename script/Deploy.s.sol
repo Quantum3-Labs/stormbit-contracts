@@ -24,7 +24,12 @@ contract DeployScript is Script {
         // ------- MOCKS --------
         MockToken usdt = new MockToken("US Dollar", "USDT");
         // ------- VAULTS --------
-        BaseVault usdtVault = new BaseVault(IERC20(usdt), governor, "USDT Vault", "sUSDT");
+        BaseVault usdtVault = new BaseVault(
+            IERC20(usdt),
+            governor,
+            "USDT Vault",
+            "sUSDT"
+        );
 
         AdminFacet adminFacet = new AdminFacet();
         CoreFacet coreFacet = new CoreFacet();
@@ -44,7 +49,9 @@ contract DeployScript is Script {
         bytes4[] memory registryFacetFunctionSelectors = new bytes4[](3);
         registryFacetFunctionSelectors[0] = registryFacet.register.selector;
         registryFacetFunctionSelectors[1] = registryFacet.isRegistered.selector;
-        registryFacetFunctionSelectors[2] = registryFacet.isUsernameUsed.selector;
+        registryFacetFunctionSelectors[2] = registryFacet
+            .isUsernameUsed
+            .selector;
 
         // ------- CORE FACET SELECTORS -----------
         bytes4[] memory coreFacetFunctionSelectors = new bytes4[](1);
@@ -86,7 +93,9 @@ contract DeployScript is Script {
         // ------- DIAMOND INIT PARAMS --------
         InitParams memory _initParams = InitParams({initialGovernor: governor});
         stormbit = new DiamondProxy(
-            _diamondCut, address(diamondInit), abi.encodeWithSelector(DiamondInit.initialize.selector, _initParams)
+            _diamondCut,
+            address(diamondInit),
+            abi.encodeWithSelector(DiamondInit.initialize.selector, _initParams)
         );
 
         AdminFacet(address(stormbit)).setNewGovernor(governor);
@@ -115,7 +124,8 @@ contract DeployScript is Script {
                 maxPoolUsage: 100,
                 votingPowerCoolDown: 10,
                 assets: 100 * 10 ** 18,
-                asset: address(usdtVault)
+                asset: address(usdtVault),
+                assetVault: address(usdtVault)
             })
         );
 
@@ -124,8 +134,14 @@ contract DeployScript is Script {
         console.log("Deplyed at block %s", block.number);
         console.log("usdtVault deployed at: %s", address(usdtVault));
         console.log("usdt deployed at: %s", address(usdt));
-        console.log("user name used yes no", RegistryFacet(address(stormbit)).isUsernameUsed("governor"));
-        console.log("user registered yes no", RegistryFacet(address(stormbit)).isRegistered(governor));
+        console.log(
+            "user name used yes no",
+            RegistryFacet(address(stormbit)).isUsernameUsed("governor")
+        );
+        console.log(
+            "user registered yes no",
+            RegistryFacet(address(stormbit)).isRegistered(governor)
+        );
 
         // ------- End of deployment ------------
     }

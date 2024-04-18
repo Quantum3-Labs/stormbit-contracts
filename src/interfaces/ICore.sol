@@ -12,9 +12,12 @@ struct PoolInitData {
     uint256 votingPowerCoolDown;
     uint256 assets;
     address asset;
+    address assetVault;
 }
 
 /// @dev core interface for Stormbit protocol
 interface ICore is IBase {
-    function createPool(PoolInitData memory poolInitData) external returns (uint256);
+    function createPool(
+        PoolInitData memory poolInitData
+    ) external returns (uint256);
 }

@@ -10,6 +10,7 @@ library Errors {
     error AlreadyInitialized();
     error UserAlreadyRegistered();
     error InvalidUsername();
+    error InvalidPool();
     error TokenNotSupported(address token);
     error AgreementNotSupported(address agreement);
     error InsuficientBalance(uint256 amount);
@@ -23,7 +24,21 @@ library Events {
     event RemoveSupportedToken(address token);
     event AddSuppportedAgreement(address agreement);
     event RemoveSupportedAgreement(address agreement);
-    event PoolCreated(uint256 indexed poolId, address indexed creator, PoolInitData poolInitData);
-    event PoolDeposit(uint256 indexed poolId, address indexed user, address token, uint256 amount);
-    event PoolWithdraw(uint256 indexed poolId, address indexed user, address token, uint256 amount);
+    event PoolCreated(
+        uint256 indexed poolId,
+        address indexed creator,
+        PoolInitData poolInitData
+    );
+    event PoolDeposit(
+        uint256 indexed poolId,
+        address indexed user,
+        address asset,
+        uint256 assets
+    );
+    event PoolWithdraw(
+        uint256 indexed poolId,
+        address indexed user,
+        address asset,
+        uint256 assets
+    );
 }

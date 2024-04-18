@@ -23,7 +23,7 @@ contract SomeScript is Script {
         usdt.approve(address(usdtVault), 100 * 10 ** 18);
         usdtVault.deposit(100 * 10 ** 18, staker);
         usdtVault.approve(address(stormbit), 100 * 10 ** 18);
-        ILending(stormbit).deposit(poolId, 100 * 10 ** 18, address(usdtVault));
+        ILending(stormbit).deposit(poolId, 100 * 10 ** 18);
         vm.stopBroadcast;
     }
 
