@@ -21,7 +21,6 @@ contract CoreFacet is ICore, Base {
         PoolStorage storage ps = s.pools[poolId];
         ps.name = poolInitData.name;
         ps.owner = msg.sender;
-        ps.asset = poolInitData.asset;
         ps.assetVault = poolInitData.assetVault;
         ps.creditScore = poolInitData.creditScore;
         ps.maxAmountOfStakers = poolInitData.maxAmountOfStakers;

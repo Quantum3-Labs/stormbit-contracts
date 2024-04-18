@@ -115,7 +115,6 @@ contract DeployScript is Script {
                 maxPoolUsage: 100,
                 votingPowerCoolDown: 10,
                 assets: 100 * 10 ** 18,
-                asset: address(usdtVault),
                 assetVault: address(usdtVault)
             })
         );

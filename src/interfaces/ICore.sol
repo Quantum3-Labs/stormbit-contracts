@@ -11,7 +11,6 @@ struct PoolInitData {
     uint256 maxPoolUsage;
     uint256 votingPowerCoolDown;
     uint256 assets;
-    address asset;
     address assetVault;
 }
 

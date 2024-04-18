@@ -53,7 +53,6 @@ contract DiamondTest is Setup {
                 maxPoolUsage: 100,
                 votingPowerCoolDown: 10,
                 assets: 100 * DECIMALS,
-                asset: address(usdt),
                 assetVault: address(usdtVault)
             })
         );
@@ -107,7 +106,7 @@ contract DiamondTest is Setup {
         vm.stopPrank();
     }
 
-    // the vault decimals offset
+    // TODO : implement recursive ERC4626 up to 3 layers
     function _decimalsOffset(BaseVault vault) internal view returns (uint8) {
         return vault.decimals() - ERC20(vault.asset()).decimals();
     }
