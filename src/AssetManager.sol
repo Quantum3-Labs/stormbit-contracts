@@ -42,10 +42,7 @@ contract StormbitAssetManager is
     }
 
     /// @dev note that we dont require the token to be whitelisted
-    function withdraw(
-        address token,
-        uint256 shares
-    ) public override returns () {
+    function withdraw(address token, uint256 shares) public override {
         uint256 assets = _convertToAssets(token, shares);
         totalShares[token] -= shares;
 
