@@ -1,5 +1,6 @@
 pragma solidity ^0.8.21;
 
+import {IAssetManager} from "./interfaces/IAssetManager.sol";
 import {IDepositWithdraw} from "./interfaces/IDepositWithdraw.sol";
 import {IGovernable} from "./interfaces/IGovernable.sol";
 import {ITweakedERC4626} from "./interfaces/ITweakedERC4626.sol";
@@ -13,10 +14,11 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 contract StormbitAssetManager is
     IDepositWithdraw,
     IGovernable,
-    ITweakedERC4626
+    ITweakedERC4626,
+    IAssetManager
 {
     using Math for uint256;
-    address private _governor;
+    address public governor;
 
     mapping(address => bool) tokens;
     mapping(address => uint256) totalShares;
@@ -24,12 +26,12 @@ contract StormbitAssetManager is
 
     uint256 public constant SHARE_DECIMAL_OFFSET = 8;
 
-    constructor(address governor) {
-        _governor = governor;
+    constructor(address _governor) {
+        governor = _governor;
     }
 
     modifier onlyGovernor() {
-        require(msg.sender == _governor, "StormbitAssetManager: not governor");
+        require(msg.sender == governor, "StormbitAssetManager: not governor");
         _;
     }
 
