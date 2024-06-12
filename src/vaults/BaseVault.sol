@@ -11,10 +11,12 @@ contract BaseVault is ERC4626 {
 
     address public governor;
 
-    constructor(IERC20 _token, address _governor, string memory _name, string memory _symbol)
-        ERC4626(_token)
-        ERC20(_name, _symbol)
-    {
+    constructor(
+        IERC20 _token,
+        address _governor,
+        string memory _name,
+        string memory _symbol
+    ) ERC4626(_token) ERC20(_name, _symbol) {
         governor = _governor;
     }
 
