@@ -33,17 +33,24 @@ contract StormbitAssetManager is
         _;
     }
 
-    function deposit(
-        address token,
-        uint256 assets
-    ) public override returns (bool) {
+    function deposit(address token, uint256 assets) public override {
         require(tokens[token], "StormbitAssetManager: token not supported");
+        uint256 shares = _convertToShares(token, assets);
+        totalShares[token] += shares;
+
+        emit Deposit(msg.sender, token, assets);
     }
 
+    /// @dev note that we dont require the token to be whitelisted
     function withdraw(
         address token,
         uint256 shares
-    ) public override returns (bool) {}
+    ) public override returns () {
+        uint256 assets = _convertToAssets(token, shares);
+        totalShares[token] -= shares;
+
+        emit Withdraw(msg.sender, token, assets);
+    }
 
     function addToken(address token) public override onlyGovernor {
         tokens[token] = true;

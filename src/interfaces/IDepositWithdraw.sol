@@ -4,7 +4,12 @@ pragma solidity ^0.8.21;
 /// @title Stormbit Deposit & withdraw Interface
 /// TODO split into different interfaces according to funcionality
 interface IDepositWithdraw {
-    function deposit(address token, uint256 assets) external returns (bool);
+    event Deposit(address indexed user, address indexed token, uint256 assets);
 
-    function withdraw(address token, uint256 shares) external returns (bool);
+    /// @dev note that withdraw event uses assets instead of shares
+    event Withdraw(address indexed user, address indexed token, uint256 assets);
+
+    function deposit(address token, uint256 assets) external;
+
+    function withdraw(address token, uint256 shares) external;
 }
