@@ -29,21 +29,19 @@ contract AssetManagerTest is SetupTest {
         address vault = assetManager.getTokenVault(token);
         IERC4626 vaultInstance = IERC4626(vault);
 
-        // mint some tokens to the user
-        uint256 amount = 1000 * (10 ** tokenInstance.decimals());
-        tokenInstance.mint(depositor, amount);
+        uint256 amount = initialTokenBalance * (10 ** tokenInstance.decimals());
 
-        vm.startPrank(depositor);
-        tokenInstance.transfer(address(assetManager), amount);
+        vm.startPrank(depositor1);
+        tokenInstance.approve(address(assetManager), amount);
         assetManager.deposit(token, amount);
         vm.stopPrank();
 
         // get the user shares
-        uint256 shares = assetManager.getUserShares(token, depositor);
+        uint256 shares = assetManager.getUserShares(token, depositor1);
         uint256 expectedShares = vaultInstance.convertToShares(amount);
 
         assert(tokenInstance.balanceOf(vault) == amount);
-        assert(tokenInstance.balanceOf(depositor) == 0);
+        assert(tokenInstance.balanceOf(depositor1) == 0);
         assert(shares == expectedShares);
     }
 }

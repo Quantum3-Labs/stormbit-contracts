@@ -4,5 +4,5 @@ pragma solidity ^0.8.21;
 /// @title Stormbit Allocation Interface
 /// TODO split into different interfaces according to funcionality
 interface IAllocation {
-
+    function allocateTerm() external;
 }

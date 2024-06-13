@@ -4,8 +4,10 @@ import {IDepositWithdraw} from "./interfaces/IDepositWithdraw.sol";
 import {IGovernable} from "./interfaces/IGovernable.sol";
 import {IAssetManager} from "./interfaces/IAssetManager.sol";
 import {BaseVault} from "./vaults/BaseVault.sol";
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IERC20} from "./interfaces/IERC20.sol";
+import {StormbitLoanManager} from "./LoanManager.sol";
+import {StormbitLendingManager} from "./LendingManager.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 /// @author Quantum3 Labs
@@ -15,6 +17,8 @@ import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 contract StormbitAssetManager is IDepositWithdraw, IGovernable, IAssetManager {
     using Math for uint256;
     address private _governor;
+    StormbitLoanManager loanManager;
+    StormbitLendingManager lendingManager;
 
     mapping(address => bool) tokens; // check if token is supported
     mapping(address => address) tokenVaults; // token to vault mapping
@@ -32,12 +36,35 @@ contract StormbitAssetManager is IDepositWithdraw, IGovernable, IAssetManager {
         _;
     }
 
+    // -----------------------------------------
+    // -------- PUBLIC FUNCTIONS --------
+    // -----------------------------------------
+
+    // todo: use oz initializer
+    function initialize(
+        address loanManagerAddr,
+        address lendingManagerAddr
+    ) public {
+        loanManager = StormbitLoanManager(loanManagerAddr);
+        lendingManager = StormbitLendingManager(lendingManagerAddr);
+    }
+
     /// @dev allow depositor deposit assets to the vault
     /// @param token address of the token
     /// @param assets amount of assets to deposit
     function deposit(address token, uint256 assets) public override {
         require(tokens[token], "StormbitAssetManager: token not supported");
         address tokenVault = tokenVaults[token]; // get the corresponding vault
+        // first make sure can transfer user token to manager
+        // todo: use safe transfer
+        bool isSuccess = IERC20(token).transferFrom(
+            msg.sender,
+            address(this),
+            assets
+        );
+        if (!isSuccess) {
+            revert("StormbitAssetManager: transfer failed");
+        }
         IERC20(token).approve(tokenVault, assets);
         IERC4626(tokenVault).deposit(assets, msg.sender);
         emit Deposit(msg.sender, token, assets);

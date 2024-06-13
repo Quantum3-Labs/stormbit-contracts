@@ -4,6 +4,8 @@ import {ILendingTerms} from "./interfaces/ILendingTerms.sol";
 import {IGovernable} from "./interfaces/IGovernable.sol";
 import {ILenderRegistry} from "./interfaces/ILenderRegistry.sol";
 import {StormbitAssetManager} from "./AssetManager.sol";
+import {StormbitLoanManager} from "./LoanManager.sol";
+import {IERC4626} from "./interfaces/IERC4626.sol";
 
 /// @author Quantum3 Labs
 /// @title Stormbit Lending Manager
@@ -13,12 +15,16 @@ import {StormbitAssetManager} from "./AssetManager.sol";
 contract StormbitLendingManager is IGovernable, ILendingTerms, ILenderRegistry {
     address public governor;
     StormbitAssetManager assetManager;
+    StormbitLoanManager loanManager;
+
     mapping(address => bool) public registeredLenders;
     mapping(uint256 => LendingTerm) public lendingTerms;
     // total disporsed shares to a lending term
-    mapping(uint256 termId => mapping(address vaultToken => uint256 sharesAmount)) termTokenAllowances;
+    mapping(uint256 termId => mapping(address vaultToken => uint256 sharesAmount))
+        public termTokenAllowances;
     // track user total delegated shares to different term
-    mapping(address user => mapping(address vaultToken => uint256 delegatedShares)) userTotalDelegatedShares;
+    mapping(address user => mapping(address vaultToken => uint256 delegatedShares))
+        public userTotalDelegatedShares;
     // track user delegated shares to a term (static)
     mapping(uint256 termId => mapping(address user => mapping(address vaultToken => uint256 sharesAmount))) termUserDelegatedShares;
     // track user delegated shares to a term (dynamic)
@@ -45,6 +51,19 @@ contract StormbitLendingManager is IGovernable, ILendingTerms, ILenderRegistry {
         _;
     }
 
+    // -----------------------------------------
+    // -------- PUBLIC FUNCTIONS ---------------
+    // -----------------------------------------
+
+    // todo: use oz initializer
+    function initialize(
+        address assetManagerAddr,
+        address loanManagerAddr
+    ) public {
+        assetManager = StormbitAssetManager(assetManagerAddr);
+        loanManager = StormbitLoanManager(loanManagerAddr);
+    }
+
     function isRegistered(address lender) public view override returns (bool) {
         return registeredLenders[lender];
     }
@@ -63,6 +82,7 @@ contract StormbitLendingManager is IGovernable, ILendingTerms, ILenderRegistry {
         );
         lendingTerms[id] = LendingTerm(msg.sender, comission);
         emit LendingTermCreated(id, msg.sender, comission);
+        return id;
     }
 
     function removeLendingTerm(
@@ -77,25 +97,32 @@ contract StormbitLendingManager is IGovernable, ILendingTerms, ILenderRegistry {
         emit LendingTermRemoved(id);
     }
 
+    // todo: what if user delegated token, but he spend the token outside stormbit but here is still recording old amount, it will make transaction fail when borrower is doing loan
     /// @dev allow lender to delegate shares to a lending term
     /// @param termId id of the lending term
-    /// @param vaultToken address of the vault token
+    /// @param token address of the token
     /// @param sharesAmount amount of shares to delegate
     function increaseDelegateToTerm(
         uint256 termId,
-        address vaultToken,
+        address token,
         uint256 sharesAmount
     ) public {
         require(
             _validLendingTerm(termId),
             "StormbitLendingManager: lending term does not exist"
         );
+        require(
+            assetManager.isTokenSupported(token),
+            "StormbitLendingManager: token not supported"
+        );
+        address vaultToken = assetManager.getTokenVault(token);
         // get current delegated shares to the term
         uint256 currentDelegatedShares = userTotalDelegatedShares[msg.sender][
             vaultToken
         ];
         // get user shares in the vault
-        uint256 userShares = assetManager.getUserShares(vaultToken, msg.sender);
+        uint256 userShares = assetManager.getUserShares(token, msg.sender);
+
         // check if the user has enough shares
         require(
             userShares >= currentDelegatedShares + sharesAmount,
@@ -116,7 +143,7 @@ contract StormbitLendingManager is IGovernable, ILendingTerms, ILenderRegistry {
             vaultToken
         ] += sharesAmount;
 
-        // todo: approve the asset manager to transfer the shares
+        // approve the lending term to spend the shares
 
         emit IncreaseDelegateSharesToTerm(
             termId,
