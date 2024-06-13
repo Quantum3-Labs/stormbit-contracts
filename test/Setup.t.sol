@@ -19,5 +19,14 @@ contract SetupTest is TestUtils {
 
         supportedTokens = [address(token1), address(token2), address(token3)];
         assetManager = new StormbitAssetManager(governor);
+        _addSupportedTokens();
+    }
+
+    function _addSupportedTokens() private {
+        vm.startPrank(governor);
+        for (uint256 i = 0; i < supportedTokens.length; i++) {
+            assetManager.addToken(supportedTokens[i]);
+        }
+        vm.stopPrank();
     }
 }

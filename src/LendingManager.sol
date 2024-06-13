@@ -115,6 +115,9 @@ contract StormbitLendingManager is IGovernable, ILendingTerms, ILenderRegistry {
         termDynamicUserDelegatedShares[termId][msg.sender][
             vaultToken
         ] += sharesAmount;
+
+        // todo: approve the asset manager to transfer the shares
+
         emit IncreaseDelegateSharesToTerm(
             termId,
             msg.sender,

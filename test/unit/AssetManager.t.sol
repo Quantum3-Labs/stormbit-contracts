@@ -11,8 +11,7 @@ contract AssetManagerTest is SetupTest {
         SetupTest.setUpEnvironment();
     }
 
-    function testAddToken() public {
-        _addSupportedTokens();
+    function testAddToken() public view {
         for (uint256 i = 0; i < supportedTokens.length; i++) {
             assert(assetManager.isTokenSupported(supportedTokens[i]));
         }
@@ -24,9 +23,6 @@ contract AssetManagerTest is SetupTest {
     }
 
     function testDeposit() public {
-        // add supported tokens to the asset manager
-        _addSupportedTokens();
-
         // use the first token
         address token = supportedTokens[0];
         ERC20Mock tokenInstance = ERC20Mock(token);
@@ -49,13 +45,5 @@ contract AssetManagerTest is SetupTest {
         assert(tokenInstance.balanceOf(vault) == amount);
         assert(tokenInstance.balanceOf(depositor) == 0);
         assert(shares == expectedShares);
-    }
-
-    function _addSupportedTokens() private {
-        vm.startPrank(governor);
-        for (uint256 i = 0; i < supportedTokens.length; i++) {
-            assetManager.addToken(supportedTokens[i]);
-        }
-        vm.stopPrank();
     }
 }
