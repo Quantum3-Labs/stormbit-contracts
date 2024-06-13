@@ -20,10 +20,8 @@ contract StormbitAssetManager is IDepositWithdraw, IGovernable, IAssetManager {
     StormbitLoanManager loanManager;
     StormbitLendingManager lendingManager;
 
-    mapping(address => bool) tokens; // check if token is supported
-    mapping(address => address) tokenVaults; // token to vault mapping
-    mapping(address => uint256) totalShares; // total shares of a token
-    mapping(address => mapping(address => uint256)) userShares; // user shares of a token
+    mapping(address token => bool isSupported) tokens; // check if token is supported
+    mapping(address token => address tokenVault) tokenVaults; // token to vault mapping
 
     uint256 public constant SHARE_DECIMAL_OFFSET = 8;
 
@@ -89,6 +87,7 @@ contract StormbitAssetManager is IDepositWithdraw, IGovernable, IAssetManager {
         );
         // update the mapping
         tokenVaults[token] = address(vault);
+        // todo: add event
     }
 
     /// @dev allow governor to remove the support of a token

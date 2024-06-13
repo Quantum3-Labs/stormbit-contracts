@@ -3,6 +3,7 @@ pragma solidity ^0.8.21;
 import {ILendingTerms} from "./interfaces/ILendingTerms.sol";
 import {IGovernable} from "./interfaces/IGovernable.sol";
 import {ILenderRegistry} from "./interfaces/ILenderRegistry.sol";
+import {ILoanExecute} from "./interfaces/ILoanExecute.sol";
 import {StormbitAssetManager} from "./AssetManager.sol";
 import {StormbitLoanManager} from "./LoanManager.sol";
 import {IERC4626} from "./interfaces/IERC4626.sol";
@@ -12,23 +13,32 @@ import {IERC4626} from "./interfaces/IERC4626.sol";
 /// @notice entrypoint for all lender and lending terms operations
 
 // todo: use custom error
-contract StormbitLendingManager is IGovernable, ILendingTerms, ILenderRegistry {
+contract StormbitLendingManager is
+    ILendingTerms,
+    ILenderRegistry,
+    ILoanExecute
+{
+    // todo: move to interface
+    struct Shares {
+        uint256 disposableAmount;
+        uint256 totalAmount;
+    }
+
     address public governor;
     StormbitAssetManager assetManager;
     StormbitLoanManager loanManager;
 
     mapping(address => bool) public registeredLenders;
     mapping(uint256 => LendingTerm) public lendingTerms;
-    // total disporsed shares to a lending term
-    mapping(uint256 termId => mapping(address vaultToken => uint256 sharesAmount))
-        public termTokenAllowances;
-    // track user total delegated shares to different term
+    // total shares controlled by the term owner
+    mapping(uint256 termId => mapping(address vaultToken => Shares shares))
+        public termOwnerShares;
+    // total shares controlled by the depositor on term
+    mapping(uint256 termId => mapping(address user => mapping(address vaultToken => Shares Shares)))
+        public termUserDelegatedShares;
+    // track user total delegated shares
     mapping(address user => mapping(address vaultToken => uint256 delegatedShares))
         public userTotalDelegatedShares;
-    // track user delegated shares to a term (static)
-    mapping(uint256 termId => mapping(address user => mapping(address vaultToken => uint256 sharesAmount))) termUserDelegatedShares;
-    // track user delegated shares to a term (dynamic)
-    mapping(uint256 termId => mapping(address user => mapping(address vaultToken => uint256 sharesAmount))) termDynamicUserDelegatedShares;
     // track who delegated to the term
     mapping(uint256 termId => mapping(address vaultToken => address[] user)) termDelegatedUsers;
     // locked shares, the shares want lent out
@@ -51,6 +61,14 @@ contract StormbitLendingManager is IGovernable, ILendingTerms, ILenderRegistry {
         require(
             registeredLenders[msg.sender],
             "StormbitLendingManager: not registered lender"
+        );
+        _;
+    }
+
+    modifier onlyLoanManager() {
+        require(
+            msg.sender == address(loanManager),
+            "StormbitLendingManager: not loan manager"
         );
         _;
     }
@@ -103,7 +121,7 @@ contract StormbitLendingManager is IGovernable, ILendingTerms, ILenderRegistry {
     }
 
     // todo: what if user delegated token, but he spend the token outside stormbit but here is still recording old amount, it will make transaction fail when borrower is doing loan
-    /// @dev allow lender to delegate shares to a lending term
+    /// @dev allow depositor to delegate shares to a lending term
     /// @param termId id of the lending term
     /// @param token address of the token
     /// @param sharesAmount amount of shares to delegate
@@ -135,18 +153,24 @@ contract StormbitLendingManager is IGovernable, ILendingTerms, ILenderRegistry {
         );
         // update user total delegated shares, prevent scenario delegate more than user has
         userTotalDelegatedShares[msg.sender][vaultToken] += sharesAmount;
+
         // update term total disposable shares (allowance)
-        termTokenAllowances[termId][vaultToken] += sharesAmount;
-        if (termUserDelegatedShares[termId][msg.sender][vaultToken] <= 0) {
+        termOwnerShares[termId][vaultToken].disposableAmount += sharesAmount;
+        termOwnerShares[termId][vaultToken].totalAmount += sharesAmount;
+
+        if (
+            termUserDelegatedShares[termId][msg.sender][vaultToken]
+                .totalAmount <= 0
+        ) {
             // this is the first time the user is delegating to the term
             // update the list of users who delegated to the term
             termDelegatedUsers[termId][vaultToken].push(msg.sender);
         }
         // update the amount of shares delegated to the term by the user
-        termUserDelegatedShares[termId][msg.sender][vaultToken] += sharesAmount;
-        termDynamicUserDelegatedShares[termId][msg.sender][
-            vaultToken
-        ] += sharesAmount;
+        termUserDelegatedShares[termId][msg.sender][vaultToken]
+            .totalAmount += sharesAmount;
+        termUserDelegatedShares[termId][msg.sender][vaultToken]
+            .disposableAmount += sharesAmount;
 
         // approve the lending term to spend the shares
 
@@ -174,32 +198,30 @@ contract StormbitLendingManager is IGovernable, ILendingTerms, ILenderRegistry {
         // get current delegated shares to the term
         uint256 currentDelegatedShares = termUserDelegatedShares[termId][
             msg.sender
-        ][vaultToken];
-        // check how much delegated shares are locked
-        uint256 freezedShares = userFreezedShares[msg.sender][vaultToken];
+        ][vaultToken].totalAmount;
         // currenly "disposable" shares
-        uint256 dynamicDelegatedShares = termDynamicUserDelegatedShares[termId][
+        uint256 disposableDelegatedShares = termUserDelegatedShares[termId][
             msg.sender
-        ][vaultToken];
+        ][vaultToken].disposableAmount;
 
-        //
         require(
             currentDelegatedShares >= requestedDecrease,
             "StormbitLendingManager: insufficient delegated shares"
         );
         // check if the user has enough unfreezed shares
         require(
-            dynamicDelegatedShares - freezedShares >= requestedDecrease,
+            disposableDelegatedShares >= requestedDecrease,
             "StormbitLendingManager: insufficient unfreezed shares"
         );
-        termUserDelegatedShares[termId][msg.sender][
-            vaultToken
-        ] -= requestedDecrease;
-        termDynamicUserDelegatedShares[termId][msg.sender][
-            vaultToken
-        ] -= requestedDecrease;
+        termUserDelegatedShares[termId][msg.sender][vaultToken]
+            .disposableAmount -= requestedDecrease;
+        termUserDelegatedShares[termId][msg.sender][vaultToken]
+            .totalAmount -= requestedDecrease;
         userTotalDelegatedShares[msg.sender][vaultToken] -= requestedDecrease;
-        termTokenAllowances[termId][vaultToken] -= requestedDecrease;
+
+        termOwnerShares[termId][vaultToken].totalAmount -= requestedDecrease;
+        termOwnerShares[termId][vaultToken]
+            .disposableAmount -= requestedDecrease;
 
         emit DecreaseDelegateSharesToTerm(
             termId,
@@ -207,6 +229,27 @@ contract StormbitLendingManager is IGovernable, ILendingTerms, ILenderRegistry {
             vaultToken,
             requestedDecrease
         );
+    }
+
+    function freezeSharesOnTerm(
+        uint256 termId,
+        address vaultToken,
+        address depositor,
+        uint256 freezeAmount
+    ) public onlyLoanManager {
+        require(
+            _validLendingTerm(termId),
+            "StormbitLendingManager: lending term does not exist"
+        );
+        require(
+            termUserDelegatedShares[termId][depositor][vaultToken]
+                .disposableAmount >= freezeAmount,
+            "StormbitLendingManager: insufficient disposable shares"
+        );
+        termUserDelegatedShares[termId][depositor][vaultToken]
+            .disposableAmount -= freezeAmount;
+        userFreezedShares[depositor][vaultToken] += freezeAmount;
+        // todo: emit event
     }
 
     // -----------------------------------------
@@ -227,5 +270,34 @@ contract StormbitLendingManager is IGovernable, ILendingTerms, ILenderRegistry {
     /// @param lender address of the lender
     function isRegistered(address lender) public view override returns (bool) {
         return registeredLenders[lender];
+    }
+
+    function getLendingTerm(
+        uint256 id
+    ) public view returns (LendingTerm memory) {
+        return lendingTerms[id];
+    }
+
+    function getDisposableSharesOnTerm(
+        uint256 termId,
+        address vaultToken
+    ) public view returns (uint256) {
+        return termOwnerShares[termId][vaultToken].disposableAmount;
+    }
+
+    function getTermDepositors(
+        uint256 termId,
+        address vaultToken
+    ) public view returns (address[] memory) {
+        return termDelegatedUsers[termId][vaultToken];
+    }
+
+    function getUserDisposableSharesOnTerm(
+        uint256 termId,
+        address user,
+        address vaultToken
+    ) public view returns (uint256) {
+        return
+            termUserDelegatedShares[termId][user][vaultToken].disposableAmount;
     }
 }

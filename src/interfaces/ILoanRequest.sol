@@ -19,7 +19,6 @@ interface ILoanRequest {
         uint256 amount;
         uint256 currentAllocated;
         uint256 deadline;
-        ILendingTerms.LendingTerm[] terms;
         LoanStatus status;
     }
 

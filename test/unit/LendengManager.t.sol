@@ -63,9 +63,10 @@ contract LendingManagerTest is SetupTest {
                 address(vaultToken1)
             ) == delegateAmount
         );
-        assert(
-            lendingManager.termTokenAllowances(termId, address(vaultToken1)) ==
-                delegateAmount
+        (uint256 disposableAmount, ) = lendingManager.termOwnerShares(
+            termId,
+            address(vaultToken1)
         );
+        assert(disposableAmount == delegateAmount);
     }
 }

@@ -4,5 +4,12 @@ pragma solidity ^0.8.21;
 /// @title Stormbit Allocation Interface
 /// TODO split into different interfaces according to funcionality
 interface IAllocation {
-    function allocateTerm() external;
+    event TermAllocated(uint256 indexed loanId, uint256 indexed termId);
+
+    function allocateTerm(uint256 loanId, uint256 termId) external;
+    function allocateFundOnLoan(
+        uint256 loanId,
+        uint256 termId,
+        uint256 amount
+    ) external;
 }
