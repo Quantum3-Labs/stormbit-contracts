@@ -145,10 +145,11 @@ contract StormbitLendingManager is
         ];
         // get user shares in the vault
         uint256 userShares = assetManager.getUserShares(token, msg.sender);
-
+        uint256 userCurrentTotalDelegatedShares = currentDelegatedShares +
+            sharesAmount;
         // check if the user has enough shares
         require(
-            userShares >= currentDelegatedShares + sharesAmount,
+            userShares >= userCurrentTotalDelegatedShares,
             "StormbitLendingManager: not enough shares"
         );
         // update user total delegated shares, prevent scenario delegate more than user has
@@ -172,7 +173,12 @@ contract StormbitLendingManager is
         termUserDelegatedShares[termId][msg.sender][vaultToken]
             .disposableAmount += sharesAmount;
 
-        // approve the lending term to spend the shares
+        // approve the asset manager to spend the shares
+        assetManager.approve(
+            msg.sender,
+            vaultToken,
+            userCurrentTotalDelegatedShares
+        );
 
         emit IncreaseDelegateSharesToTerm(
             termId,

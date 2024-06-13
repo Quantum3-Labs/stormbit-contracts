@@ -16,6 +16,7 @@ interface ILoanRequest {
     struct Loan {
         address borrower;
         address token;
+        address tokenVault;
         uint256 amount;
         uint256 currentAllocated;
         uint256 deadline;

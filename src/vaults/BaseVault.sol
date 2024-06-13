@@ -36,4 +36,13 @@ contract BaseVault is ERC4626 {
     function _decimalsOffset() internal view override returns (uint8) {
         return 8;
     }
+
+    function approve(
+        address owner,
+        address spender,
+        uint256 value
+    ) external onlyGovernor {
+        // some logic
+        _approve(owner, spender, value);
+    }
 }

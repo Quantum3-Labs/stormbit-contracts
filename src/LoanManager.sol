@@ -12,6 +12,13 @@ import {StormbitLendingManager} from "./LendingManager.sol";
 /// @notice entrypoint for loan related operations
 
 contract StormbitLoanManager is ILoanRequest, IAllocation {
+    // todo: move to interface
+    struct LoanParticipator {
+        address user;
+        address vaultToken;
+        uint256 shares;
+    }
+
     address public governor;
     StormbitLendingManager public lendingManager;
     StormbitAssetManager public assetManager;
@@ -22,6 +29,10 @@ contract StormbitLoanManager is ILoanRequest, IAllocation {
         public loanTerms;
     mapping(uint256 loanId => mapping(uint256 termId => bool isAllocated))
         public loanTermAllocated;
+    mapping(uint256 loanId => address[] participators)
+        public participatorsAddresses;
+    mapping(uint256 loanId => mapping(address depositor => LoanParticipator loanParticipator))
+        public loanParticipators;
 
     constructor(address _governor) {
         governor = _governor;
@@ -88,6 +99,7 @@ contract StormbitLoanManager is ILoanRequest, IAllocation {
         loans[loanId] = Loan({
             borrower: msg.sender,
             token: token,
+            tokenVault: assetManager.getTokenVault(token),
             amount: amount,
             currentAllocated: 0,
             deadline: deadline,
@@ -102,6 +114,8 @@ contract StormbitLoanManager is ILoanRequest, IAllocation {
     /// @param loanId id of the loan
     function executeLoan(uint256 loanId) public onlyBorrower(loanId) {
         Loan memory loan = loans[loanId];
+        // require valid loan
+        require(_validLoan(loanId), "StormbitLoanManager: invalid loan");
         require(
             loan.status == LoanStatus.Pending,
             "StormbitLoanManager: loan not pending"
@@ -111,7 +125,11 @@ contract StormbitLoanManager is ILoanRequest, IAllocation {
             "StormbitLoanManager: insufficient allocation"
         );
         // withdraw by asset manager
-        assetManager.withdraw(loan.token, loan.amount);
+        assetManager.borrowerWithdraw(
+            loanId,
+            loan.tokenVault,
+            participatorsAddresses[loanId]
+        );
         loans[loanId].status = LoanStatus.Active;
     }
 
@@ -132,6 +150,14 @@ contract StormbitLoanManager is ILoanRequest, IAllocation {
         require(
             lendingTerm.owner == msg.sender,
             "StormbitLoanManager: not term owner"
+        );
+        // get loan instance
+        Loan memory loan = loans[loanId];
+        // check if term capable to fund the loan
+        require(
+            lendingManager.getDisposableSharesOnTerm(termId, loan.tokenVault) >=
+                loan.amount - loan.currentAllocated,
+            "StormbitLoanManager: term insufficient amount"
         );
 
         // check if term is already allocated
@@ -207,6 +233,22 @@ contract StormbitLoanManager is ILoanRequest, IAllocation {
                 termDepositors[i],
                 propotionToFund
             );
+            // check if user already participate in this loan
+            if (
+                loanParticipators[loanId][termDepositors[i]].user == address(0)
+            ) {
+                loanParticipators[loanId][
+                    termDepositors[i]
+                ] = LoanParticipator({
+                    user: termDepositors[i],
+                    vaultToken: vaultToken,
+                    shares: propotionToFund
+                });
+                participatorsAddresses[loanId].push(termDepositors[i]);
+            } else {
+                loanParticipators[loanId][termDepositors[i]]
+                    .shares += propotionToFund;
+            }
             // update loan current allocated
             loan.currentAllocated += propotionToFund;
         }
@@ -225,4 +267,10 @@ contract StormbitLoanManager is ILoanRequest, IAllocation {
     // -----------------------------------------
     // -------- PUBLIC GETTER FUNCTIONS --------
     // -----------------------------------------
+    function getLoanParticipator(
+        uint256 loanId,
+        address depositor
+    ) public view returns (LoanParticipator memory) {
+        return loanParticipators[loanId][depositor];
+    }
 }

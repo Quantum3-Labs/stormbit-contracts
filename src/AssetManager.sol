@@ -34,6 +34,14 @@ contract StormbitAssetManager is IDepositWithdraw, IGovernable, IAssetManager {
         _;
     }
 
+    modifier onlyLoanManager() {
+        require(
+            msg.sender == address(loanManager),
+            "StormbitAssetManager: not loan manager"
+        );
+        _;
+    }
+
     // -----------------------------------------
     // -------- PUBLIC FUNCTIONS ---------------
     // -----------------------------------------
@@ -70,7 +78,32 @@ contract StormbitAssetManager is IDepositWithdraw, IGovernable, IAssetManager {
 
     /// @dev note that we dont require the token to be whitelisted
     function withdraw(address token, uint256 shares) public override {
+        // if freezed, prevent withdraw
         // emit Withdraw(msg.sender, token, assets);
+    }
+
+    /// @dev allow borrower to withdraw assets from the vault
+    /// @param loanId id of the loan
+    /// @param tokenVault address of the token vault
+    /// @param borrowers array of borrower addresses, each borrower has different amount of shares to lend
+    function borrowerWithdraw(
+        uint256 loanId,
+        address tokenVault,
+        address[] calldata borrowers
+    ) public onlyLoanManager {
+        // loop through all borrowers
+        for (uint256 i = 0; i < borrowers.length; i++) {
+            address borrower = borrowers[i];
+            StormbitLoanManager.LoanParticipator
+                memory loanParticipator = loanManager.getLoanParticipator(
+                    loanId,
+                    borrower
+                );
+            uint256 shares = loanParticipator.shares;
+            // todo: withdraw
+        }
+
+        // emit BorrowerWithdraw(loanId, token, assets);
     }
 
     /// @dev allow governor to add a new token
@@ -94,6 +127,14 @@ contract StormbitAssetManager is IDepositWithdraw, IGovernable, IAssetManager {
     /// @param token address of the token
     function removeToken(address token) public override onlyGovernor {
         tokens[token] = false;
+    }
+
+    function approve(
+        address depositor,
+        address vaultToken,
+        uint256 shares
+    ) public onlyLoanManager {
+        BaseVault(vaultToken).approve(depositor, address(this), shares);
     }
 
     // -----------------------------------------
