@@ -37,7 +37,7 @@ contract StormbitAssetManager is IDepositWithdraw, IGovernable, IAssetManager {
     }
 
     // -----------------------------------------
-    // -------- PUBLIC FUNCTIONS --------
+    // -------- PUBLIC FUNCTIONS ---------------
     // -----------------------------------------
 
     // todo: use oz initializer
@@ -91,6 +91,8 @@ contract StormbitAssetManager is IDepositWithdraw, IGovernable, IAssetManager {
         tokenVaults[token] = address(vault);
     }
 
+    /// @dev allow governor to remove the support of a token
+    /// @param token address of the token
     function removeToken(address token) public override onlyGovernor {
         tokens[token] = false;
     }
@@ -103,6 +105,8 @@ contract StormbitAssetManager is IDepositWithdraw, IGovernable, IAssetManager {
         return _governor;
     }
 
+    /// @dev check if token is supported
+    /// @param token address of the token
     function isTokenSupported(address token) public view returns (bool) {
         return tokens[token];
     }

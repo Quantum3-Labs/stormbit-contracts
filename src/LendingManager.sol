@@ -38,6 +38,10 @@ contract StormbitLendingManager is IGovernable, ILendingTerms, ILenderRegistry {
         governor = _governor;
     }
 
+    // -----------------------------------------
+    // ------------- Modifiers -----------------
+    // -----------------------------------------
+
     modifier onlyGovernor() {
         require(msg.sender == governor, "StormbitAssetManager: not governor");
         _;
@@ -64,14 +68,13 @@ contract StormbitLendingManager is IGovernable, ILendingTerms, ILenderRegistry {
         loanManager = StormbitLoanManager(loanManagerAddr);
     }
 
-    function isRegistered(address lender) public view override returns (bool) {
-        return registeredLenders[lender];
-    }
-
     function register() public override {
         registeredLenders[msg.sender] = true;
     }
 
+    /// @dev create a lending term
+    /// @param comission comission rate
+    /// @return id of the lending term
     function createLendingTerm(
         uint256 comission
     ) public override onlyRegisteredLender returns (uint256) {
@@ -85,6 +88,8 @@ contract StormbitLendingManager is IGovernable, ILendingTerms, ILenderRegistry {
         return id;
     }
 
+    /// @dev remove a lending term
+    /// @param id id of the lending term
     function removeLendingTerm(
         uint256 id
     ) public override onlyRegisteredLender {
@@ -153,6 +158,10 @@ contract StormbitLendingManager is IGovernable, ILendingTerms, ILenderRegistry {
         );
     }
 
+    /// @dev allow lender to decrease delegated shares to a lending term
+    /// @param termId id of the lending term
+    /// @param vaultToken address of the token
+    /// @param requestedDecrease amount of shares to decrease
     function decreaseDelegateToTerm(
         uint256 termId,
         address vaultToken,
@@ -166,15 +175,19 @@ contract StormbitLendingManager is IGovernable, ILendingTerms, ILenderRegistry {
         uint256 currentDelegatedShares = termUserDelegatedShares[termId][
             msg.sender
         ][vaultToken];
+        // check how much delegated shares are locked
         uint256 freezedShares = userFreezedShares[msg.sender][vaultToken];
+        // currenly "disposable" shares
         uint256 dynamicDelegatedShares = termDynamicUserDelegatedShares[termId][
             msg.sender
         ][vaultToken];
 
+        //
         require(
             currentDelegatedShares >= requestedDecrease,
             "StormbitLendingManager: insufficient delegated shares"
         );
+        // check if the user has enough unfreezed shares
         require(
             dynamicDelegatedShares - freezedShares >= requestedDecrease,
             "StormbitLendingManager: insufficient unfreezed shares"
@@ -196,7 +209,23 @@ contract StormbitLendingManager is IGovernable, ILendingTerms, ILenderRegistry {
         );
     }
 
+    // -----------------------------------------
+    // ---------- INTERNAL FUNCTIONS -----------
+    // -----------------------------------------
+
+    /// @dev check if lending term exists
+    /// @param id id of the lending term
     function _validLendingTerm(uint256 id) internal view returns (bool) {
         return lendingTerms[id].owner != address(0);
+    }
+
+    // -----------------------------------------
+    // -------- PUBLIC GETTER FUNCTIONS --------
+    // -----------------------------------------
+
+    /// @dev check a lenders is registered
+    /// @param lender address of the lender
+    function isRegistered(address lender) public view override returns (bool) {
+        return registeredLenders[lender];
     }
 }

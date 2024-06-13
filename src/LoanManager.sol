@@ -16,11 +16,16 @@ contract StormbitLoanManager is ILoanRequest, IAllocation {
     StormbitLendingManager public lendingManager;
     StormbitAssetManager public assetManager;
     uint256 public loanCounter;
+
     mapping(uint256 => Loan) public loans;
 
     constructor(address _governor) {
         governor = _governor;
     }
+
+    // -----------------------------------------
+    // ------------- Modifiers -----------------
+    // -----------------------------------------
 
     modifier onlyGovernor() {
         require(msg.sender == governor, "StormbitAssetManager: not governor");
@@ -56,6 +61,11 @@ contract StormbitLoanManager is ILoanRequest, IAllocation {
         lendingManager = StormbitLendingManager(lendingManagerAddr);
     }
 
+    /// @dev allow borrower to request loan
+    /// @param token address of the token
+    /// @param amount amount of token to borrow
+    /// @param deadline deadline of the loan
+    /// @return loanId id of the loan
     function requestLoan(
         address token,
         uint256 amount,
@@ -84,6 +94,8 @@ contract StormbitLoanManager is ILoanRequest, IAllocation {
         return loanId;
     }
 
+    /// @dev allow borrower to execute the loan and receive the fund
+    /// @param loanId id of the loan
     function executeLoan(uint256 loanId) public onlyBorrower(loanId) {
         Loan memory loan = loans[loanId];
         require(
@@ -102,8 +114,11 @@ contract StormbitLoanManager is ILoanRequest, IAllocation {
         loans[loanId].status = LoanStatus.Active;
     }
 
-    function repay() public {}
+    /// @dev allow anyone to repay the loan, not restricted to borrower
+    /// @param loanId id of the loan
+    function repay(uint256 loanId) external override {}
 
+    /// @dev enable the lender to allocate certain term for the loan, until the loan is fully allocated
     function allocateTerm() public onlyLender {
         // todo: do we need to handle case where allocate fund more than requested fund
     }
@@ -111,6 +126,4 @@ contract StormbitLoanManager is ILoanRequest, IAllocation {
     // -----------------------------------------
     // -------- PUBLIC GETTER FUNCTIONS --------
     // -----------------------------------------
-
-    function repay(uint256 loanId) external override {}
 }
