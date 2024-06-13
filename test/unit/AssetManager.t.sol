@@ -2,22 +2,13 @@ pragma solidity ^0.8.21;
 
 import {console} from "forge-std/Script.sol";
 import {TestUtils} from "../Utils.t.sol";
-import {DeployScript} from "../../script/Deploy.s.sol";
-import {StormbitAssetManager} from "../../src/AssetManager.sol";
-import {DeployHelpers} from "../../script/DeployHelpers.s.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
+import {SetupTest} from "../Setup.t.sol";
 
-contract AssetManagerTest is TestUtils {
-    DeployHelpers.NetworkConfig activeNetworkConfig;
-    StormbitAssetManager assetManager;
-    address[] supportedTokens;
-
+contract AssetManagerTest is SetupTest {
     function setUp() public {
-        DeployScript deployScript = new DeployScript();
-        (activeNetworkConfig, assetManager) = deployScript.run();
-
-        supportedTokens = activeNetworkConfig.initialSupportedTokens;
+        SetupTest.setUpEnvironment();
     }
 
     function testAddToken() public {

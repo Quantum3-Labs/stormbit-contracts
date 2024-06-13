@@ -3,7 +3,6 @@ pragma solidity ^0.8.21;
 import {IDepositWithdraw} from "./interfaces/IDepositWithdraw.sol";
 import {IGovernable} from "./interfaces/IGovernable.sol";
 import {IAssetManager} from "./interfaces/IAssetManager.sol";
-import {ITweakedERC4626} from "./interfaces/ITweakedERC4626.sol";
 import {BaseVault} from "./vaults/BaseVault.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IERC20} from "./interfaces/IERC20.sol";
@@ -13,12 +12,7 @@ import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 /// @title Stormbit Asset Manager
 /// @notice entrypoint for all asset management operations
 
-contract StormbitAssetManager is
-    IDepositWithdraw,
-    IGovernable,
-    ITweakedERC4626,
-    IAssetManager
-{
+contract StormbitAssetManager is IDepositWithdraw, IGovernable, IAssetManager {
     using Math for uint256;
     address private _governor;
 
@@ -29,8 +23,8 @@ contract StormbitAssetManager is
 
     uint256 public constant SHARE_DECIMAL_OFFSET = 8;
 
-    constructor(address governor) {
-        _governor = governor;
+    constructor(address initialGovernor) {
+        _governor = initialGovernor;
     }
 
     modifier onlyGovernor() {
@@ -51,10 +45,7 @@ contract StormbitAssetManager is
 
     /// @dev note that we dont require the token to be whitelisted
     function withdraw(address token, uint256 shares) public override {
-        uint256 assets = _convertToAssets(token, shares);
-        totalShares[token] -= shares;
-
-        emit Withdraw(msg.sender, token, assets);
+        // emit Withdraw(msg.sender, token, assets);
     }
 
     /// @dev allow governor to add a new token
@@ -75,48 +66,6 @@ contract StormbitAssetManager is
 
     function removeToken(address token) public override onlyGovernor {
         tokens[token] = false;
-    }
-
-    function convertToShares(
-        uint256 assets
-    ) public view override returns (uint256) {}
-
-    function convertToAssets(
-        uint256 shares
-    ) public view override returns (uint256) {}
-
-    function maxRedeem(address owner) public view override returns (uint256) {}
-
-    function maxWithdraw(
-        address owner
-    ) public view override returns (uint256) {}
-
-    function _convertToShares(
-        address token,
-        uint256 assets
-    ) internal view returns (uint256) {
-        uint256 _totalShares = totalShares[token];
-        uint256 _totalAssets = IERC20(token).balanceOf(address(this));
-        return
-            assets.mulDiv(
-                _totalShares + 10 ** SHARE_DECIMAL_OFFSET,
-                _totalAssets,
-                Math.Rounding.Floor
-            );
-    }
-
-    function _convertToAssets(
-        address token,
-        uint256 shares
-    ) internal view returns (uint256) {
-        uint256 _totalShares = totalShares[token];
-        uint256 _totalAssets = IERC20(token).balanceOf(address(this));
-        return
-            shares.mulDiv(
-                _totalAssets + 1,
-                _totalShares + 10 ** SHARE_DECIMAL_OFFSET,
-                Math.Rounding.Floor
-            );
     }
 
     // -----------------------------------------
