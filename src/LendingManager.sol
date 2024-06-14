@@ -14,6 +14,7 @@ import {IERC4626} from "./interfaces/IERC4626.sol";
 
 // todo: use custom error
 contract StormbitLendingManager is
+    IGovernable,
     ILendingTerms,
     ILenderRegistry,
     ILoanExecute
@@ -24,9 +25,9 @@ contract StormbitLendingManager is
         uint256 totalAmount;
     }
 
-    address public governor;
-    StormbitAssetManager assetManager;
-    StormbitLoanManager loanManager;
+    address private _governor;
+    StormbitAssetManager public assetManager;
+    StormbitLoanManager public loanManager;
 
     mapping(address => bool) public registeredLenders;
     mapping(uint256 => LendingTerm) public lendingTerms;
@@ -44,8 +45,8 @@ contract StormbitLendingManager is
     // locked shares, the shares want lent out
     mapping(address user => mapping(address vaultToken => uint256 sharesAmount)) userFreezedShares;
 
-    constructor(address _governor) {
-        governor = _governor;
+    constructor(address initialGovernor) {
+        _governor = initialGovernor;
     }
 
     // -----------------------------------------
@@ -53,7 +54,7 @@ contract StormbitLendingManager is
     // -----------------------------------------
 
     modifier onlyGovernor() {
-        require(msg.sender == governor, "StormbitAssetManager: not governor");
+        require(msg.sender == _governor, "StormbitAssetManager: not governor");
         _;
     }
 
@@ -78,6 +79,7 @@ contract StormbitLendingManager is
     // -----------------------------------------
 
     // todo: use oz initializer
+    // todo: move to interface
     function initialize(
         address assetManagerAddr,
         address loanManagerAddr
@@ -101,7 +103,7 @@ contract StormbitLendingManager is
             !_validLendingTerm(id),
             "StormbitLendingManager: lending term already exists"
         );
-        lendingTerms[id] = LendingTerm(msg.sender, comission);
+        lendingTerms[id] = LendingTerm(msg.sender, comission, 0);
         emit LendingTermCreated(id, msg.sender, comission);
         return id;
     }
@@ -115,7 +117,14 @@ contract StormbitLendingManager is
             _validLendingTerm(id),
             "StormbitLendingManager: lending term does not exist"
         );
-        // todo: what if there are delegated shares to the term
+        // if there are delegated shares, the term cannot be removed
+        // get term
+        LendingTerm memory term = lendingTerms[id];
+        require(
+            term.balances <= 0,
+            "StormbitLendingManager: term has delegated shares"
+        );
+
         delete lendingTerms[id];
         emit LendingTermRemoved(id);
     }
@@ -173,6 +182,9 @@ contract StormbitLendingManager is
         termUserDelegatedShares[termId][msg.sender][vaultToken]
             .disposableAmount += sharesAmount;
 
+        // update term balance
+        lendingTerms[termId].balances += sharesAmount;
+
         // approve the asset manager to spend the shares
         assetManager.approve(
             msg.sender,
@@ -228,6 +240,9 @@ contract StormbitLendingManager is
         termOwnerShares[termId][vaultToken].totalAmount -= requestedDecrease;
         termOwnerShares[termId][vaultToken]
             .disposableAmount -= requestedDecrease;
+
+        // update term balance
+        lendingTerms[termId].balances -= requestedDecrease;
 
         emit DecreaseDelegateSharesToTerm(
             termId,
@@ -295,6 +310,10 @@ contract StormbitLendingManager is
     // -------- PUBLIC GETTER FUNCTIONS --------
     // -----------------------------------------
 
+    function governor() public view override returns (address) {
+        return _governor;
+    }
+
     /// @dev check a lenders is registered
     /// @param lender address of the lender
     function isRegistered(address lender) public view override returns (bool) {
@@ -328,5 +347,12 @@ contract StormbitLendingManager is
     ) public view returns (uint256) {
         return
             termUserDelegatedShares[termId][user][vaultToken].disposableAmount;
+    }
+
+    function getUserFreezedShares(
+        address user,
+        address vaultToken
+    ) public view returns (uint256) {
+        return userFreezedShares[user][vaultToken];
     }
 }

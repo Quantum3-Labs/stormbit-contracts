@@ -1,7 +1,6 @@
 pragma solidity ^0.8.21;
 
 import {console} from "forge-std/Script.sol";
-import {TestUtils} from "../Utils.t.sol";
 import {SetupTest} from "../Setup.t.sol";
 import {ILendingTerms} from "../../src/interfaces/ILendingTerms.sol";
 import {IERC4626} from "../../src/interfaces/IERC4626.sol";
@@ -28,14 +27,49 @@ contract LendingManagerTest is SetupTest {
         vm.startPrank(lender1);
         lendingManager.register();
         uint256 termId = lendingManager.createLendingTerm(0);
-        (, uint256 commission) = lendingManager.lendingTerms(termId);
+        (, uint256 commission, ) = lendingManager.lendingTerms(termId);
         assert(commission == 0);
     }
 
-    function testLendingTermRevert() public {
+    function testNotLenderCreateLendingTermRevert() public {
         vm.expectRevert();
         vm.prank(lender1);
         lendingManager.createLendingTerm(0);
+    }
+
+    function testRemoveLendingterm() public {
+        vm.startPrank(lender1);
+        lendingManager.register();
+        uint256 termId = lendingManager.createLendingTerm(5);
+        lendingManager.removeLendingTerm(termId);
+        vm.stopPrank();
+
+        (, uint256 commission, ) = lendingManager.lendingTerms(termId);
+        assert(commission == 0);
+    }
+
+    function testRemoveLendingTermRevert() public {
+        vm.startPrank(lender1);
+        lendingManager.register();
+        uint256 termId = lendingManager.createLendingTerm(5);
+        vm.stopPrank();
+
+        vm.startPrank(depositor1);
+        // deposit some token to vault by asset manager
+        token1.approve(address(assetManager), depositAmount);
+        assetManager.deposit(address(token1), depositAmount);
+        // delegate shares to lender1
+        lendingManager.increaseDelegateToTerm(
+            termId,
+            address(token1),
+            delegateAmount
+        );
+        vm.stopPrank();
+
+        // now the term has shares, should not be able to remove
+        vm.expectRevert();
+        vm.startPrank(lender1);
+        lendingManager.removeLendingTerm(termId);
     }
 
     function testIncreaseDeletegateToTerm() public {
@@ -57,16 +91,27 @@ contract LendingManagerTest is SetupTest {
         );
         vm.stopPrank();
 
-        assert(
-            lendingManager.userTotalDelegatedShares(
-                depositor1,
-                address(vaultToken1)
-            ) == delegateAmount
-        );
         (uint256 disposableAmount, ) = lendingManager.termOwnerShares(
             termId,
             address(vaultToken1)
         );
+        address[] memory termDepositors = lendingManager.getTermDepositors(
+            termId,
+            address(vaultToken1)
+        );
+        uint256 userTotalDelagatedShares = lendingManager
+            .userTotalDelegatedShares(depositor1, address(vaultToken1));
+        uint256 userDisposableSharesOnTerm = lendingManager
+            .getUserDisposableSharesOnTerm(
+                termId,
+                depositor1,
+                address(vaultToken1)
+            );
+
+        assert(termDepositors.length == 1);
+        assert(termDepositors[0] == depositor1);
+        assert(userTotalDelagatedShares == delegateAmount);
         assert(disposableAmount == delegateAmount);
+        assert(userDisposableSharesOnTerm == delegateAmount);
     }
 }

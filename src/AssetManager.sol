@@ -16,9 +16,10 @@ import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 contract StormbitAssetManager is IDepositWithdraw, IGovernable, IAssetManager {
     using Math for uint256;
+
     address private _governor;
-    StormbitLoanManager loanManager;
-    StormbitLendingManager lendingManager;
+    StormbitLoanManager public loanManager;
+    StormbitLendingManager public lendingManager;
 
     mapping(address token => bool isSupported) tokens; // check if token is supported
     mapping(address token => address tokenVault) tokenVaults; // token to vault mapping
@@ -42,11 +43,20 @@ contract StormbitAssetManager is IDepositWithdraw, IGovernable, IAssetManager {
         _;
     }
 
+    modifier onlyLendingManager() {
+        require(
+            msg.sender == address(lendingManager),
+            "StormbitAssetManager: not lending manager"
+        );
+        _;
+    }
+
     // -----------------------------------------
     // -------- PUBLIC FUNCTIONS ---------------
     // -----------------------------------------
 
-    // todo: use oz initializer
+    // todo: use oz initializer/ownable
+    // todo: move to interface
     function initialize(
         address loanManagerAddr,
         address lendingManagerAddr
@@ -78,6 +88,7 @@ contract StormbitAssetManager is IDepositWithdraw, IGovernable, IAssetManager {
         emit Deposit(msg.sender, token, assets);
     }
 
+    // todo: move to interface
     function depositFrom(
         address token,
         uint256 assets,
@@ -106,6 +117,7 @@ contract StormbitAssetManager is IDepositWithdraw, IGovernable, IAssetManager {
         // emit Withdraw(msg.sender, token, assets);
     }
 
+    // todo: move to interface
     /// @dev allow borrower to withdraw assets from the vault
     /// @param loanId id of the loan
     /// @param borrower address of the borrower
@@ -143,7 +155,7 @@ contract StormbitAssetManager is IDepositWithdraw, IGovernable, IAssetManager {
         // deploy the vault
         BaseVault vault = new BaseVault(
             IERC20(token),
-            _governor,
+            address(this),
             string(abi.encodePacked("Stormbit ", IERC20(token).symbol())),
             string(abi.encodePacked("s", IERC20(token).symbol()))
         );
@@ -156,13 +168,14 @@ contract StormbitAssetManager is IDepositWithdraw, IGovernable, IAssetManager {
     /// @param token address of the token
     function removeToken(address token) public override onlyGovernor {
         tokens[token] = false;
+        // todo: make sure vault is empty
     }
 
     function approve(
         address depositor,
         address vaultToken,
         uint256 shares
-    ) public onlyLoanManager {
+    ) public onlyLendingManager {
         BaseVault(vaultToken).approve(depositor, address(this), shares);
     }
 

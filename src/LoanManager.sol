@@ -101,7 +101,10 @@ contract StormbitLoanManager is ILoanRequest, IAllocation {
         );
 
         // calculate shares required to fulfill the loan
+        // todo: do safety check if amount is zero
+        // todo: should be fine to remove, convertToShares has totalAssets() + 1, will not lead to 0
         uint256 sharesRequired = _calculateSharesRequired(token, amount);
+        require(sharesRequired > 0, "StormbitLoanManager: insufficient amount");
 
         loans[loanId] = Loan({
             borrower: msg.sender,
@@ -269,9 +272,10 @@ contract StormbitLoanManager is ILoanRequest, IAllocation {
             uint256 depositorDelegatedSharesAmount = lendingManager
                 .getUserDisposableSharesOnTerm(
                     termId,
-                    vaultToken,
-                    termDepositors[i]
+                    termDepositors[i],
+                    vaultToken
                 );
+
             uint256 propotionToFund = (depositorDelegatedSharesAmount *
                 amount) / termOwnerDisposableShares;
             // freeze the user shares
@@ -332,5 +336,16 @@ contract StormbitLoanManager is ILoanRequest, IAllocation {
         address depositor
     ) public view returns (LoanParticipator memory) {
         return loanParticipators[loanId][depositor];
+    }
+
+    function getLoan(uint256 loanId) public view returns (Loan memory) {
+        return loans[loanId];
+    }
+
+    function getLoanTermAllocated(
+        uint256 loanId,
+        uint256 termId
+    ) public view returns (bool) {
+        return loanTermAllocated[loanId][termId];
     }
 }
