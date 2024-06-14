@@ -4,6 +4,7 @@ import {IGovernable} from "./interfaces/IGovernable.sol";
 import {ILoanRequest} from "./interfaces/ILoanRequest.sol";
 import {ILendingTerms} from "./interfaces/ILendingTerms.sol";
 import {IAllocation} from "./interfaces/IAllocation.sol";
+import {IERC4626} from "./interfaces/IERC4626.sol";
 import {StormbitAssetManager} from "./AssetManager.sol";
 import {StormbitLendingManager} from "./LendingManager.sol";
 
@@ -15,6 +16,7 @@ contract StormbitLoanManager is ILoanRequest, IAllocation {
     // todo: move to interface
     struct LoanParticipator {
         address user;
+        address token;
         address vaultToken;
         uint256 shares;
     }
@@ -86,6 +88,8 @@ contract StormbitLoanManager is ILoanRequest, IAllocation {
         uint256 amount,
         uint256 deadline
     ) external override returns (uint256) {
+        // todo: see which agreement to use
+
         // check if token is supported
         require(
             assetManager.isTokenSupported(token),
@@ -96,12 +100,16 @@ contract StormbitLoanManager is ILoanRequest, IAllocation {
             keccak256(abi.encode(msg.sender, loanCounter))
         );
 
+        // calculate shares required to fulfill the loan
+        uint256 sharesRequired = _calculateSharesRequired(token, amount);
+
         loans[loanId] = Loan({
             borrower: msg.sender,
             token: token,
             tokenVault: assetManager.getTokenVault(token),
             amount: amount,
-            currentAllocated: 0,
+            sharesAmount: sharesRequired,
+            currentSharesAllocated: 0,
             deadline: deadline,
             status: LoanStatus.Pending
         });
@@ -121,12 +129,13 @@ contract StormbitLoanManager is ILoanRequest, IAllocation {
             "StormbitLoanManager: loan not pending"
         );
         require(
-            loan.currentAllocated >= loan.amount,
+            loan.currentSharesAllocated >= loan.sharesAmount,
             "StormbitLoanManager: insufficient allocation"
         );
         // withdraw by asset manager
         assetManager.borrowerWithdraw(
             loanId,
+            loan.borrower,
             loan.tokenVault,
             participatorsAddresses[loanId]
         );
@@ -135,7 +144,46 @@ contract StormbitLoanManager is ILoanRequest, IAllocation {
 
     /// @dev allow anyone to repay the loan, not restricted to borrower
     /// @param loanId id of the loan
-    function repay(uint256 loanId) external override {}
+    function repay(uint256 loanId) external override {
+        // check if loan is valid
+        require(_validLoan(loanId), "StormbitLoanManager: invalid loan");
+        Loan memory loan = loans[loanId];
+        require(
+            loan.status == LoanStatus.Active,
+            "StormbitLoanManager: loan not active"
+        );
+        // todo: if there is any profit, first pay the profit to the term owner according to their weight
+        // example: profit 500: distribute the profit to three terms, 100, 200, 200
+        // calculate commission for term owner, and distribute the rest to the depositor??
+
+        // loop through the loan participators
+        address[] memory participators = participatorsAddresses[loanId];
+        for (uint256 i = 0; i < participators.length; i++) {
+            LoanParticipator memory participator = loanParticipators[loanId][
+                participators[i]
+            ];
+            // get the shares of the participator
+            uint256 shares = participator.shares;
+            // get the  token
+            address token = participator.token;
+            // get the amount of token to repay
+            uint256 amount = assetManager.convertToAssets(token, shares);
+            // transfer the token to the vault, and mint back participator shares
+            assetManager.depositFrom(
+                token,
+                amount,
+                msg.sender,
+                participator.user
+            );
+            // unfreeze the shares
+            lendingManager.unfreezeSharesOnTerm(
+                loanId,
+                participator.vaultToken,
+                participators[i],
+                shares
+            );
+        }
+    }
 
     /// @dev enable the lender to allocate certain term for the loan, until the loan is fully allocated
     /// @param loanId id of the loan
@@ -155,8 +203,8 @@ contract StormbitLoanManager is ILoanRequest, IAllocation {
         Loan memory loan = loans[loanId];
         // check if term capable to fund the loan
         require(
-            lendingManager.getDisposableSharesOnTerm(termId, loan.tokenVault) >=
-                loan.amount - loan.currentAllocated,
+            lendingManager.getDisposableSharesOnTerm(termId, loan.tokenVault) >
+                0,
             "StormbitLoanManager: term insufficient amount"
         );
 
@@ -206,7 +254,7 @@ contract StormbitLoanManager is ILoanRequest, IAllocation {
         );
         // fund amount should less than loan amount
         require(
-            loan.currentAllocated + amount <= loan.amount,
+            loan.currentSharesAllocated + amount <= loan.sharesAmount,
             "StormbitLoanManager: loan amount exceeded"
         );
 
@@ -241,6 +289,7 @@ contract StormbitLoanManager is ILoanRequest, IAllocation {
                     termDepositors[i]
                 ] = LoanParticipator({
                     user: termDepositors[i],
+                    token: token,
                     vaultToken: vaultToken,
                     shares: propotionToFund
                 });
@@ -250,7 +299,7 @@ contract StormbitLoanManager is ILoanRequest, IAllocation {
                     .shares += propotionToFund;
             }
             // update loan current allocated
-            loan.currentAllocated += propotionToFund;
+            loan.currentSharesAllocated += propotionToFund;
         }
         // update loan at storage level
         loans[loanId] = loan;
@@ -262,6 +311,17 @@ contract StormbitLoanManager is ILoanRequest, IAllocation {
     // -----------------------------------------
     function _validLoan(uint256 loanId) private view returns (bool) {
         return loans[loanId].borrower != address(0);
+    }
+
+    function _calculateSharesRequired(
+        address token,
+        uint256 amount
+    ) private view returns (uint256) {
+        // get the vault token
+        address vaultToken = assetManager.getTokenVault(token);
+        // convert amount to shares
+        uint256 sharesRequired = IERC4626(vaultToken).convertToShares(amount);
+        return sharesRequired;
     }
 
     // -----------------------------------------

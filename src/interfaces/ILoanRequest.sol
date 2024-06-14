@@ -18,7 +18,8 @@ interface ILoanRequest {
         address token;
         address tokenVault;
         uint256 amount;
-        uint256 currentAllocated;
+        uint256 sharesAmount;
+        uint256 currentSharesAllocated;
         uint256 deadline;
         LoanStatus status;
     }

@@ -255,7 +255,30 @@ contract StormbitLendingManager is
         termUserDelegatedShares[termId][depositor][vaultToken]
             .disposableAmount -= freezeAmount;
         userFreezedShares[depositor][vaultToken] += freezeAmount;
+        // also reduce the term owner disposable shares
+        termOwnerShares[termId][vaultToken].disposableAmount -= freezeAmount;
         // todo: emit event
+    }
+
+    function unfreezeSharesOnTerm(
+        uint256 termId,
+        address vaultToken,
+        address depositor,
+        uint256 unfreezeAmount
+    ) public onlyLoanManager {
+        require(
+            _validLendingTerm(termId),
+            "StormbitLendingManager: lending term does not exist"
+        );
+        require(
+            userFreezedShares[depositor][vaultToken] >= unfreezeAmount,
+            "StormbitLendingManager: insufficient freezed shares"
+        );
+        userFreezedShares[depositor][vaultToken] -= unfreezeAmount;
+        termUserDelegatedShares[termId][depositor][vaultToken]
+            .disposableAmount += unfreezeAmount;
+        // also increase the term owner disposable shares
+        termOwnerShares[termId][vaultToken].disposableAmount += unfreezeAmount;
     }
 
     // -----------------------------------------

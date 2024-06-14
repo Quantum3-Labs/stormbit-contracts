@@ -73,7 +73,31 @@ contract StormbitAssetManager is IDepositWithdraw, IGovernable, IAssetManager {
         }
         IERC20(token).approve(tokenVault, assets);
         IERC4626(tokenVault).deposit(assets, msg.sender);
+        // todo: either approve the vault to spend vault token here
+        // todo: or perform a 2 step when execute loan
         emit Deposit(msg.sender, token, assets);
+    }
+
+    function depositFrom(
+        address token,
+        uint256 assets,
+        address depositor,
+        address receiver
+    ) public {
+        require(tokens[token], "StormbitAssetManager: token not supported");
+        address tokenVault = tokenVaults[token]; // get the corresponding vault
+        // first make sure can transfer user token to manager
+        bool isSuccess = IERC20(token).transferFrom(
+            depositor,
+            address(this),
+            assets
+        );
+        if (!isSuccess) {
+            revert("StormbitAssetManager: transfer failed");
+        }
+        IERC20(token).approve(tokenVault, assets);
+        IERC4626(tokenVault).deposit(assets, receiver);
+        emit Deposit(receiver, token, assets);
     }
 
     /// @dev note that we dont require the token to be whitelisted
@@ -84,26 +108,31 @@ contract StormbitAssetManager is IDepositWithdraw, IGovernable, IAssetManager {
 
     /// @dev allow borrower to withdraw assets from the vault
     /// @param loanId id of the loan
+    /// @param borrower address of the borrower
     /// @param tokenVault address of the token vault
-    /// @param borrowers array of borrower addresses, each borrower has different amount of shares to lend
+    /// @param loanParticipators array of borrower addresses, each borrower has different amount of shares to lend
     function borrowerWithdraw(
         uint256 loanId,
+        address borrower,
         address tokenVault,
-        address[] calldata borrowers
+        address[] calldata loanParticipators
     ) public onlyLoanManager {
-        // loop through all borrowers
-        for (uint256 i = 0; i < borrowers.length; i++) {
-            address borrower = borrowers[i];
+        // loop through all loanParticipators
+        for (uint256 i = 0; i < loanParticipators.length; i++) {
+            address participator = loanParticipators[i];
             StormbitLoanManager.LoanParticipator
                 memory loanParticipator = loanManager.getLoanParticipator(
                     loanId,
                     borrower
                 );
-            uint256 shares = loanParticipator.shares;
-            // todo: withdraw
+            IERC4626(tokenVault).redeem(
+                loanParticipator.shares,
+                borrower,
+                participator
+            );
         }
 
-        // emit BorrowerWithdraw(loanId, token, assets);
+        // todo: emit event
     }
 
     /// @dev allow governor to add a new token
@@ -164,5 +193,23 @@ contract StormbitAssetManager is IDepositWithdraw, IGovernable, IAssetManager {
         address tokenVault = tokenVaults[token];
         IERC4626 vault = IERC4626(tokenVault);
         return vault.balanceOf(user);
+    }
+
+    function convertToShares(
+        address token,
+        uint256 assets
+    ) public view returns (uint256) {
+        address tokenVault = tokenVaults[token];
+        IERC4626 vault = IERC4626(tokenVault);
+        return vault.convertToShares(assets);
+    }
+
+    function convertToAssets(
+        address token,
+        uint256 shares
+    ) public view returns (uint256) {
+        address tokenVault = tokenVaults[token];
+        IERC4626 vault = IERC4626(tokenVault);
+        return vault.convertToAssets(shares);
     }
 }
