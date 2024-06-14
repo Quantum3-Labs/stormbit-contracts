@@ -92,7 +92,7 @@ contract LoanManagerTest is SetupTest {
         assert(isAllocated);
     }
 
-    function testAllocateFundOnLoan() public {
+    function testAllocateFundOnLoan() public returns (uint256, uint256) {
         vm.startPrank(borrower1);
         uint256 loanId = loanManager.requestLoan(
             address(token1),
@@ -114,6 +114,7 @@ contract LoanManagerTest is SetupTest {
         assetManager.deposit(address(token1), depositAmount);
         // delegate shares to lender1
         uint256 delegateAmount = 500 * (10 ** vaultToken1.decimals());
+
         lendingManager.increaseDelegateToTerm(
             termId,
             address(token1),
@@ -147,5 +148,66 @@ contract LoanManagerTest is SetupTest {
         assert(loan.currentSharesAllocated == allocateFundOnTermAmount);
         assert(depositor1FreezedShares == allocateFundOnTermAmount);
         assert(depositor1DisposableShares == 0);
+
+        return (loanId, termId);
+    }
+
+    function testExecuteLoan() public returns (uint256, uint256) {
+        (uint256 loanId, uint256 termId) = testAllocateFundOnLoan();
+        vm.startPrank(borrower1);
+        loanManager.executeLoan(loanId);
+        vm.stopPrank();
+
+        ILoanRequest.Loan memory loan = loanManager.getLoan(loanId);
+        uint256 depositor1Shares = assetManager.getUserShares(
+            address(token1),
+            depositor1
+        );
+        uint256 expectedDepositor1Shares = 1000 *
+            (10 ** vaultToken1.decimals()) -
+            500 *
+            (10 ** vaultToken1.decimals());
+        uint256 borrowerTokenBalance = token1.balanceOf(borrower1);
+
+        assert(loan.status == ILoanRequest.LoanStatus.Active);
+        assert(depositor1Shares == expectedDepositor1Shares);
+        assert(borrowerTokenBalance == loan.amount);
+        return (loanId, termId);
+    }
+
+    function testRepayLoan() public {
+        (uint256 loanId, uint256 termId) = testExecuteLoan();
+        vm.startPrank(borrower1);
+        ILoanRequest.Loan memory loan = loanManager.getLoan(loanId);
+        token1.approve(address(assetManager), loan.amount);
+        loanManager.repay(loanId);
+        vm.stopPrank();
+
+        // get borrower balance
+        uint256 borrowerBalance = token1.balanceOf(borrower1);
+        // get depositor1 shares
+        uint256 depositor1Shares = assetManager.getUserShares(
+            address(token1),
+            depositor1
+        );
+        // get user freezed shares
+        uint256 depositor1FreezedShares = lendingManager.getUserFreezedShares(
+            depositor1,
+            address(vaultToken1)
+        );
+        // get user disposable shares
+        uint256 depositor1DisposableShares = lendingManager
+            .getUserDisposableSharesOnTerm(
+                termId,
+                depositor1,
+                address(vaultToken1)
+            );
+
+        assert(borrowerBalance == 0);
+        assert(depositor1Shares == 1000 * (10 ** vaultToken1.decimals()));
+        assert(depositor1FreezedShares == 0);
+        assert(
+            depositor1DisposableShares == 500 * (10 ** vaultToken1.decimals())
+        );
     }
 }

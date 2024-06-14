@@ -14,6 +14,7 @@ import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 /// @title Stormbit Asset Manager
 /// @notice entrypoint for all asset management operations
 
+// todo: be aware of denial of service on for loop
 contract StormbitAssetManager is IDepositWithdraw, IGovernable, IAssetManager {
     using Math for uint256;
 
@@ -83,8 +84,6 @@ contract StormbitAssetManager is IDepositWithdraw, IGovernable, IAssetManager {
         }
         IERC20(token).approve(tokenVault, assets);
         IERC4626(tokenVault).deposit(assets, msg.sender);
-        // todo: either approve the vault to spend vault token here
-        // todo: or perform a 2 step when execute loan
         emit Deposit(msg.sender, token, assets);
     }
 
@@ -113,7 +112,7 @@ contract StormbitAssetManager is IDepositWithdraw, IGovernable, IAssetManager {
 
     /// @dev note that we dont require the token to be whitelisted
     function withdraw(address token, uint256 shares) public override {
-        // if freezed, prevent withdraw
+        // todo: if freezed, prevent withdraw
         // emit Withdraw(msg.sender, token, assets);
     }
 
@@ -135,7 +134,7 @@ contract StormbitAssetManager is IDepositWithdraw, IGovernable, IAssetManager {
             StormbitLoanManager.LoanParticipator
                 memory loanParticipator = loanManager.getLoanParticipator(
                     loanId,
-                    borrower
+                    participator
                 );
             IERC4626(tokenVault).redeem(
                 loanParticipator.shares,
@@ -171,11 +170,14 @@ contract StormbitAssetManager is IDepositWithdraw, IGovernable, IAssetManager {
         // todo: make sure vault is empty
     }
 
+    /// @dev when user delegating their shares,
+    /// approve asset manager to transfer their shares
     function approve(
         address depositor,
         address vaultToken,
         uint256 shares
-    ) public onlyLendingManager {
+    ) public {
+        // todo: logic to control increased/decreased allowance
         BaseVault(vaultToken).approve(depositor, address(this), shares);
     }
 
@@ -208,6 +210,7 @@ contract StormbitAssetManager is IDepositWithdraw, IGovernable, IAssetManager {
         return vault.balanceOf(user);
     }
 
+    /// @dev convert assets to shares based on the vault
     function convertToShares(
         address token,
         uint256 assets
@@ -217,6 +220,7 @@ contract StormbitAssetManager is IDepositWithdraw, IGovernable, IAssetManager {
         return vault.convertToShares(assets);
     }
 
+    /// @dev convert shares to assets based on the vault
     function convertToAssets(
         address token,
         uint256 shares

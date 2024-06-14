@@ -12,6 +12,7 @@ import {StormbitLendingManager} from "./LendingManager.sol";
 /// @title Stormbit Loan Manager
 /// @notice entrypoint for loan related operations
 
+// todo: be aware of denial of service on for loop
 contract StormbitLoanManager is ILoanRequest, IAllocation {
     // todo: move to interface
     struct LoanParticipator {
@@ -19,6 +20,7 @@ contract StormbitLoanManager is ILoanRequest, IAllocation {
         address token;
         address vaultToken;
         uint256 shares;
+        uint256 termId;
     }
 
     address public governor;
@@ -180,7 +182,7 @@ contract StormbitLoanManager is ILoanRequest, IAllocation {
             );
             // unfreeze the shares
             lendingManager.unfreezeSharesOnTerm(
-                loanId,
+                participator.termId,
                 participator.vaultToken,
                 participators[i],
                 shares
@@ -294,6 +296,7 @@ contract StormbitLoanManager is ILoanRequest, IAllocation {
                 ] = LoanParticipator({
                     user: termDepositors[i],
                     token: token,
+                    termId: termId,
                     vaultToken: vaultToken,
                     shares: propotionToFund
                 });
