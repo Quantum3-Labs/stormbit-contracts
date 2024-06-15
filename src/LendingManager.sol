@@ -1,12 +1,15 @@
 pragma solidity ^0.8.21;
 
 import {ILendingTerms} from "./interfaces/managers/lending/ILendingTerms.sol";
+import {IDelegation} from "./interfaces/managers/lending/IDelegation.sol";
 import {ILenderRegistry} from "./interfaces/managers/lending/ILenderRegistry.sol";
-import {ILoanExecute} from "./interfaces/managers/lending/ILoanExecute.sol";
+import {ILendingManagerView} from "./interfaces/managers/lending/ILendingManagerView.sol";
 import {IERC4626} from "./interfaces/token/IERC4626.sol";
 import {IGovernable} from "./interfaces/utils/IGovernable.sol";
+import {IInitialize} from "./interfaces/utils/IInitialize.sol";
 import {StormbitAssetManager} from "./AssetManager.sol";
 import {StormbitLoanManager} from "./LoanManager.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @author Quantum3 Labs
 /// @title Stormbit Lending Manager
@@ -15,16 +18,13 @@ import {StormbitLoanManager} from "./LoanManager.sol";
 // todo: use custom error
 contract StormbitLendingManager is
     IGovernable,
+    IInitialize,
+    ILendingManagerView,
     ILendingTerms,
+    IDelegation,
     ILenderRegistry,
-    ILoanExecute
+    Ownable
 {
-    // todo: move to interface
-    struct Shares {
-        uint256 disposableAmount;
-        uint256 totalAmount;
-    }
-
     address private _governor;
     StormbitAssetManager public assetManager;
     StormbitLoanManager public loanManager;
@@ -45,7 +45,7 @@ contract StormbitLendingManager is
     // locked shares, the shares want lent out
     mapping(address user => mapping(address vaultToken => uint256 sharesAmount)) userFreezedShares;
 
-    constructor(address initialGovernor) {
+    constructor(address initialGovernor, address owner) Ownable(owner) {
         _governor = initialGovernor;
     }
 
@@ -78,18 +78,19 @@ contract StormbitLendingManager is
     // -------- PUBLIC FUNCTIONS ---------------
     // -----------------------------------------
 
-    // todo: use oz initializer
-    // todo: move to interface
     function initialize(
         address assetManagerAddr,
         address loanManagerAddr
-    ) public {
+    ) public override onlyOwner {
         assetManager = StormbitAssetManager(assetManagerAddr);
         loanManager = StormbitLoanManager(loanManagerAddr);
     }
 
+    /// @dev register msg sender as a lender
     function register() public override {
         registeredLenders[msg.sender] = true;
+
+        emit LenderRegistered(msg.sender);
     }
 
     /// @dev create a lending term
@@ -138,7 +139,7 @@ contract StormbitLendingManager is
         uint256 termId,
         address token,
         uint256 sharesAmount
-    ) public {
+    ) public override {
         require(
             _validLendingTerm(termId),
             "StormbitLendingManager: lending term does not exist"
@@ -208,7 +209,7 @@ contract StormbitLendingManager is
         uint256 termId,
         address vaultToken,
         uint256 requestedDecrease
-    ) public {
+    ) public override {
         require(
             _validLendingTerm(termId),
             "StormbitLendingManager: lending term does not exist"
@@ -252,12 +253,18 @@ contract StormbitLendingManager is
         );
     }
 
+    /// @dev When the loan executed, loan manager will call this to freeze the user's shares,
+    /// when the shares are freezed, they are prevent to withdraw
+    /// @param termId id of the lending term
+    /// @param vaultToken address of the token
+    /// @param depositor address of the depositor
+    /// @param freezeAmount amount of shares to freeze
     function freezeSharesOnTerm(
         uint256 termId,
         address vaultToken,
         address depositor,
         uint256 freezeAmount
-    ) public onlyLoanManager {
+    ) public override onlyLoanManager {
         require(
             _validLendingTerm(termId),
             "StormbitLendingManager: lending term does not exist"
@@ -272,15 +279,21 @@ contract StormbitLendingManager is
         userFreezedShares[depositor][vaultToken] += freezeAmount;
         // also reduce the term owner disposable shares
         termOwnerShares[termId][vaultToken].disposableAmount -= freezeAmount;
-        // todo: emit event
+
+        emit FreezeSharesOnTerm(termId, depositor, vaultToken, freezeAmount);
     }
 
+    /// @dev When the loan is paid off, loan manager will call this to unfreeze the user's shares
+    /// @param termId id of the lending term
+    /// @param vaultToken address of the token
+    /// @param depositor address of the depositor
+    /// @param unfreezeAmount amount of shares to unfreeze
     function unfreezeSharesOnTerm(
         uint256 termId,
         address vaultToken,
         address depositor,
         uint256 unfreezeAmount
-    ) public onlyLoanManager {
+    ) public override onlyLoanManager {
         require(
             _validLendingTerm(termId),
             "StormbitLendingManager: lending term does not exist"
@@ -294,6 +307,13 @@ contract StormbitLendingManager is
             .disposableAmount += unfreezeAmount;
         // also increase the term owner disposable shares
         termOwnerShares[termId][vaultToken].disposableAmount += unfreezeAmount;
+
+        emit UnfreezeSharesOnTerm(
+            termId,
+            depositor,
+            vaultToken,
+            unfreezeAmount
+        );
     }
 
     // -----------------------------------------
@@ -322,37 +342,41 @@ contract StormbitLendingManager is
 
     function getLendingTerm(
         uint256 id
-    ) public view returns (LendingTerm memory) {
+    ) public view override returns (LendingTerm memory) {
         return lendingTerms[id];
     }
 
+    /// @dev get the owner's vault token disposable shares on a term
     function getDisposableSharesOnTerm(
         uint256 termId,
         address vaultToken
-    ) public view returns (uint256) {
+    ) public view override returns (uint256) {
         return termOwnerShares[termId][vaultToken].disposableAmount;
     }
 
+    /// @dev get all the depositor on the term for a vault token
     function getTermDepositors(
         uint256 termId,
         address vaultToken
-    ) public view returns (address[] memory) {
+    ) public view override returns (address[] memory) {
         return termDelegatedUsers[termId][vaultToken];
     }
 
+    /// @dev get the user's disposable shares on a term for a vault token
     function getUserDisposableSharesOnTerm(
         uint256 termId,
         address user,
         address vaultToken
-    ) public view returns (uint256) {
+    ) public view override returns (uint256) {
         return
             termUserDelegatedShares[termId][user][vaultToken].disposableAmount;
     }
 
+    /// @dev get the amount of shares that was freezed due to executed loan 
     function getUserFreezedShares(
         address user,
         address vaultToken
-    ) public view returns (uint256) {
+    ) public view override returns (uint256) {
         return userFreezedShares[user][vaultToken];
     }
 }

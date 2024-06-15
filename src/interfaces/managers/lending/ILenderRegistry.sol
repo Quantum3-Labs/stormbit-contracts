@@ -4,6 +4,8 @@ pragma solidity ^0.8.21;
 /// @title Stormbit Lending Registru Interface
 /// TODO split into different interfaces according to funcionality
 interface ILenderRegistry {
+    event LenderRegistered(address indexed lender);
+
     function register() external;
 
     function isRegistered(address lender) external view returns (bool);

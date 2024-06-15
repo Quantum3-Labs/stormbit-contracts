@@ -15,18 +15,6 @@ interface ILendingTerms {
         uint256 comission
     );
     event LendingTermRemoved(uint256 indexed id);
-    event IncreaseDelegateSharesToTerm(
-        uint256 indexed id,
-        address indexed user,
-        address indexed vaultToken,
-        uint256 shares
-    );
-    event DecreaseDelegateSharesToTerm(
-        uint256 indexed id,
-        address indexed user,
-        address indexed vaultToken,
-        uint256 shares
-    );
 
     function createLendingTerm(uint256 comission) external returns (uint256);
 
