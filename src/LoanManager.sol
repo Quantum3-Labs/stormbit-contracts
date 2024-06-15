@@ -237,6 +237,10 @@ contract StormbitLoanManager is
         emit TermAllocated(loanId, termId);
     }
 
+    /// @dev allow lender to allocate fund on the loan, but only when the term is already allocated
+    /// @param loanId id of the loan
+    /// @param termId id of the term
+    /// @param amount amount of shares to allocate
     function allocateFundOnLoan(
         uint256 loanId,
         uint256 termId,
