@@ -1,14 +1,14 @@
 pragma solidity ^0.8.21;
 
-import {IDepositWithdraw} from "./interfaces/IDepositWithdraw.sol";
-import {IGovernable} from "./interfaces/IGovernable.sol";
-import {IAssetManager} from "./interfaces/IAssetManager.sol";
+import {IDepositWithdraw} from "./interfaces/managers/asset/IDepositWithdraw.sol";
+import {IGovernable} from "./interfaces/utils/IGovernable.sol";
+import {IAssetManager} from "./interfaces/managers/asset/IAssetManager.sol";
+import {IERC20} from "./interfaces/token/IERC20.sol";
+import {IERC4626} from "./interfaces/token/IERC4626.sol";
 import {BaseVault} from "./vaults/BaseVault.sol";
-import {IERC20} from "./interfaces/IERC20.sol";
 import {StormbitLoanManager} from "./LoanManager.sol";
 import {StormbitLendingManager} from "./LendingManager.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 /// @author Quantum3 Labs
 /// @title Stormbit Asset Manager

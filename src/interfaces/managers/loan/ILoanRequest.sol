@@ -1,6 +1,6 @@
 pragma solidity ^0.8.21;
 
-import {ILendingTerms} from "./ILendingTerms.sol";
+import {ILendingTerms} from "../lending/ILendingTerms.sol";
 
 /// @author Quantum3 Labs
 /// @title Stormbit Loan Manager Interface

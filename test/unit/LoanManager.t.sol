@@ -2,7 +2,7 @@ pragma solidity ^0.8.21;
 
 import {console} from "forge-std/Script.sol";
 import {SetupTest} from "../Setup.t.sol";
-import {ILoanRequest} from "../../src/interfaces/ILoanRequest.sol";
+import {ILoanRequest} from "../../src/interfaces/managers/loan/ILoanRequest.sol";
 
 contract LoanManagerTest is SetupTest {
     uint256 borrowAmount;

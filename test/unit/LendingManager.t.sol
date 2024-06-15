@@ -2,8 +2,8 @@ pragma solidity ^0.8.21;
 
 import {console} from "forge-std/Script.sol";
 import {SetupTest} from "../Setup.t.sol";
-import {ILendingTerms} from "../../src/interfaces/ILendingTerms.sol";
-import {IERC4626} from "../../src/interfaces/IERC4626.sol";
+import {ILendingTerms} from "../../src/interfaces/managers/lending/ILendingTerms.sol";
+import {IERC4626} from "../../src/interfaces/token/IERC4626.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
 
 contract LendingManagerTest is SetupTest {

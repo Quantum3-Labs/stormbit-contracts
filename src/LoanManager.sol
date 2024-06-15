@@ -1,10 +1,10 @@
 pragma solidity ^0.8.21;
 
-import {IGovernable} from "./interfaces/IGovernable.sol";
-import {ILoanRequest} from "./interfaces/ILoanRequest.sol";
-import {ILendingTerms} from "./interfaces/ILendingTerms.sol";
-import {IAllocation} from "./interfaces/IAllocation.sol";
-import {IERC4626} from "./interfaces/IERC4626.sol";
+import {ILoanRequest} from "./interfaces/managers/loan/ILoanRequest.sol";
+import {ILendingTerms} from "./interfaces/managers/lending/ILendingTerms.sol";
+import {IAllocation} from "./interfaces/managers/loan/IAllocation.sol";
+import {IGovernable} from "./interfaces/utils/IGovernable.sol";
+import {IERC4626} from "./interfaces/token/IERC4626.sol";
 import {StormbitAssetManager} from "./AssetManager.sol";
 import {StormbitLendingManager} from "./LendingManager.sol";
 

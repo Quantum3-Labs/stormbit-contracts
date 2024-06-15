@@ -1,12 +1,12 @@
 pragma solidity ^0.8.21;
 
-import {ILendingTerms} from "./interfaces/ILendingTerms.sol";
-import {IGovernable} from "./interfaces/IGovernable.sol";
-import {ILenderRegistry} from "./interfaces/ILenderRegistry.sol";
-import {ILoanExecute} from "./interfaces/ILoanExecute.sol";
+import {ILendingTerms} from "./interfaces/managers/lending/ILendingTerms.sol";
+import {ILenderRegistry} from "./interfaces/managers/lending/ILenderRegistry.sol";
+import {ILoanExecute} from "./interfaces/managers/lending/ILoanExecute.sol";
+import {IERC4626} from "./interfaces/token/IERC4626.sol";
+import {IGovernable} from "./interfaces/utils/IGovernable.sol";
 import {StormbitAssetManager} from "./AssetManager.sol";
 import {StormbitLoanManager} from "./LoanManager.sol";
-import {IERC4626} from "./interfaces/IERC4626.sol";
 
 /// @author Quantum3 Labs
 /// @title Stormbit Lending Manager
