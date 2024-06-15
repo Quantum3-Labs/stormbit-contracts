@@ -29,7 +29,7 @@ contract SetupTest is TestUtils {
         token3 = new ERC20Mock();
 
         supportedTokens = [address(token1), address(token2), address(token3)];
-        assetManager = new StormbitAssetManager(governor);
+        assetManager = new StormbitAssetManager(governor, owner);
         lendingManager = new StormbitLendingManager(governor);
         loanManager = new StormbitLoanManager(governor);
 

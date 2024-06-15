@@ -3,6 +3,7 @@ pragma solidity ^0.8.21;
 import "forge-std/test.sol";
 
 contract TestUtils is Test {
+    address owner = makeAddr("owner");
     address governor = makeAddr("governor");
     address funder = makeAddr("funder");
 

@@ -7,6 +7,7 @@ contract DeployHelpers is Script {
     struct NetworkConfig {
         address[] initialSupportedTokens;
         address governor;
+        address owner;
         uint256 deployerKey;
     }
 
@@ -43,6 +44,7 @@ contract DeployHelpers is Script {
         networkConfig = NetworkConfig({
             initialSupportedTokens: tokens,
             governor: address(0), // todo: change to real governor
+            owner: address(0), // todo: change to real owner
             deployerKey: vm.envUint("PRIVATE_KEY")
         });
     }
@@ -69,6 +71,7 @@ contract DeployHelpers is Script {
         networkConfig = NetworkConfig({
             initialSupportedTokens: tokens,
             governor: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266,
+            owner: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266,
             deployerKey: DEFAULT_ANVIL_PRIVATE_KEY
         });
     }

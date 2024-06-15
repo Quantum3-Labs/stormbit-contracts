@@ -3,19 +3,29 @@ pragma solidity ^0.8.21;
 import {IDepositWithdraw} from "./interfaces/managers/asset/IDepositWithdraw.sol";
 import {IGovernable} from "./interfaces/utils/IGovernable.sol";
 import {IAssetManager} from "./interfaces/managers/asset/IAssetManager.sol";
+import {IAssetManagerView} from "./interfaces/managers/asset/IAssetManagerView.sol";
 import {IERC20} from "./interfaces/token/IERC20.sol";
 import {IERC4626} from "./interfaces/token/IERC4626.sol";
+import {IInitialize} from "./interfaces/utils/IInitialize.sol";
 import {BaseVault} from "./vaults/BaseVault.sol";
 import {StormbitLoanManager} from "./LoanManager.sol";
 import {StormbitLendingManager} from "./LendingManager.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @author Quantum3 Labs
 /// @title Stormbit Asset Manager
 /// @notice entrypoint for all asset management operations
 
 // todo: be aware of denial of service on for loop
-contract StormbitAssetManager is IDepositWithdraw, IGovernable, IAssetManager {
+contract StormbitAssetManager is
+    IInitialize,
+    IGovernable,
+    IDepositWithdraw,
+    IAssetManager,
+    IAssetManagerView,
+    Ownable
+{
     using Math for uint256;
 
     address private _governor;
@@ -25,9 +35,7 @@ contract StormbitAssetManager is IDepositWithdraw, IGovernable, IAssetManager {
     mapping(address token => bool isSupported) tokens; // check if token is supported
     mapping(address token => address tokenVault) tokenVaults; // token to vault mapping
 
-    uint256 public constant SHARE_DECIMAL_OFFSET = 8;
-
-    constructor(address initialGovernor) {
+    constructor(address initialGovernor, address owner) Ownable(owner) {
         _governor = initialGovernor;
     }
 
@@ -56,12 +64,13 @@ contract StormbitAssetManager is IDepositWithdraw, IGovernable, IAssetManager {
     // -------- PUBLIC FUNCTIONS ---------------
     // -----------------------------------------
 
-    // todo: use oz initializer/ownable
-    // todo: move to interface
+    /// @dev used to initialize loan and lend manager address
+    /// @param loanManagerAddr address of the loan manager
+    /// @param lendingManagerAddr address of the lending manager
     function initialize(
         address loanManagerAddr,
         address lendingManagerAddr
-    ) public {
+    ) public override onlyOwner {
         loanManager = StormbitLoanManager(loanManagerAddr);
         lendingManager = StormbitLendingManager(lendingManagerAddr);
     }
@@ -87,13 +96,13 @@ contract StormbitAssetManager is IDepositWithdraw, IGovernable, IAssetManager {
         emit Deposit(msg.sender, token, assets);
     }
 
-    // todo: move to interface
+    /// @dev same function as deposit, but allow user to deposit on behalf of another user
     function depositFrom(
         address token,
         uint256 assets,
         address depositor,
         address receiver
-    ) public {
+    ) public override {
         require(tokens[token], "StormbitAssetManager: token not supported");
         address tokenVault = tokenVaults[token]; // get the corresponding vault
         // first make sure can transfer user token to manager
@@ -116,7 +125,6 @@ contract StormbitAssetManager is IDepositWithdraw, IGovernable, IAssetManager {
         // emit Withdraw(msg.sender, token, assets);
     }
 
-    // todo: move to interface
     /// @dev allow borrower to withdraw assets from the vault
     /// @param loanId id of the loan
     /// @param borrower address of the borrower
@@ -127,7 +135,7 @@ contract StormbitAssetManager is IDepositWithdraw, IGovernable, IAssetManager {
         address borrower,
         address tokenVault,
         address[] calldata loanParticipators
-    ) public onlyLoanManager {
+    ) public override onlyLoanManager {
         // loop through all loanParticipators
         for (uint256 i = 0; i < loanParticipators.length; i++) {
             address participator = loanParticipators[i];
@@ -143,12 +151,12 @@ contract StormbitAssetManager is IDepositWithdraw, IGovernable, IAssetManager {
             );
         }
 
-        // todo: emit event
+        emit BorrowerWithdraw(loanId, borrower, tokenVault, loanParticipators);
     }
 
     /// @dev allow governor to add a new token
     /// @param token address of the token
-    function addToken(address token) public onlyGovernor {
+    function addToken(address token) public override onlyGovernor {
         if (tokens[token]) return;
         tokens[token] = true;
         // deploy the vault
@@ -160,7 +168,8 @@ contract StormbitAssetManager is IDepositWithdraw, IGovernable, IAssetManager {
         );
         // update the mapping
         tokenVaults[token] = address(vault);
-        // todo: add event
+
+        emit AddToken(token, address(vault));
     }
 
     /// @dev allow governor to remove the support of a token
@@ -168,6 +177,7 @@ contract StormbitAssetManager is IDepositWithdraw, IGovernable, IAssetManager {
     function removeToken(address token) public override onlyGovernor {
         tokens[token] = false;
         // todo: make sure vault is empty
+        // todo: emit event
     }
 
     /// @dev when user delegating their shares,
@@ -176,8 +186,9 @@ contract StormbitAssetManager is IDepositWithdraw, IGovernable, IAssetManager {
         address depositor,
         address vaultToken,
         uint256 shares
-    ) public {
+    ) public override {
         // todo: logic to control increased/decreased allowance
+        // todo: make sure only msg.sender=depositor or msg.sende=loan/lend manager
         BaseVault(vaultToken).approve(depositor, address(this), shares);
     }
 
@@ -191,12 +202,16 @@ contract StormbitAssetManager is IDepositWithdraw, IGovernable, IAssetManager {
 
     /// @dev check if token is supported
     /// @param token address of the token
-    function isTokenSupported(address token) public view returns (bool) {
+    function isTokenSupported(
+        address token
+    ) public view override returns (bool) {
         return tokens[token];
     }
 
     /// @dev get token vault address
-    function getTokenVault(address token) public view returns (address) {
+    function getTokenVault(
+        address token
+    ) public view override returns (address) {
         return tokenVaults[token];
     }
 
@@ -204,7 +219,7 @@ contract StormbitAssetManager is IDepositWithdraw, IGovernable, IAssetManager {
     function getUserShares(
         address token,
         address user
-    ) public view returns (uint256) {
+    ) public view override returns (uint256) {
         address tokenVault = tokenVaults[token];
         IERC4626 vault = IERC4626(tokenVault);
         return vault.balanceOf(user);
@@ -214,7 +229,7 @@ contract StormbitAssetManager is IDepositWithdraw, IGovernable, IAssetManager {
     function convertToShares(
         address token,
         uint256 assets
-    ) public view returns (uint256) {
+    ) public view override returns (uint256) {
         address tokenVault = tokenVaults[token];
         IERC4626 vault = IERC4626(tokenVault);
         return vault.convertToShares(assets);
@@ -224,7 +239,7 @@ contract StormbitAssetManager is IDepositWithdraw, IGovernable, IAssetManager {
     function convertToAssets(
         address token,
         uint256 shares
-    ) public view returns (uint256) {
+    ) public view override returns (uint256) {
         address tokenVault = tokenVaults[token];
         IERC4626 vault = IERC4626(tokenVault);
         return vault.convertToAssets(shares);
