@@ -31,7 +31,7 @@ contract SetupTest is TestUtils {
         supportedTokens = [address(token1), address(token2), address(token3)];
         assetManager = new StormbitAssetManager(governor, owner);
         lendingManager = new StormbitLendingManager(governor, owner);
-        loanManager = new StormbitLoanManager(governor);
+        loanManager = new StormbitLoanManager(governor, owner);
 
         vm.startPrank(owner);
         assetManager.initialize(address(loanManager), address(lendingManager));

@@ -28,8 +28,7 @@ interface ILoanRequest {
         uint256 indexed loanId,
         address indexed borrower,
         address indexed token,
-        uint256 amount,
-        uint256 deadline
+        uint256 amount
     );
 
     function requestLoan(
@@ -37,8 +36,4 @@ interface ILoanRequest {
         uint256 amount,
         uint256 deadline
     ) external returns (uint256);
-
-    function executeLoan(uint256 loanId) external;
-
-    function repay(uint256 loanId) external;
 }

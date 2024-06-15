@@ -1,32 +1,35 @@
 pragma solidity ^0.8.21;
 
-import {ILoanRequest} from "./interfaces/managers/loan/ILoanRequest.sol";
 import {ILendingTerms} from "./interfaces/managers/lending/ILendingTerms.sol";
+import {ILoanRequest} from "./interfaces/managers/loan/ILoanRequest.sol";
+import {ILoanManager} from "./interfaces/managers/loan/ILoanManager.sol";
+import {ILoanManagerView} from "./interfaces/managers/loan/ILoanManagerView.sol";
 import {IAllocation} from "./interfaces/managers/loan/IAllocation.sol";
-import {IGovernable} from "./interfaces/utils/IGovernable.sol";
 import {IERC4626} from "./interfaces/token/IERC4626.sol";
+import {IGovernable} from "./interfaces/utils/IGovernable.sol";
+import {IInitialize} from "./interfaces/utils/IInitialize.sol";
 import {StormbitAssetManager} from "./AssetManager.sol";
 import {StormbitLendingManager} from "./LendingManager.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @author Quantum3 Labs
 /// @title Stormbit Loan Manager
 /// @notice entrypoint for loan related operations
 
 // todo: be aware of denial of service on for loop
-contract StormbitLoanManager is ILoanRequest, IAllocation {
-    // todo: move to interface
-    struct LoanParticipator {
-        address user;
-        address token;
-        address vaultToken;
-        uint256 shares;
-        uint256 termId;
-    }
-
-    address public governor;
+contract StormbitLoanManager is
+    IGovernable,
+    IInitialize,
+    ILoanManager,
+    ILoanManagerView,
+    ILoanRequest,
+    IAllocation,
+    Ownable
+{
+    address private _governor;
     StormbitLendingManager public lendingManager;
-    StormbitAssetManager public assetManager;
     uint256 public loanCounter;
+    StormbitAssetManager public assetManager;
 
     mapping(uint256 loanId => Loan loan) public loans;
     mapping(uint256 loanId => ILendingTerms.LendingTerm[] terms)
@@ -38,8 +41,8 @@ contract StormbitLoanManager is ILoanRequest, IAllocation {
     mapping(uint256 loanId => mapping(address depositor => LoanParticipator loanParticipator))
         public loanParticipators;
 
-    constructor(address _governor) {
-        governor = _governor;
+    constructor(address initialGovernor, address owner) Ownable(owner) {
+        _governor = initialGovernor;
     }
 
     // -----------------------------------------
@@ -47,7 +50,7 @@ contract StormbitLoanManager is ILoanRequest, IAllocation {
     // -----------------------------------------
 
     modifier onlyGovernor() {
-        require(msg.sender == governor, "StormbitAssetManager: not governor");
+        require(msg.sender == _governor, "StormbitAssetManager: not governor");
         _;
     }
 
@@ -71,11 +74,10 @@ contract StormbitLoanManager is ILoanRequest, IAllocation {
     // -------- PUBLIC FUNCTIONS ---------------
     // -----------------------------------------
 
-    // todo: use oz initializer
     function initialize(
         address assetManagerAddr,
         address lendingManagerAddr
-    ) public {
+    ) public override onlyOwner {
         assetManager = StormbitAssetManager(assetManagerAddr);
         lendingManager = StormbitLendingManager(lendingManagerAddr);
     }
@@ -119,13 +121,13 @@ contract StormbitLoanManager is ILoanRequest, IAllocation {
             status: LoanStatus.Pending
         });
 
-        emit LoanRequested(loanId, msg.sender, token, amount, deadline);
+        emit LoanRequested(loanId, msg.sender, token, amount);
         return loanId;
     }
 
     /// @dev allow borrower to execute the loan and receive the fund
     /// @param loanId id of the loan
-    function executeLoan(uint256 loanId) public onlyBorrower(loanId) {
+    function executeLoan(uint256 loanId) public override onlyBorrower(loanId) {
         Loan memory loan = loans[loanId];
         // require valid loan
         require(_validLoan(loanId), "StormbitLoanManager: invalid loan");
@@ -145,10 +147,13 @@ contract StormbitLoanManager is ILoanRequest, IAllocation {
             participatorsAddresses[loanId]
         );
         loans[loanId].status = LoanStatus.Active;
+
+        emit LoanExecuted(loanId, loan.borrower, loan.token, loan.amount);
     }
 
     /// @dev allow anyone to repay the loan, not restricted to borrower
     /// @param loanId id of the loan
+    // todo: allow repay partially?
     function repay(uint256 loanId) external override {
         // check if loan is valid
         require(_validLoan(loanId), "StormbitLoanManager: invalid loan");
@@ -188,12 +193,19 @@ contract StormbitLoanManager is ILoanRequest, IAllocation {
                 shares
             );
         }
+
+        // todo: if allow partial repayment, update the loan status when totally repaid, otherwise can just set it as done
+        loans[loanId].status = LoanStatus.Repaid;
+        emit LoanRepaid(loanId, msg.sender);
     }
 
     /// @dev enable the lender to allocate certain term for the loan, until the loan is fully allocated
     /// @param loanId id of the loan
     /// @param termId id of the term
-    function allocateTerm(uint256 loanId, uint256 termId) public onlyLender {
+    function allocateTerm(
+        uint256 loanId,
+        uint256 termId
+    ) public override onlyLender {
         // check is valid loan
         require(_validLoan(loanId), "StormbitLoanManager: invalid loan");
 
@@ -229,7 +241,7 @@ contract StormbitLoanManager is ILoanRequest, IAllocation {
         uint256 loanId,
         uint256 termId,
         uint256 amount
-    ) public onlyLender {
+    ) public override onlyLender {
         // check is valid loan
         require(_validLoan(loanId), "StormbitLoanManager: invalid loan");
         // dont need to check term is valid, because it is already checked in allocateTerm
@@ -310,7 +322,8 @@ contract StormbitLoanManager is ILoanRequest, IAllocation {
         }
         // update loan at storage level
         loans[loanId] = loan;
-        // todo: emit event
+
+        emit AllocatedFundOnLoan(loanId, termId, amount);
     }
 
     // -----------------------------------------
@@ -334,21 +347,27 @@ contract StormbitLoanManager is ILoanRequest, IAllocation {
     // -----------------------------------------
     // -------- PUBLIC GETTER FUNCTIONS --------
     // -----------------------------------------
+    function governor() public view override returns (address) {
+        return _governor;
+    }
+
     function getLoanParticipator(
         uint256 loanId,
         address depositor
-    ) public view returns (LoanParticipator memory) {
+    ) public view override returns (LoanParticipator memory) {
         return loanParticipators[loanId][depositor];
     }
 
-    function getLoan(uint256 loanId) public view returns (Loan memory) {
+    function getLoan(
+        uint256 loanId
+    ) public view override returns (Loan memory) {
         return loans[loanId];
     }
 
     function getLoanTermAllocated(
         uint256 loanId,
         uint256 termId
-    ) public view returns (bool) {
+    ) public view override returns (bool) {
         return loanTermAllocated[loanId][termId];
     }
 }
