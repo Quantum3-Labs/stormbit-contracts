@@ -3,26 +3,23 @@ pragma solidity ^0.8.21;
 import {console} from "forge-std/Script.sol";
 import {SetupTest} from "../Setup.t.sol";
 import {ILoanRequest} from "../../src/interfaces/managers/loan/ILoanRequest.sol";
+import {BaseVault} from "../../src/vaults/BaseVault.sol";
+import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
 
 contract LoanManagerTest is SetupTest {
-    uint256 borrowAmount;
-
     function setUp() public {
         SetupTest.setUpEnvironment();
-
-        borrowAmount = 500 * (10 ** token1.decimals());
     }
 
     function testRequestLoan() public {
-        vm.startPrank(borrower1);
-        // should revert when the vault is empty
-        uint256 loanId = loanManager.requestLoan(
+        uint256 borrowAmount = 500 * (10 ** token1.decimals());
+        uint256 loanId = _requestLoan(
+            borrower1,
             address(token1),
             borrowAmount,
-            block.timestamp + 1 days
+            1 days
         );
         ILoanRequest.Loan memory loan = loanManager.getLoan(loanId);
-        vm.stopPrank();
         assert(loan.borrower == borrower1);
         assert(loan.amount == borrowAmount);
         assert(loan.token == address(token1));
@@ -35,14 +32,13 @@ contract LoanManagerTest is SetupTest {
     }
 
     function testAllocateTermInsufficientFundRevert() public {
-        vm.startPrank(borrower1);
-        // should revert when the vault is empty
-        uint256 loanId = loanManager.requestLoan(
+        uint256 borrowAmount = 500 * (10 ** token1.decimals());
+        uint256 loanId = _requestLoan(
+            borrower1,
             address(token1),
             borrowAmount,
-            block.timestamp + 1 days
+            1 days
         );
-        vm.stopPrank();
 
         vm.startPrank(lender1);
         // register as lender and create lending term
@@ -55,33 +51,17 @@ contract LoanManagerTest is SetupTest {
     }
 
     function testAllocateTerm() public {
-        vm.startPrank(borrower1);
-        // should revert when the vault is empty
-        uint256 loanId = loanManager.requestLoan(
+        uint256 borrowAmount = 500 * (10 ** token1.decimals());
+        uint256 loanId = _requestLoan(
+            borrower1,
             address(token1),
             borrowAmount,
-            block.timestamp + 1 days
+            1 days
         );
-        vm.stopPrank();
 
-        vm.startPrank(lender1);
-        // register as lender and create lending term
-        lendingManager.register();
-        uint256 termId = lendingManager.createLendingTerm(5);
-        vm.stopPrank();
+        uint256 termId = _registerAndCreateTerm(lender1, 500);
 
-        vm.startPrank(depositor1);
-        // deposit some token to vault by asset manager
-        uint256 depositAmount = 1000 * (10 ** token1.decimals());
-        token1.approve(address(assetManager), depositAmount);
-        assetManager.deposit(address(token1), depositAmount);
-        // delegate shares to lender1
-        lendingManager.increaseDelegateToTerm(
-            termId,
-            address(token1),
-            depositAmount
-        );
-        vm.stopPrank();
+        _depositAndDelegate(depositor1, 1000, 1000, address(token1), termId);
 
         vm.startPrank(lender1);
         // allocate term
@@ -92,46 +72,27 @@ contract LoanManagerTest is SetupTest {
         assert(isAllocated);
     }
 
-    function testAllocateFundOnLoan() public returns (uint256, uint256) {
-        vm.startPrank(borrower1);
-        uint256 loanId = loanManager.requestLoan(
+    function testAllocateFundOnLoan() public {
+        uint256 borrowAmount = 500 * (10 ** token1.decimals());
+        uint256 loanId = _requestLoan(
+            borrower1,
             address(token1),
             borrowAmount,
-            block.timestamp + 1 days
+            1 days
         );
-        vm.stopPrank();
 
-        vm.startPrank(lender1);
-        // register as lender and create lending term
-        lendingManager.register();
-        uint256 termId = lendingManager.createLendingTerm(5);
-        vm.stopPrank();
+        uint256 termId = _registerAndCreateTerm(lender1, 500);
 
-        vm.startPrank(depositor1);
-        // deposit some token to vault by asset manager
-        uint256 depositAmount = 1000 * (10 ** token1.decimals());
-        token1.approve(address(assetManager), depositAmount);
-        assetManager.deposit(address(token1), depositAmount);
-        // delegate shares to lender1
-        uint256 delegateAmount = 500 * (10 ** vaultToken1.decimals());
+        _depositAndDelegate(depositor1, 1000, 500, address(token1), termId);
 
-        lendingManager.increaseDelegateToTerm(
-            termId,
-            address(token1),
-            delegateAmount
-        );
-        vm.stopPrank();
-
-        vm.startPrank(lender1);
         // allocate term
-        loanManager.allocateTerm(loanId, termId);
-        uint256 allocateFundOnTermAmount = 500 * (10 ** vaultToken1.decimals());
-        loanManager.allocateFundOnLoan(
+        _allocateTermAndFundOnLoan(
+            lender1,
+            address(token1),
             loanId,
             termId,
-            allocateFundOnTermAmount
+            500
         );
-        vm.stopPrank();
 
         ILoanRequest.Loan memory loan = loanManager.getLoan(loanId);
         uint256 depositor1FreezedShares = lendingManager.getUserFreezedShares(
@@ -145,15 +106,35 @@ contract LoanManagerTest is SetupTest {
                 address(vaultToken1)
             );
 
-        assert(loan.currentSharesAllocated == allocateFundOnTermAmount);
-        assert(depositor1FreezedShares == allocateFundOnTermAmount);
+        uint256 expectedAllocateFundOnTermAmount = 500 *
+            (10 ** vaultToken1.decimals());
+        assert(loan.currentSharesAllocated == expectedAllocateFundOnTermAmount);
+        assert(depositor1FreezedShares == expectedAllocateFundOnTermAmount);
         assert(depositor1DisposableShares == 0);
-
-        return (loanId, termId);
     }
 
     function testExecuteLoan() public returns (uint256, uint256) {
-        (uint256 loanId, uint256 termId) = testAllocateFundOnLoan();
+        uint256 borrowAmount = 500 * (10 ** token1.decimals());
+        uint256 loanId = _requestLoan(
+            borrower1,
+            address(token1),
+            borrowAmount,
+            1 days
+        );
+
+        uint256 termId = _registerAndCreateTerm(lender1, 500);
+
+        _depositAndDelegate(depositor1, 1000, 500, address(token1), termId);
+
+        // allocate term
+        _allocateTermAndFundOnLoan(
+            lender1,
+            address(token1),
+            loanId,
+            termId,
+            500
+        );
+
         vm.startPrank(borrower1);
         loanManager.executeLoan(loanId);
         vm.stopPrank();
@@ -176,7 +157,31 @@ contract LoanManagerTest is SetupTest {
     }
 
     function testRepayLoan() public {
-        (uint256 loanId, uint256 termId) = testExecuteLoan();
+        uint256 borrowAmount = 500 * (10 ** token1.decimals());
+        uint256 loanId = _requestLoan(
+            borrower1,
+            address(token1),
+            borrowAmount,
+            1 days
+        );
+
+        uint256 termId = _registerAndCreateTerm(lender1, 500);
+
+        _depositAndDelegate(depositor1, 1000, 500, address(token1), termId);
+
+        // allocate term
+        _allocateTermAndFundOnLoan(
+            lender1,
+            address(token1),
+            loanId,
+            termId,
+            500
+        );
+
+        vm.startPrank(borrower1);
+        loanManager.executeLoan(loanId);
+        vm.stopPrank();
+
         vm.startPrank(borrower1);
         ILoanRequest.Loan memory loan = loanManager.getLoan(loanId);
         token1.approve(address(assetManager), loan.amount);
@@ -209,5 +214,90 @@ contract LoanManagerTest is SetupTest {
         assert(
             depositor1DisposableShares == 500 * (10 ** vaultToken1.decimals())
         );
+    }
+
+    // -----------------------------------------
+    // ----------- UTILS FUNCTIONS -------------
+    // -----------------------------------------
+
+    function _requestLoan(
+        address borrower,
+        address token,
+        uint256 borrowAmount,
+        uint256 delay
+    ) private returns (uint256) {
+        vm.startPrank(borrower);
+        uint256 loanId = loanManager.requestLoan(
+            address(token),
+            borrowAmount,
+            block.timestamp + delay
+        );
+        vm.stopPrank();
+        return loanId;
+    }
+
+    function _registerAndCreateTerm(
+        address lender,
+        uint96 commission
+    ) private returns (uint256) {
+        vm.startPrank(lender);
+        lendingManager.register();
+        uint256 termId = lendingManager.createLendingTerm(commission);
+        vm.stopPrank();
+        return termId;
+    }
+
+    function _depositAndDelegate(
+        address depositor,
+        uint256 depositAmount,
+        uint256 delegateAmount,
+        address token,
+        uint256 termId
+    ) private {
+        ERC20Mock mockToken = ERC20Mock(token);
+        vm.startPrank(depositor);
+        // deposit some token to vault by asset manager
+        uint256 depositAmountWithDecimals = depositAmount *
+            (10 ** mockToken.decimals());
+        token1.approve(address(assetManager), depositAmountWithDecimals);
+        assetManager.deposit(address(token), depositAmountWithDecimals);
+
+        uint256 delegateAmountWithDecimals = delegateAmount *
+            (10 ** mockToken.decimals());
+
+        uint256 delegateAmountWithSharesDecimals = assetManager.convertToShares(
+            token,
+            delegateAmountWithDecimals
+        );
+        // delegate shares to lender1
+        lendingManager.increaseDelegateToTerm(
+            termId,
+            address(token),
+            delegateAmountWithSharesDecimals
+        );
+        vm.stopPrank();
+    }
+
+    function _allocateTermAndFundOnLoan(
+        address lender,
+        address token,
+        uint256 loanId,
+        uint256 termId,
+        uint256 allocateAmount
+    ) private {
+        vm.startPrank(lender);
+        // allocate term
+        loanManager.allocateTerm(loanId, termId);
+        // get vault token address
+        address vaultTokenAddress = assetManager.getTokenVault(address(token));
+        BaseVault vault = BaseVault(vaultTokenAddress);
+        uint256 allocateFundOnTermAmount = allocateAmount *
+            (10 ** vault.decimals());
+        loanManager.allocateFundOnLoan(
+            loanId,
+            termId,
+            allocateFundOnTermAmount
+        );
+        vm.stopPrank();
     }
 }

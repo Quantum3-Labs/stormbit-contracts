@@ -331,7 +331,7 @@ contract StormbitLoanManager is
     }
 
     // -----------------------------------------
-    // ----------- PRIVATEFUNCTIONS ------------
+    // ----------- PRIVATE FUNCTIONS -----------
     // -----------------------------------------
     function _validLoan(uint256 loanId) private view returns (bool) {
         return loans[loanId].borrower != address(0);
