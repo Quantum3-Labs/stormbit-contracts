@@ -30,4 +30,9 @@ interface ILendingManagerView {
         address user,
         address vaultToken
     ) external view returns (uint256);
+
+    function getUserTotalDelegatedShares(
+        address user,
+        address vaultToken
+    ) external view returns (uint256);
 }

@@ -121,8 +121,36 @@ contract StormbitAssetManager is
 
     /// @dev note that we dont require the token to be whitelisted
     function withdraw(address token, uint256 shares) public override {
-        // todo: if freezed, prevent withdraw
-        // emit Withdraw(msg.sender, token, assets);
+        // check if token is supported
+        require(tokens[token], "StormbitAssetManager: token not supported");
+
+        address tokenVault = tokenVaults[token]; // get the corresponding vault
+
+        // check if user has enough shares
+        require(
+            IERC4626(tokenVault).balanceOf(msg.sender) >= shares,
+            "StormbitAssetManager: insufficient shares"
+        );
+
+        // check if user had delegated their shares
+        // if yes, check if shares < disposable shares on lending manager
+        uint256 userTotalDelegatedShares = lendingManager
+            .getUserTotalDelegatedShares(msg.sender, tokenVault);
+        if (userTotalDelegatedShares > 0) {
+            // if user has delegated their shares
+            // todo: if total disposable shares is >= shares need to withdraw, how to decide withdraw from which term?
+            // if enough disposable shares, withdraw and update the disposable shares
+            // if not enough, revert
+        }
+
+        // convert shares to assets
+        uint256 assets = convertToAssets(token, shares);
+
+        // withdraw assets from the vault
+        // user first need to approve the asset manager to transfer their shares
+        IERC4626(tokenVault).redeem(shares, msg.sender, msg.sender);
+
+        emit Withdraw(msg.sender, token, assets);
     }
 
     /// @dev allow borrower to withdraw assets from the vault
@@ -168,16 +196,21 @@ contract StormbitAssetManager is
         );
         // update the mapping
         tokenVaults[token] = address(vault);
-
         emit AddToken(token, address(vault));
     }
 
     /// @dev allow governor to remove the support of a token
     /// @param token address of the token
     function removeToken(address token) public override onlyGovernor {
+        // get the vault address
+        address tokenVault = tokenVaults[token];
+        // check if vault is empty
+        require(
+            IERC4626(tokenVault).totalSupply() == 0,
+            "StormbitAssetManager: vault not empty"
+        );
         tokens[token] = false;
-        // todo: make sure vault is empty
-        // todo: emit event
+        emit RemoveToken(token, tokenVault);
     }
 
     /// @dev when user delegating their shares,
@@ -188,7 +221,10 @@ contract StormbitAssetManager is
         uint256 shares
     ) public override {
         // todo: logic to control increased/decreased allowance
-        // todo: make sure only msg.sender=depositor or msg.sende=loan/lend manager
+        require(
+            msg.sender == depositor || msg.sender == address(lendingManager),
+            "StormbitAssetManager: not authorized"
+        );
         BaseVault(vaultToken).approve(depositor, address(this), shares);
     }
 

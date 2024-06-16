@@ -372,11 +372,18 @@ contract StormbitLendingManager is
             termUserDelegatedShares[termId][user][vaultToken].disposableAmount;
     }
 
-    /// @dev get the amount of shares that was freezed due to executed loan 
+    /// @dev get the amount of shares that was freezed due to executed loan
     function getUserFreezedShares(
         address user,
         address vaultToken
     ) public view override returns (uint256) {
         return userFreezedShares[user][vaultToken];
+    }
+
+    function getUserTotalDelegatedShares(
+        address user,
+        address vaultToken
+    ) public view override returns (uint256) {
+        return userTotalDelegatedShares[user][vaultToken];
     }
 }
