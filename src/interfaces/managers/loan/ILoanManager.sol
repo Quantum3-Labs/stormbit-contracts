@@ -8,7 +8,7 @@ interface ILoanManager {
         uint256 indexed loanId,
         address indexed borrower,
         address indexed token,
-        uint256 amount
+        uint256 repayAmount
     );
 
     event LoanRepaid(uint256 indexed loanId, address indexed repayUser);
