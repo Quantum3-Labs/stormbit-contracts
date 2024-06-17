@@ -29,15 +29,13 @@ contract SetupTest is TestUtils {
         token3 = new ERC20Mock();
 
         supportedTokens = [address(token1), address(token2), address(token3)];
-        assetManager = new StormbitAssetManager(governor, owner);
-        lendingManager = new StormbitLendingManager(governor, owner);
-        loanManager = new StormbitLoanManager(governor, owner);
+        assetManager = new StormbitAssetManager(governor);
+        lendingManager = new StormbitLendingManager(governor);
+        loanManager = new StormbitLoanManager(governor);
 
-        vm.startPrank(owner);
         assetManager.initialize(address(loanManager), address(lendingManager));
         lendingManager.initialize(address(assetManager), address(loanManager));
         loanManager.initialize(address(assetManager), address(lendingManager));
-        vm.stopPrank();
 
         _addSupportedTokens();
         _mintAllTokens();
@@ -53,9 +51,9 @@ contract SetupTest is TestUtils {
     }
 
     function _setUpTokenVaults() private {
-        vaultToken1 = BaseVault(assetManager.getTokenVault(address(token1)));
-        vaultToken2 = BaseVault(assetManager.getTokenVault(address(token2)));
-        vaultToken3 = BaseVault(assetManager.getTokenVault(address(token3)));
+        vaultToken1 = BaseVault(assetManager.getVaultToken(address(token1)));
+        vaultToken2 = BaseVault(assetManager.getVaultToken(address(token2)));
+        vaultToken3 = BaseVault(assetManager.getVaultToken(address(token3)));
     }
 
     function _mintAllTokens() private {

@@ -4,12 +4,14 @@ import {ILendingTerms} from "./interfaces/managers/lending/ILendingTerms.sol";
 import {IDelegation} from "./interfaces/managers/lending/IDelegation.sol";
 import {ILenderRegistry} from "./interfaces/managers/lending/ILenderRegistry.sol";
 import {ILendingManagerView} from "./interfaces/managers/lending/ILendingManagerView.sol";
+import {ILendingWithdrawal} from "./interfaces/managers/lending/ILendingWithdrawal.sol";
+import {ILoanRequest} from "./interfaces/managers/loan/ILoanRequest.sol";
 import {IERC4626} from "./interfaces/token/IERC4626.sol";
 import {IGovernable} from "./interfaces/utils/IGovernable.sol";
 import {IInitialize} from "./interfaces/utils/IInitialize.sol";
 import {StormbitAssetManager} from "./AssetManager.sol";
 import {StormbitLoanManager} from "./LoanManager.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
 /// @author Quantum3 Labs
 /// @title Stormbit Lending Manager
@@ -23,7 +25,8 @@ contract StormbitLendingManager is
     ILendingTerms,
     IDelegation,
     ILenderRegistry,
-    Ownable
+    ILendingWithdrawal,
+    Initializable
 {
     address private _governor;
     StormbitAssetManager public assetManager;
@@ -31,21 +34,15 @@ contract StormbitLendingManager is
 
     mapping(address => bool) public registeredLenders;
     mapping(uint256 => LendingTerm) public lendingTerms;
-    // total shares controlled by the term owner
     mapping(uint256 termId => mapping(address vaultToken => Shares shares))
-        public termOwnerShares;
-    // total shares controlled by the depositor on term
-    mapping(uint256 termId => mapping(address user => mapping(address vaultToken => Shares Shares)))
-        public termUserDelegatedShares;
-    // track user total delegated shares
-    mapping(address user => mapping(address vaultToken => uint256 delegatedShares))
+        public termOwnerShares; // total shares controlled by the term owner
+    mapping(uint256 termId => mapping(address user => mapping(address vaultToken => uint256 shares)))
+        public termUserDelegatedShares; // total shares delegated by the depositor on term
+    mapping(address user => mapping(address vaultToken => uint256 delegatedShares)) // track user total delegated shares
         public userTotalDelegatedShares;
-    // track who delegated to the term
-    mapping(uint256 termId => mapping(address vaultToken => address[] user)) termDelegatedUsers;
-    // locked shares, the shares want lent out
-    mapping(address user => mapping(address vaultToken => uint256 sharesAmount)) userFreezedShares;
+    mapping(uint256 termId => mapping(address vaultToken => uint256 shares)) termFreezedShares; // track who delegated to the term
 
-    constructor(address initialGovernor, address owner) Ownable(owner) {
+    constructor(address initialGovernor) {
         _governor = initialGovernor;
     }
 
@@ -81,7 +78,7 @@ contract StormbitLendingManager is
     function initialize(
         address assetManagerAddr,
         address loanManagerAddr
-    ) public override onlyOwner {
+    ) public override initializer {
         assetManager = StormbitAssetManager(assetManagerAddr);
         loanManager = StormbitLoanManager(loanManagerAddr);
     }
@@ -89,7 +86,6 @@ contract StormbitLendingManager is
     /// @dev register msg sender as a lender
     function register() public override {
         registeredLenders[msg.sender] = true;
-
         emit LenderRegistered(msg.sender);
     }
 
@@ -130,190 +126,217 @@ contract StormbitLendingManager is
         emit LendingTermRemoved(id);
     }
 
-    // todo: what if user delegated token, but he spend the token outside stormbit but here is still recording old amount, it will make transaction fail when borrower is doing loan
     /// @dev allow depositor to delegate shares to a lending term
     /// @param termId id of the lending term
     /// @param token address of the token
-    /// @param sharesAmount amount of shares to delegate
-    function increaseDelegateToTerm(
+    /// @param shares amount of shares to delegate
+    function depositToTerm(
         uint256 termId,
         address token,
-        uint256 sharesAmount
+        uint256 shares
     ) public override {
         require(
-            _validLendingTerm(termId),
-            "StormbitLendingManager: lending term does not exist"
+            _beforeDeposit(),
+            "StormbitLendingManager: before deposit failed"
         );
         require(
             assetManager.isTokenSupported(token),
             "StormbitLendingManager: token not supported"
         );
-        address vaultToken = assetManager.getTokenVault(token);
+        require(
+            _validLendingTerm(termId),
+            "StormbitLendingManager: lending term does not exist"
+        );
+        require(
+            loanManager.getTermLoanAllocatedCounter(termId) == 0,
+            "StormbitLendingManager: term already allocated to loan"
+        );
+
+        address vaultToken = assetManager.getVaultToken(token);
         // get current delegated shares to the term
         uint256 currentDelegatedShares = userTotalDelegatedShares[msg.sender][
             vaultToken
         ];
+        uint256 userCurrentTotalDelegatedShares = currentDelegatedShares +
+            shares;
         // get user shares in the vault
         uint256 userShares = assetManager.getUserShares(token, msg.sender);
-        uint256 userCurrentTotalDelegatedShares = currentDelegatedShares +
-            sharesAmount;
         // check if the user has enough shares
         require(
             userShares >= userCurrentTotalDelegatedShares,
             "StormbitLendingManager: not enough shares"
         );
+
+        // transfer shares to lending manager
+        bool isSuccess = IERC4626(vaultToken).transferFrom(
+            msg.sender,
+            address(this),
+            shares
+        );
+        if (!isSuccess) {
+            revert("StormbitLendingManager: failed to transfer shares");
+        }
+
+        // update the amount of shares delegated to the term by the user
+        termUserDelegatedShares[termId][msg.sender][vaultToken] += shares;
         // update user total delegated shares, prevent scenario delegate more than user has
-        userTotalDelegatedShares[msg.sender][vaultToken] += sharesAmount;
+        userTotalDelegatedShares[msg.sender][
+            vaultToken
+        ] = userCurrentTotalDelegatedShares;
 
         // update term total disposable shares (allowance)
-        termOwnerShares[termId][vaultToken].disposableAmount += sharesAmount;
-        termOwnerShares[termId][vaultToken].totalAmount += sharesAmount;
-
-        if (
-            termUserDelegatedShares[termId][msg.sender][vaultToken]
-                .totalAmount <= 0
-        ) {
-            // this is the first time the user is delegating to the term
-            // update the list of users who delegated to the term
-            termDelegatedUsers[termId][vaultToken].push(msg.sender);
-        }
-        // update the amount of shares delegated to the term by the user
-        termUserDelegatedShares[termId][msg.sender][vaultToken]
-            .totalAmount += sharesAmount;
-        termUserDelegatedShares[termId][msg.sender][vaultToken]
-            .disposableAmount += sharesAmount;
+        termOwnerShares[termId][vaultToken].disposableAmount += shares;
+        termOwnerShares[termId][vaultToken].totalAmount += shares;
 
         // update term balance
-        lendingTerms[termId].balances += sharesAmount;
+        lendingTerms[termId].balances += shares;
 
-        // approve the asset manager to spend the shares
-        assetManager.approve(
-            msg.sender,
-            vaultToken,
-            userCurrentTotalDelegatedShares
-        );
-
-        emit IncreaseDelegateSharesToTerm(
-            termId,
-            msg.sender,
-            vaultToken,
-            sharesAmount
-        );
+        emit DepositToTerm(termId, msg.sender, vaultToken, shares);
     }
 
     /// @dev allow lender to decrease delegated shares to a lending term
     /// @param termId id of the lending term
-    /// @param vaultToken address of the token
-    /// @param requestedDecrease amount of shares to decrease
-    function decreaseDelegateToTerm(
+    /// @param token address of the token
+    /// @param shares amount of shares to decrease
+    function withdrawFromTerm(
         uint256 termId,
-        address vaultToken,
-        uint256 requestedDecrease
+        address token,
+        uint256 shares
     ) public override {
         require(
             _validLendingTerm(termId),
             "StormbitLendingManager: lending term does not exist"
         );
-        // get current delegated shares to the term
-        uint256 currentDelegatedShares = termUserDelegatedShares[termId][
-            msg.sender
-        ][vaultToken].totalAmount;
+        address vaultToken = assetManager.getVaultToken(token);
         // currenly "disposable" shares
-        uint256 disposableDelegatedShares = termUserDelegatedShares[termId][
+        uint256 totalDelegatedShares = termUserDelegatedShares[termId][
             msg.sender
-        ][vaultToken].disposableAmount;
+        ][vaultToken];
 
-        require(
-            currentDelegatedShares >= requestedDecrease,
-            "StormbitLendingManager: insufficient delegated shares"
-        );
+        // check how many percentage of shares are freezed on term
+        uint256 freezedShares = termFreezedShares[termId][vaultToken];
+        uint256 freezedSharesPercentage = (freezedShares * 100) /
+            termOwnerShares[termId][vaultToken].totalAmount;
+        // get the freezeAmount from disposable shares
+        uint256 freezeAmount = (totalDelegatedShares *
+            freezedSharesPercentage) / 100;
+
+        // cannot withdraw more than disposable shares - freezeAmount
+        uint256 maximumWithdraw = totalDelegatedShares - freezeAmount;
+
         // check if the user has enough unfreezed shares
         require(
-            disposableDelegatedShares >= requestedDecrease,
-            "StormbitLendingManager: insufficient unfreezed shares"
+            shares <= maximumWithdraw,
+            "StormbitLendingManager: insufficient shares to withdraw"
         );
-        termUserDelegatedShares[termId][msg.sender][vaultToken]
-            .disposableAmount -= requestedDecrease;
-        termUserDelegatedShares[termId][msg.sender][vaultToken]
-            .totalAmount -= requestedDecrease;
-        userTotalDelegatedShares[msg.sender][vaultToken] -= requestedDecrease;
 
-        termOwnerShares[termId][vaultToken].totalAmount -= requestedDecrease;
-        termOwnerShares[termId][vaultToken]
-            .disposableAmount -= requestedDecrease;
+        termUserDelegatedShares[termId][msg.sender][vaultToken] -= shares;
+        userTotalDelegatedShares[msg.sender][vaultToken] -= shares;
+
+        // calculate weight of user in shares / term total shares
+        uint256 weight = (shares * 100) /
+            termOwnerShares[termId][vaultToken].totalAmount;
+        // give user the profit
+        uint256 profit = (termOwnerShares[termId][vaultToken].profit * weight) /
+            100;
+
+        termOwnerShares[termId][vaultToken].totalAmount -= shares;
+        termOwnerShares[termId][vaultToken].disposableAmount -= shares;
+        termOwnerShares[termId][vaultToken].profit -= profit;
 
         // update term balance
-        lendingTerms[termId].balances -= requestedDecrease;
+        lendingTerms[termId].balances -= shares;
 
-        emit DecreaseDelegateSharesToTerm(
-            termId,
+        // transfer shares back to user
+        bool isSuccess = IERC4626(vaultToken).transfer(
             msg.sender,
-            vaultToken,
-            requestedDecrease
+            shares + profit
         );
+        if (!isSuccess) {
+            revert("StormbitLendingManager: failed to transfer shares");
+        }
+
+        emit WithdrawFromTerm(termId, msg.sender, vaultToken, shares);
     }
 
-    /// @dev When the loan executed, loan manager will call this to freeze the user's shares,
-    /// when the shares are freezed, they are prevent to withdraw
-    /// @param termId id of the lending term
-    /// @param vaultToken address of the token
-    /// @param depositor address of the depositor
-    /// @param freezeAmount amount of shares to freeze
-    function freezeSharesOnTerm(
+    function claimLoanProfit(
         uint256 termId,
-        address vaultToken,
-        address depositor,
-        uint256 freezeAmount
+        uint256 loanId,
+        address token
+    ) public override {
+        // todo: add another mapping to prevent double claim
+        // get term owner
+        address termOwner = lendingTerms[termId].owner;
+        require(
+            msg.sender == termOwner,
+            "StormbitLendingManager: not term owner"
+        );
+        // get loan
+        ILoanRequest.Loan memory loan = loanManager.getLoan(loanId);
+        require(
+            loan.status == ILoanRequest.LoanStatus.Repaid,
+            "StormbitLendingManager: loan not repaid"
+        );
+        address vaultToken = assetManager.getVaultToken(token);
+        // now check the weight of term in loan
+        uint256 weight = loanManager.getTermAllocatedSharesOnLoan(
+            loanId,
+            termId,
+            vaultToken
+        );
+        ILendingTerms.LendingTerm memory term = lendingTerms[termId];
+        uint256 termFundedPercent = (weight * 100) / loan.sharesRequired;
+        uint256 fund = (loan.repayAmount * termFundedPercent) / 100;
+        uint256 commission = (fund * term.comission) / 10000;
+
+        // transfer commission shares to term owner
+        bool isSuccess = IERC4626(vaultToken).transfer(termOwner, commission);
+        if (!isSuccess) {
+            revert("StormbitLendingManager: failed to transfer commission");
+        }
+
+        // the rest add to term balance
+        uint256 profit = fund - commission;
+        termOwnerShares[termId][vaultToken].disposableAmount += profit;
+        // calculate profit - expenses and all to total amount
+        uint256 extra = profit - weight;
+        termOwnerShares[termId][vaultToken].profit += extra;
+    }
+
+    function freezeTermShares(
+        uint256 termId,
+        uint256 shares,
+        address token
     ) public override onlyLoanManager {
         require(
             _validLendingTerm(termId),
             "StormbitLendingManager: lending term does not exist"
         );
+        address vaultToken = assetManager.getVaultToken(token);
         require(
-            termUserDelegatedShares[termId][depositor][vaultToken]
-                .disposableAmount >= freezeAmount,
+            termOwnerShares[termId][vaultToken].disposableAmount >= shares,
             "StormbitLendingManager: insufficient disposable shares"
         );
-        termUserDelegatedShares[termId][depositor][vaultToken]
-            .disposableAmount -= freezeAmount;
-        userFreezedShares[depositor][vaultToken] += freezeAmount;
-        // also reduce the term owner disposable shares
-        termOwnerShares[termId][vaultToken].disposableAmount -= freezeAmount;
-
-        emit FreezeSharesOnTerm(termId, depositor, vaultToken, freezeAmount);
+        termFreezedShares[termId][vaultToken] += shares;
+        termOwnerShares[termId][vaultToken].disposableAmount -= shares;
+        lendingTerms[termId].balances -= shares;
     }
 
-    /// @dev When the loan is paid off, loan manager will call this to unfreeze the user's shares
-    /// @param termId id of the lending term
-    /// @param vaultToken address of the token
-    /// @param depositor address of the depositor
-    /// @param unfreezeAmount amount of shares to unfreeze
-    function unfreezeSharesOnTerm(
-        uint256 termId,
-        address vaultToken,
-        address depositor,
-        uint256 unfreezeAmount
+    function borrowerWithdraw(
+        address borrower,
+        address token,
+        uint256 shares
     ) public override onlyLoanManager {
-        require(
-            _validLendingTerm(termId),
-            "StormbitLendingManager: lending term does not exist"
-        );
-        require(
-            userFreezedShares[depositor][vaultToken] >= unfreezeAmount,
-            "StormbitLendingManager: insufficient freezed shares"
-        );
-        userFreezedShares[depositor][vaultToken] -= unfreezeAmount;
-        termUserDelegatedShares[termId][depositor][vaultToken]
-            .disposableAmount += unfreezeAmount;
-        // also increase the term owner disposable shares
-        termOwnerShares[termId][vaultToken].disposableAmount += unfreezeAmount;
+        address vaultToken = assetManager.getVaultToken(token);
+        IERC4626(vaultToken).approve(address(assetManager), shares);
+        assetManager.borrowerWithdraw(borrower, vaultToken, shares);
+    }
 
-        emit UnfreezeSharesOnTerm(
-            termId,
-            depositor,
-            vaultToken,
-            unfreezeAmount
-        );
+    // -----------------------------------------
+    // ---------- PRIVATE FUNCTIONS ------------
+    // -----------------------------------------
+    function _beforeDeposit() private returns (bool) {
+        return true;
     }
 
     // -----------------------------------------
@@ -349,41 +372,17 @@ contract StormbitLendingManager is
     /// @dev get the owner's vault token disposable shares on a term
     function getDisposableSharesOnTerm(
         uint256 termId,
-        address vaultToken
+        address token
     ) public view override returns (uint256) {
+        address vaultToken = assetManager.getVaultToken(token);
         return termOwnerShares[termId][vaultToken].disposableAmount;
-    }
-
-    /// @dev get all the depositor on the term for a vault token
-    function getTermDepositors(
-        uint256 termId,
-        address vaultToken
-    ) public view override returns (address[] memory) {
-        return termDelegatedUsers[termId][vaultToken];
-    }
-
-    /// @dev get the user's disposable shares on a term for a vault token
-    function getUserDisposableSharesOnTerm(
-        uint256 termId,
-        address user,
-        address vaultToken
-    ) public view override returns (uint256) {
-        return
-            termUserDelegatedShares[termId][user][vaultToken].disposableAmount;
-    }
-
-    /// @dev get the amount of shares that was freezed due to executed loan
-    function getUserFreezedShares(
-        address user,
-        address vaultToken
-    ) public view override returns (uint256) {
-        return userFreezedShares[user][vaultToken];
     }
 
     function getUserTotalDelegatedShares(
         address user,
-        address vaultToken
+        address token
     ) public view override returns (uint256) {
+        address vaultToken = assetManager.getVaultToken(token);
         return userTotalDelegatedShares[user][vaultToken];
     }
 }

@@ -153,8 +153,7 @@ contract DeployScript is Script {
         vm.startBroadcast(activeNetworkConfig.deployerKey);
         // ----------------- Deploying AssetManager -----------------
         StormbitAssetManager assetManager = new StormbitAssetManager(
-            activeNetworkConfig.governor,
-            activeNetworkConfig.owner
+            activeNetworkConfig.governor
         );
         // ----------------- End of AssetManager deployment -----------------
         vm.stopBroadcast();

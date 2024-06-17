@@ -12,10 +12,4 @@ interface IAssetManager {
     function addToken(address _asset) external;
 
     function removeToken(address _asset) external;
-
-    function approve(
-        address depositor,
-        address vaultToken,
-        uint256 shares
-    ) external;
 }

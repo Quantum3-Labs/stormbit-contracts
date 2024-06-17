@@ -6,7 +6,7 @@ pragma solidity ^0.8.21;
 interface IAssetManagerView {
     function isTokenSupported(address token) external view returns (bool);
 
-    function getTokenVault(address token) external view returns (address);
+    function getVaultToken(address token) external view returns (address);
 
     function getUserShares(
         address token,

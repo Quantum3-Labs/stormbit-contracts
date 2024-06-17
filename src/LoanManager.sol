@@ -10,13 +10,12 @@ import {IGovernable} from "./interfaces/utils/IGovernable.sol";
 import {IInitialize} from "./interfaces/utils/IInitialize.sol";
 import {StormbitAssetManager} from "./AssetManager.sol";
 import {StormbitLendingManager} from "./LendingManager.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
 /// @author Quantum3 Labs
 /// @title Stormbit Loan Manager
 /// @notice entrypoint for loan related operations
 
-// todo: be aware of denial of service on for loop
 contract StormbitLoanManager is
     IGovernable,
     IInitialize,
@@ -24,7 +23,7 @@ contract StormbitLoanManager is
     ILoanManagerView,
     ILoanRequest,
     IAllocation,
-    Ownable
+    Initializable
 {
     address private _governor;
     StormbitLendingManager public lendingManager;
@@ -32,18 +31,14 @@ contract StormbitLoanManager is
     StormbitAssetManager public assetManager;
 
     mapping(uint256 loanId => Loan loan) public loans;
-    mapping(uint256 loanId => ILendingTerms.LendingTerm[] terms)
-        public loanTerms;
-    mapping(uint256 loanId => mapping(uint256 termId => uint256 allocatedAmount))
-        public termAllocatedAmount;
+    mapping(uint256 loanId => mapping(uint256 termId => mapping(address vaultToken => uint256 shares)))
+        public termAllocatedShares;
     mapping(uint256 loanId => mapping(uint256 termId => bool isAllocated))
         public loanTermAllocated;
-    mapping(uint256 loanId => address[] participators)
-        public participatorsAddresses;
-    mapping(uint256 loanId => mapping(address depositor => LoanParticipator loanParticipator))
-        public loanParticipators;
+    // a counter use to track amount of loans a term was allocated to
+    mapping(uint256 termId => uint256 loanAllocated) termLoanAllocatedCounter;
 
-    constructor(address initialGovernor, address owner) Ownable(owner) {
+    constructor(address initialGovernor) {
         _governor = initialGovernor;
     }
 
@@ -79,19 +74,19 @@ contract StormbitLoanManager is
     function initialize(
         address assetManagerAddr,
         address lendingManagerAddr
-    ) public override onlyOwner {
+    ) public override initializer {
         assetManager = StormbitAssetManager(assetManagerAddr);
         lendingManager = StormbitLendingManager(lendingManagerAddr);
     }
 
     /// @dev allow borrower to request loan
     /// @param token address of the token
-    /// @param amount amount of token to borrow
-    /// @param deadline deadline of the loan
+    /// @param assets amount of token to borrow
+    /// @param deadline deadline of the loan to be allocated
     /// @return loanId id of the loan
     function requestLoan(
         address token,
-        uint256 amount,
+        uint256 assets,
         uint256 deadline
     ) external override returns (uint256) {
         // todo: see which agreement to use
@@ -109,12 +104,12 @@ contract StormbitLoanManager is
         // calculate shares required to fulfill the loan
         // todo: do safety check if amount is zero
         // todo: should be fine to remove, convertToShares has totalAssets() + 1, will not lead to 0
-        uint256 sharesRequired = _calculateSharesRequired(token, amount);
+        uint256 sharesRequired = _calculateSharesRequired(token, assets);
         require(sharesRequired > 0, "StormbitLoanManager: insufficient amount");
 
         // todo: change the fixed rate
         // 5% interest rate
-        uint256 repayAmount = amount + (amount * 5) / 100;
+        uint256 repayAmount = assets + (assets * 5) / 100;
 
         loans[loanId] = Loan({
             borrower: msg.sender,
@@ -122,11 +117,11 @@ contract StormbitLoanManager is
             repayAmount: repayAmount,
             sharesRequired: sharesRequired,
             sharesAllocated: 0,
-            deadline: deadline,
+            deadlineAllocate: deadline,
             status: LoanStatus.Pending
         });
 
-        emit LoanRequested(loanId, msg.sender, token, amount);
+        emit LoanRequested(loanId, msg.sender, token, assets);
         return loanId;
     }
 
@@ -144,13 +139,12 @@ contract StormbitLoanManager is
             loan.sharesAllocated >= loan.sharesRequired,
             "StormbitLoanManager: insufficient allocation"
         );
-        address tokenVault = assetManager.getTokenVault(loan.token);
-        // withdraw by asset manager
-        assetManager.borrowerWithdraw(
-            loanId,
+        address vaultToken = assetManager.getVaultToken(loan.token);
+        lendingManager.borrowerWithdraw(
+            // withdraw by asset manager
             loan.borrower,
-            tokenVault,
-            participatorsAddresses[loanId]
+            vaultToken,
+            loan.sharesRequired
         );
         loans[loanId].status = LoanStatus.Active;
 
@@ -159,7 +153,6 @@ contract StormbitLoanManager is
 
     /// @dev allow anyone to repay the loan, not restricted to borrower
     /// @param loanId id of the loan
-    // todo: allow repay partially?
     function repay(uint256 loanId) external override {
         // check if loan is valid
         require(_validLoan(loanId), "StormbitLoanManager: invalid loan");
@@ -168,80 +161,14 @@ contract StormbitLoanManager is
             loan.status == LoanStatus.Active,
             "StormbitLoanManager: loan not active"
         );
-        // todo: if there is any profit, first pay the profit to the term owner according to their weight
-        // example: profit 500: distribute the profit to three terms, 100, 200, 200
-        // calculate commission for term owner, and distribute the rest to the depositor??
-        // loop through all term allocated to the loan
-        uint256 loanTotalShares = loan.sharesRequired;
-        uint256 remainingRepayment = loan.repayAmount;
 
-        for (uint256 i = 0; i < loanTerms[loanId].length; i++) {
-            ILendingTerms.LendingTerm memory term = loanTerms[loanId][i];
-            //get
-            // get the weight of term occupied in the loan
-            uint256 termId = uint256(
-                keccak256(abi.encode(term.owner, term.comission))
-            );
-            uint256 termWeight = termAllocatedAmount[loanId][termId];
-            // see a term funded % in loan
-            uint256 termFundedPercent = (termWeight * 100) / loanTotalShares;
-            // calculate the fund to be distributed to the term
-            uint256 fund = (loan.repayAmount * termFundedPercent) / 100;
-            // from fund calculate the commission
-            uint256 commission = (fund * term.comission) / 10000;
-            // distribute the fund to the term owner
-            assetManager.depositFrom(
-                loan.token,
-                commission,
-                msg.sender,
-                term.owner
-            );
-            remainingRepayment = remainingRepayment - commission;
-        }
-
-        // convert repayAmount to shares
-        uint256 repayAmountShares = assetManager.convertToShares(
+        assetManager.depositFrom(
             loan.token,
-            remainingRepayment
+            loan.repayAmount,
+            msg.sender,
+            address(lendingManager)
         );
 
-        // distribute the remaining to the depositor
-        // loop through the loan participators
-        address[] memory participators = participatorsAddresses[loanId];
-        // calculate how much each participant earn
-        // todo: do some safety check
-        uint256 eachParticipantEarn = repayAmountShares / participators.length;
-        // todo: in this case the platform ot making money, because the interest are distributed to depositor
-        for (uint256 i = 0; i < participators.length; i++) {
-            LoanParticipator memory participator = loanParticipators[loanId][
-                participators[i]
-            ];
-            // get the shares of the participator
-            uint256 shares = participator.shares;
-            // get the  token
-            address token = participator.token;
-            // get the amount of token to repay
-            uint256 amount = assetManager.convertToAssets(
-                token,
-                eachParticipantEarn
-            );
-            // transfer the token to the vault, and mint back participator shares
-            assetManager.depositFrom(
-                token,
-                amount,
-                msg.sender,
-                participator.user
-            );
-            // unfreeze the shares
-            lendingManager.unfreezeSharesOnTerm(
-                participator.termId,
-                participator.vaultToken,
-                participators[i],
-                shares
-            );
-        }
-
-        // todo: if allow partial repayment, update the loan status when totally repaid, otherwise can just set it as done
         loans[loanId].status = LoanStatus.Repaid;
         emit LoanRepaid(loanId, msg.sender);
     }
@@ -265,10 +192,10 @@ contract StormbitLoanManager is
         );
         // get loan instance
         Loan memory loan = loans[loanId];
-        address tokenVault = assetManager.getTokenVault(loan.token);
+        address vaultToken = assetManager.getVaultToken(loan.token);
         // check if term capable to fund the loan
         require(
-            lendingManager.getDisposableSharesOnTerm(termId, tokenVault) > 0,
+            lendingManager.getDisposableSharesOnTerm(termId, vaultToken) > 0,
             "StormbitLoanManager: term insufficient amount"
         );
 
@@ -279,7 +206,7 @@ contract StormbitLoanManager is
         );
 
         loanTermAllocated[loanId][termId] = true;
-        loanTerms[loanId].push(lendingTerm);
+        termLoanAllocatedCounter[termId] += 1;
 
         emit TermAllocated(loanId, termId);
     }
@@ -287,11 +214,11 @@ contract StormbitLoanManager is
     /// @dev allow lender to allocate fund on the loan, but only when the term is already allocated
     /// @param loanId id of the loan
     /// @param termId id of the term
-    /// @param amount amount of shares to allocate
+    /// @param assets amount of token to allocate
     function allocateFundOnLoan(
         uint256 loanId,
         uint256 termId,
-        uint256 amount
+        uint256 assets
     ) public override onlyLender {
         // check is valid loan
         require(_validLoan(loanId), "StormbitLoanManager: invalid loan");
@@ -312,69 +239,28 @@ contract StormbitLoanManager is
         // get disposable shares on token of the term
         address token = loan.token;
         // get the corresponding vault token
-        address vaultToken = assetManager.getTokenVault(token);
+        address vaultToken = assetManager.getVaultToken(token);
         // get term owner disposable shares
         uint256 termOwnerDisposableShares = lendingManager
             .getDisposableSharesOnTerm(termId, vaultToken);
+        // convert amount to shares
+        uint256 sharesRequired = assetManager.convertToShares(token, assets);
         require(
-            termOwnerDisposableShares >= amount,
+            termOwnerDisposableShares >= sharesRequired,
             "StormbitLoanManager: term owner insufficient disposable shares"
         );
         // fund amount should less than loan amount
         require(
-            loan.sharesAllocated + amount <= loan.sharesRequired,
+            loan.sharesAllocated + sharesRequired <= loan.sharesRequired,
             "StormbitLoanManager: loan amount exceeded"
         );
 
-        // now we have term owner total disposable shares enough
-        // use depositor shares to fund this loan
-        // get the list of depositor
-        address[] memory termDepositors = lendingManager.getTermDepositors(
-            termId,
-            vaultToken
-        );
-        for (uint256 i = 0; i < termDepositors.length; i++) {
-            uint256 depositorDelegatedSharesAmount = lendingManager
-                .getUserDisposableSharesOnTerm(
-                    termId,
-                    termDepositors[i],
-                    vaultToken
-                );
+        // freeze the term owner shares
+        lendingManager.freezeTermShares(termId, sharesRequired, vaultToken);
 
-            uint256 propotionToFund = (depositorDelegatedSharesAmount *
-                amount) / termOwnerDisposableShares;
-            // freeze the user shares
-            lendingManager.freezeSharesOnTerm(
-                termId,
-                vaultToken,
-                termDepositors[i],
-                propotionToFund
-            );
-            // check if user already participate in this loan
-            if (
-                loanParticipators[loanId][termDepositors[i]].user == address(0)
-            ) {
-                loanParticipators[loanId][
-                    termDepositors[i]
-                ] = LoanParticipator({
-                    user: termDepositors[i],
-                    token: token,
-                    termId: termId,
-                    vaultToken: vaultToken,
-                    shares: propotionToFund
-                });
-                participatorsAddresses[loanId].push(termDepositors[i]);
-            } else {
-                loanParticipators[loanId][termDepositors[i]]
-                    .shares += propotionToFund;
-            }
-            // update loan current allocated
-            loan.sharesAllocated += propotionToFund;
-        }
-        // update loan at storage level
-        loans[loanId] = loan;
-        termAllocatedAmount[loanId][termId] += amount;
-        emit AllocatedFundOnLoan(loanId, termId, amount);
+        loans[loanId].sharesAllocated += sharesRequired;
+        termAllocatedShares[loanId][termId][vaultToken] += sharesRequired;
+        emit AllocatedFundOnLoan(loanId, termId, sharesRequired);
     }
 
     // -----------------------------------------
@@ -389,7 +275,7 @@ contract StormbitLoanManager is
         uint256 amount
     ) private view returns (uint256) {
         // get the vault token
-        address vaultToken = assetManager.getTokenVault(token);
+        address vaultToken = assetManager.getVaultToken(token);
         // convert amount to shares
         uint256 sharesRequired = IERC4626(vaultToken).convertToShares(amount);
         return sharesRequired;
@@ -400,13 +286,6 @@ contract StormbitLoanManager is
     // -----------------------------------------
     function governor() public view override returns (address) {
         return _governor;
-    }
-
-    function getLoanParticipator(
-        uint256 loanId,
-        address depositor
-    ) public view override returns (LoanParticipator memory) {
-        return loanParticipators[loanId][depositor];
     }
 
     function getLoan(
@@ -420,5 +299,19 @@ contract StormbitLoanManager is
         uint256 termId
     ) public view override returns (bool) {
         return loanTermAllocated[loanId][termId];
+    }
+
+    function getTermLoanAllocatedCounter(
+        uint256 termId
+    ) external view override returns (uint256) {
+        return termLoanAllocatedCounter[termId];
+    }
+
+    function getTermAllocatedSharesOnLoan(
+        uint256 loanId,
+        uint256 termId,
+        address vaultToken
+    ) public view returns (uint256) {
+        return termAllocatedShares[loanId][termId][vaultToken];
     }
 }

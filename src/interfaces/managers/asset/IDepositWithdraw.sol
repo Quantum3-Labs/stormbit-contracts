@@ -12,7 +12,7 @@ interface IDepositWithdraw {
     event BorrowerWithdraw(
         uint256 indexed loanId,
         address indexed borrower,
-        address indexed tokenVault,
+        address indexed vaultToken,
         address[] loanParticipators
     );
 
@@ -28,9 +28,8 @@ interface IDepositWithdraw {
     function withdraw(address token, uint256 shares) external;
 
     function borrowerWithdraw(
-        uint256 loanId,
         address borrower,
-        address tokenVault,
-        address[] calldata loanParticipators
+        address vaultToken,
+        uint256 shares
     ) external;
 }

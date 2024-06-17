@@ -7,16 +7,17 @@ interface IDelegation {
     struct Shares {
         uint256 disposableAmount;
         uint256 totalAmount;
+        uint256 profit;
     }
 
-    event IncreaseDelegateSharesToTerm(
+    event DepositToTerm(
         uint256 indexed id,
         address indexed user,
         address indexed vaultToken,
         uint256 shares
     );
 
-    event DecreaseDelegateSharesToTerm(
+    event WithdrawFromTerm(
         uint256 indexed id,
         address indexed user,
         address indexed vaultToken,
@@ -37,29 +38,35 @@ interface IDelegation {
         uint256 shares
     );
 
-    function increaseDelegateToTerm(
+    function depositToTerm(
         uint256 termId,
         address token,
-        uint256 sharesAmount
+        uint256 shares
     ) external;
 
-    function decreaseDelegateToTerm(
+    function withdrawFromTerm(
         uint256 termId,
-        address vaultToken,
+        address token,
         uint256 requestedDecrease
     ) external;
 
-    function freezeSharesOnTerm(
+    function freezeTermShares(
         uint256 termId,
-        address vaultToken,
-        address depositor,
-        uint256 freezeAmount
+        uint256 shares,
+        address token
     ) external;
 
-    function unfreezeSharesOnTerm(
-        uint256 termId,
-        address vaultToken,
-        address depositor,
-        uint256 unfreezeAmount
-    ) external;
+    // function freezeSharesOnTerm(
+    //     uint256 termId,
+    //     address vaultToken,
+    //     address depositor,
+    //     uint256 freezeAmount
+    // ) external;
+
+    // function unfreezeSharesOnTerm(
+    //     uint256 termId,
+    //     address vaultToken,
+    //     address depositor,
+    //     uint256 unfreezeAmount
+    // ) external;
 }

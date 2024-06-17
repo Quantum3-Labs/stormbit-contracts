@@ -5,44 +5,88 @@ pragma solidity 0.8.21;
 import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {StormbitAssetManager} from "../AssetManager.sol";
 
 contract BaseVault is ERC4626 {
-    error OnlyGovernor();
+    error OnlyAssetManager();
 
-    address public governor;
+    StormbitAssetManager private assetManager;
 
     constructor(
         IERC20 _token,
-        address _governor,
+        address assetManagerAddr,
         string memory _name,
         string memory _symbol
     ) ERC4626(_token) ERC20(_name, _symbol) {
-        governor = _governor;
+        assetManager = StormbitAssetManager(assetManagerAddr);
     }
 
-    modifier onlyGovernor() {
-        if (msg.sender != governor) revert OnlyGovernor();
+    modifier onlyAssetManager() {
+        if (msg.sender != address(assetManager)) revert OnlyAssetManager();
         _;
     }
 
-    function depositToStrategy() external onlyGovernor {
+    function deposit(
+        uint256 assets,
+        address receiver
+    ) public override onlyAssetManager returns (uint256) {
+        return super.deposit(assets, receiver);
+    }
+
+    function mint(
+        uint256 shares,
+        address receiver
+    ) public override onlyAssetManager returns (uint256) {
+        return super.mint(shares, receiver);
+    }
+
+    function withdraw(
+        uint256 assets,
+        address receiver,
+        address owner
+    ) public override onlyAssetManager returns (uint256) {
+        return super.withdraw(assets, receiver, owner);
+    }
+
+    function redeem(
+        uint256 shares,
+        address receiver,
+        address owner
+    ) public override onlyAssetManager returns (uint256) {
+        return super.redeem(shares, receiver, owner);
+    }
+
+    // function transfer(
+    //     address to,
+    //     uint256 value
+    // ) public override(ERC20, IERC20) onlyAssetManager returns (bool) {
+    //     return super.transfer(to, value);
+    // }
+
+    // function approve(
+    //     address spender,
+    //     uint256 value
+    // ) public override(ERC20, IERC20) onlyAssetManager returns (bool) {
+    //     super.approve(spender, value);
+    // }
+
+    // function transferFrom(
+    //     address from,
+    //     address to,
+    //     uint256 value
+    // ) public override(ERC20, IERC20) onlyAssetManager returns (bool) {
+    //     super.transferFrom(from, to, value);
+    // }
+
+    function depositToStrategy() external onlyAssetManager {
         // some logic
     }
 
-    function withdrawFromStrategy() external onlyGovernor {
+    function withdrawFromStrategy() external onlyAssetManager {
         // some logic
     }
 
     function _decimalsOffset() internal view override returns (uint8) {
         return 8;
-    }
-
-    function approve(
-        address owner,
-        address spender,
-        uint256 value
-    ) external onlyGovernor {
-        // some logic
-        _approve(owner, spender, value);
     }
 }

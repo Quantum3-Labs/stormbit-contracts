@@ -7,11 +7,6 @@ import {ILoanRequest} from "./ILoanRequest.sol";
 /// @title Stormbit Loan Manager Getter Functions Interface
 /// TODO split into different interfaces according to funcionality
 interface ILoanManagerView {
-    function getLoanParticipator(
-        uint256 loanId,
-        address depositor
-    ) external view returns (IAllocation.LoanParticipator memory);
-
     function getLoan(
         uint256 loanId
     ) external view returns (ILoanRequest.Loan memory);
@@ -20,4 +15,8 @@ interface ILoanManagerView {
         uint256 loanId,
         uint256 termId
     ) external view returns (bool);
+
+    function getTermLoanAllocatedCounter(
+        uint256 termId
+    ) external view returns (uint256);
 }

@@ -19,7 +19,7 @@ interface ILoanRequest {
         uint256 repayAmount;
         uint256 sharesRequired;
         uint256 sharesAllocated;
-        uint256 deadline;
+        uint256 deadlineAllocate;
         LoanStatus status;
     }
 

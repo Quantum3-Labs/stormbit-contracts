@@ -11,20 +11,19 @@ import {BaseVault} from "./vaults/BaseVault.sol";
 import {StormbitLoanManager} from "./LoanManager.sol";
 import {StormbitLendingManager} from "./LendingManager.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
 /// @author Quantum3 Labs
 /// @title Stormbit Asset Manager
 /// @notice entrypoint for all asset management operations
 
-// todo: be aware of denial of service on for loop
 contract StormbitAssetManager is
     IInitialize,
     IGovernable,
     IDepositWithdraw,
     IAssetManager,
     IAssetManagerView,
-    Ownable
+    Initializable
 {
     using Math for uint256;
 
@@ -33,9 +32,9 @@ contract StormbitAssetManager is
     StormbitLendingManager public lendingManager;
 
     mapping(address token => bool isSupported) tokens; // check if token is supported
-    mapping(address token => address tokenVault) tokenVaults; // token to vault mapping
+    mapping(address token => address vaultToken) vaultTokens; // token to vault mapping
 
-    constructor(address initialGovernor, address owner) Ownable(owner) {
+    constructor(address initialGovernor) {
         _governor = initialGovernor;
     }
 
@@ -70,7 +69,7 @@ contract StormbitAssetManager is
     function initialize(
         address loanManagerAddr,
         address lendingManagerAddr
-    ) public override onlyOwner {
+    ) public override initializer {
         loanManager = StormbitLoanManager(loanManagerAddr);
         lendingManager = StormbitLendingManager(lendingManagerAddr);
     }
@@ -80,7 +79,7 @@ contract StormbitAssetManager is
     /// @param assets amount of assets to deposit
     function deposit(address token, uint256 assets) public override {
         require(tokens[token], "StormbitAssetManager: token not supported");
-        address tokenVault = tokenVaults[token]; // get the corresponding vault
+        address vaultToken = vaultTokens[token]; // get the corresponding vault
         // first make sure can transfer user token to manager
         // todo: use safe transfer
         bool isSuccess = IERC20(token).transferFrom(
@@ -91,8 +90,8 @@ contract StormbitAssetManager is
         if (!isSuccess) {
             revert("StormbitAssetManager: transfer failed");
         }
-        IERC20(token).approve(tokenVault, assets);
-        IERC4626(tokenVault).deposit(assets, msg.sender);
+        IERC20(token).approve(vaultToken, assets);
+        IERC4626(vaultToken).deposit(assets, msg.sender);
         emit Deposit(msg.sender, token, assets);
     }
 
@@ -104,7 +103,7 @@ contract StormbitAssetManager is
         address receiver
     ) public override {
         require(tokens[token], "StormbitAssetManager: token not supported");
-        address tokenVault = tokenVaults[token]; // get the corresponding vault
+        address vaultToken = vaultTokens[token]; // get the corresponding vault
         // first make sure can transfer user token to manager
         bool isSuccess = IERC20(token).transferFrom(
             depositor,
@@ -114,72 +113,23 @@ contract StormbitAssetManager is
         if (!isSuccess) {
             revert("StormbitAssetManager: transfer failed");
         }
-        IERC20(token).approve(tokenVault, assets);
-        IERC4626(tokenVault).deposit(assets, receiver);
+        IERC20(token).approve(vaultToken, assets);
+        IERC4626(vaultToken).deposit(assets, receiver);
         emit Deposit(receiver, token, assets);
     }
 
     /// @dev note that we dont require the token to be whitelisted
     function withdraw(address token, uint256 shares) public override {
-        // check if token is supported
-        require(tokens[token], "StormbitAssetManager: token not supported");
-
-        address tokenVault = tokenVaults[token]; // get the corresponding vault
-
-        // check if user has enough shares
-        require(
-            IERC4626(tokenVault).balanceOf(msg.sender) >= shares,
-            "StormbitAssetManager: insufficient shares"
-        );
-
-        // check if user had delegated their shares
-        // if yes, check if shares < disposable shares on lending manager
-        uint256 userTotalDelegatedShares = lendingManager
-            .getUserTotalDelegatedShares(msg.sender, tokenVault);
-        if (userTotalDelegatedShares > 0) {
-            // if user has delegated their shares
-            // todo: if total disposable shares is >= shares need to withdraw, how to decide withdraw from which term?
-            // if enough disposable shares, withdraw and update the disposable shares
-            // if not enough, revert
-        }
-
-        // convert shares to assets
-        uint256 assets = convertToAssets(token, shares);
-
-        // withdraw assets from the vault
-        // user first need to approve the asset manager to transfer their shares
-        IERC4626(tokenVault).redeem(shares, msg.sender, msg.sender);
-
-        emit Withdraw(msg.sender, token, assets);
+        // withdraw here is withdraw from shares to asset
     }
 
-    /// @dev allow borrower to withdraw assets from the vault
-    /// @param loanId id of the loan
-    /// @param borrower address of the borrower
-    /// @param tokenVault address of the token vault
-    /// @param loanParticipators array of borrower addresses, each borrower has different amount of shares to lend
     function borrowerWithdraw(
-        uint256 loanId,
         address borrower,
-        address tokenVault,
-        address[] calldata loanParticipators
-    ) public override onlyLoanManager {
-        // loop through all loanParticipators
-        for (uint256 i = 0; i < loanParticipators.length; i++) {
-            address participator = loanParticipators[i];
-            StormbitLoanManager.LoanParticipator
-                memory loanParticipator = loanManager.getLoanParticipator(
-                    loanId,
-                    participator
-                );
-            IERC4626(tokenVault).redeem(
-                loanParticipator.shares,
-                borrower,
-                participator
-            );
-        }
-
-        emit BorrowerWithdraw(loanId, borrower, tokenVault, loanParticipators);
+        address token,
+        uint256 shares
+    ) public onlyLendingManager {
+        address vaultToken = getVaultToken(token);
+        IERC4626(vaultToken).redeem(shares, borrower, msg.sender);
     }
 
     /// @dev allow governor to add a new token
@@ -195,7 +145,7 @@ contract StormbitAssetManager is
             string(abi.encodePacked("s", IERC20(token).symbol()))
         );
         // update the mapping
-        tokenVaults[token] = address(vault);
+        vaultTokens[token] = address(vault);
         emit AddToken(token, address(vault));
     }
 
@@ -203,29 +153,14 @@ contract StormbitAssetManager is
     /// @param token address of the token
     function removeToken(address token) public override onlyGovernor {
         // get the vault address
-        address tokenVault = tokenVaults[token];
+        address vaultToken = vaultTokens[token];
         // check if vault is empty
         require(
-            IERC4626(tokenVault).totalSupply() == 0,
+            IERC4626(vaultToken).totalSupply() == 0,
             "StormbitAssetManager: vault not empty"
         );
         tokens[token] = false;
-        emit RemoveToken(token, tokenVault);
-    }
-
-    /// @dev when user delegating their shares,
-    /// approve asset manager to transfer their shares
-    function approve(
-        address depositor,
-        address vaultToken,
-        uint256 shares
-    ) public override {
-        // todo: logic to control increased/decreased allowance
-        require(
-            msg.sender == depositor || msg.sender == address(lendingManager),
-            "StormbitAssetManager: not authorized"
-        );
-        BaseVault(vaultToken).approve(depositor, address(this), shares);
+        emit RemoveToken(token, vaultToken);
     }
 
     // -----------------------------------------
@@ -244,11 +179,11 @@ contract StormbitAssetManager is
         return tokens[token];
     }
 
-    /// @dev get token vault address
-    function getTokenVault(
+    /// @dev get vault token  address
+    function getVaultToken(
         address token
     ) public view override returns (address) {
-        return tokenVaults[token];
+        return vaultTokens[token];
     }
 
     /// @dev get user shares on specific vault
@@ -256,8 +191,8 @@ contract StormbitAssetManager is
         address token,
         address user
     ) public view override returns (uint256) {
-        address tokenVault = tokenVaults[token];
-        IERC4626 vault = IERC4626(tokenVault);
+        address vaultToken = vaultTokens[token];
+        IERC4626 vault = IERC4626(vaultToken);
         return vault.balanceOf(user);
     }
 
@@ -266,8 +201,8 @@ contract StormbitAssetManager is
         address token,
         uint256 assets
     ) public view override returns (uint256) {
-        address tokenVault = tokenVaults[token];
-        IERC4626 vault = IERC4626(tokenVault);
+        address vaultToken = vaultTokens[token];
+        IERC4626 vault = IERC4626(vaultToken);
         return vault.convertToShares(assets);
     }
 
@@ -276,8 +211,8 @@ contract StormbitAssetManager is
         address token,
         uint256 shares
     ) public view override returns (uint256) {
-        address tokenVault = tokenVaults[token];
-        IERC4626 vault = IERC4626(tokenVault);
+        address vaultToken = vaultTokens[token];
+        IERC4626 vault = IERC4626(vaultToken);
         return vault.convertToAssets(shares);
     }
 }

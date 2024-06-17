@@ -15,22 +15,6 @@ interface ILendingManagerView {
         address vaultToken
     ) external view returns (uint256);
 
-    function getTermDepositors(
-        uint256 termId,
-        address vaultToken
-    ) external view returns (address[] memory);
-
-    function getUserDisposableSharesOnTerm(
-        uint256 termId,
-        address user,
-        address vaultToken
-    ) external view returns (uint256);
-
-    function getUserFreezedShares(
-        address user,
-        address vaultToken
-    ) external view returns (uint256);
-
     function getUserTotalDelegatedShares(
         address user,
         address vaultToken
