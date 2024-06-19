@@ -278,29 +278,42 @@ contract StormbitLendingManager is
             "StormbitLendingManager: loan not repaid"
         );
         address vaultToken = assetManager.getVaultToken(token);
-        // now check the weight of term in loan
+        ILendingTerms.LendingTerm memory term = lendingTerms[termId];
+        // convert repay amount to shares
+        uint256 repayShares = assetManager.convertToShares(
+            token,
+            loan.repayAmount
+        );
+        // calculate profit
+        uint256 profitShares = repayShares - loan.sharesRequired;
+        // calculate weight of term in shares / loan required shares
         uint256 weight = loanManager.getTermAllocatedSharesOnLoan(
             loanId,
             termId,
             vaultToken
         );
-        ILendingTerms.LendingTerm memory term = lendingTerms[termId];
         uint256 termFundedPercent = (weight * 100) / loan.sharesRequired;
-        uint256 fund = (loan.repayAmount * termFundedPercent) / 100;
-        uint256 commission = (fund * term.comission) / 10000;
-
-        // transfer commission shares to term owner
-        bool isSuccess = IERC4626(vaultToken).transfer(termOwner, commission);
+        // term owner profit shares
+        uint256 termProfitShares = (profitShares * termFundedPercent) / 100;
+        // from term profit shares, get commission for term owner
+        uint256 termOwnerProfitShares = (termProfitShares * term.comission) /
+            10000;
+        // transfer profit shares to term owner
+        bool isSuccess = IERC4626(vaultToken).transfer(
+            termOwner,
+            termOwnerProfitShares
+        );
         if (!isSuccess) {
-            revert("StormbitLendingManager: failed to transfer commission");
+            revert("StormbitLendingManager: failed to transfer profit");
         }
-
-        // the rest add to term balance
-        uint256 profit = fund - commission;
-        termOwnerShares[termId][vaultToken].disposableAmount += profit;
-        // calculate profit - expenses and all to total amount
-        uint256 extra = profit - weight;
-        termOwnerShares[termId][vaultToken].profit += extra;
+        // calculate the remaining profit after term owner profit
+        uint256 extraProfit = termProfitShares - termOwnerProfitShares;
+        // update term profit
+        termOwnerShares[termId][vaultToken].profit += extraProfit;
+        // unfreeze shares
+        termFreezedShares[termId][vaultToken] -= weight;
+        // update disposable shares
+        termOwnerShares[termId][vaultToken].disposableAmount += weight;
     }
 
     function freezeTermShares(
@@ -319,7 +332,6 @@ contract StormbitLendingManager is
         );
         termFreezedShares[termId][vaultToken] += shares;
         termOwnerShares[termId][vaultToken].disposableAmount -= shares;
-        lendingTerms[termId].balances -= shares;
     }
 
     function borrowerWithdraw(
@@ -329,7 +341,7 @@ contract StormbitLendingManager is
     ) public override onlyLoanManager {
         address vaultToken = assetManager.getVaultToken(token);
         IERC4626(vaultToken).approve(address(assetManager), shares);
-        assetManager.borrowerWithdraw(borrower, vaultToken, shares);
+        assetManager.borrowerWithdraw(borrower, token, shares);
     }
 
     // -----------------------------------------
@@ -376,6 +388,30 @@ contract StormbitLendingManager is
     ) public view override returns (uint256) {
         address vaultToken = assetManager.getVaultToken(token);
         return termOwnerShares[termId][vaultToken].disposableAmount;
+    }
+
+    function getTotalSharesOnTerm(
+        uint256 termId,
+        address token
+    ) public view returns (uint256) {
+        address vaultToken = assetManager.getVaultToken(token);
+        return termOwnerShares[termId][vaultToken].totalAmount;
+    }
+
+    function getTermFreezedShares(
+        uint256 termId,
+        address token
+    ) public view returns (uint256) {
+        address vaultToken = assetManager.getVaultToken(token);
+        return termFreezedShares[termId][vaultToken];
+    }
+
+    function getTermProfit(
+        uint256 termId,
+        address token
+    ) public view returns (uint256) {
+        address vaultToken = assetManager.getVaultToken(token);
+        return termOwnerShares[termId][vaultToken].profit;
     }
 
     function getUserTotalDelegatedShares(

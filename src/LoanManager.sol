@@ -139,11 +139,15 @@ contract StormbitLoanManager is
             loan.sharesAllocated >= loan.sharesRequired,
             "StormbitLoanManager: insufficient allocation"
         );
-        address vaultToken = assetManager.getVaultToken(loan.token);
+        // only if deadline is passed
+        require(
+            block.timestamp >= loan.deadlineAllocate,
+            "StormbitLoanManager: deadline not passed"
+        );
         lendingManager.borrowerWithdraw(
             // withdraw by asset manager
             loan.borrower,
-            vaultToken,
+            loan.token,
             loan.sharesRequired
         );
         loans[loanId].status = LoanStatus.Active;
@@ -182,6 +186,11 @@ contract StormbitLoanManager is
     ) public override onlyLender {
         // check is valid loan
         require(_validLoan(loanId), "StormbitLoanManager: invalid loan");
+        // only if allocate deadline not passed
+        require(
+            block.timestamp < loans[loanId].deadlineAllocate,
+            "StormbitLoanManager: deadline passed"
+        );
 
         // check if term is valid
         ILendingTerms.LendingTerm memory lendingTerm = lendingManager
@@ -192,10 +201,9 @@ contract StormbitLoanManager is
         );
         // get loan instance
         Loan memory loan = loans[loanId];
-        address vaultToken = assetManager.getVaultToken(loan.token);
         // check if term capable to fund the loan
         require(
-            lendingManager.getDisposableSharesOnTerm(termId, vaultToken) > 0,
+            lendingManager.getDisposableSharesOnTerm(termId, loan.token) > 0,
             "StormbitLoanManager: term insufficient amount"
         );
 
@@ -227,6 +235,11 @@ contract StormbitLoanManager is
             loanTermAllocated[loanId][termId],
             "StormbitLoanManager: term not allocated"
         );
+        // only if allocate deadline not passed
+        require(
+            block.timestamp < loans[loanId].deadlineAllocate,
+            "StormbitLoanManager: deadline passed"
+        );
         // only owner of term can allocate fund
         ILendingTerms.LendingTerm memory lendingTerm = lendingManager
             .getLendingTerm(termId);
@@ -242,7 +255,7 @@ contract StormbitLoanManager is
         address vaultToken = assetManager.getVaultToken(token);
         // get term owner disposable shares
         uint256 termOwnerDisposableShares = lendingManager
-            .getDisposableSharesOnTerm(termId, vaultToken);
+            .getDisposableSharesOnTerm(termId, token);
         // convert amount to shares
         uint256 sharesRequired = assetManager.convertToShares(token, assets);
         require(
@@ -256,7 +269,7 @@ contract StormbitLoanManager is
         );
 
         // freeze the term owner shares
-        lendingManager.freezeTermShares(termId, sharesRequired, vaultToken);
+        lendingManager.freezeTermShares(termId, sharesRequired, token);
 
         loans[loanId].sharesAllocated += sharesRequired;
         termAllocatedShares[loanId][termId][vaultToken] += sharesRequired;
