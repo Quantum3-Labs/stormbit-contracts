@@ -8,18 +8,9 @@ interface IAssetManagerView {
 
     function getVaultToken(address token) external view returns (address);
 
-    function getUserShares(
-        address token,
-        address user
-    ) external view returns (uint256);
+    function getUserShares(address token, address user) external view returns (uint256);
 
-    function convertToShares(
-        address token,
-        uint256 assets
-    ) external view returns (uint256);
+    function convertToShares(address token, uint256 assets) external view returns (uint256);
 
-    function convertToAssets(
-        address token,
-        uint256 shares
-    ) external view returns (uint256);
+    function convertToAssets(address token, uint256 shares) external view returns (uint256);
 }

@@ -59,18 +59,9 @@ contract SetupTest is TestUtils {
     function _mintAllTokens() private {
         for (uint256 i = 0; i < supportedTokens.length; i++) {
             ERC20Mock token = ERC20Mock(supportedTokens[i]);
-            token.mint(
-                depositor1,
-                initialTokenBalance * (10 ** token.decimals())
-            );
-            token.mint(
-                depositor2,
-                initialTokenBalance * (10 ** token.decimals())
-            );
-            token.mint(
-                depositor3,
-                initialTokenBalance * (10 ** token.decimals())
-            );
+            token.mint(depositor1, initialTokenBalance * (10 ** token.decimals()));
+            token.mint(depositor2, initialTokenBalance * (10 ** token.decimals()));
+            token.mint(depositor3, initialTokenBalance * (10 ** token.decimals()));
         }
     }
 
@@ -79,8 +70,7 @@ contract SetupTest is TestUtils {
             vm.startPrank(funder);
             // deposit some token to vault by asset manager
             ERC20Mock token = ERC20Mock(supportedTokens[i]);
-            uint256 depositAmount = initialFundBalance *
-                (10 ** token.decimals());
+            uint256 depositAmount = initialFundBalance * (10 ** token.decimals());
             token.approve(address(assetManager), depositAmount);
             assetManager.deposit(supportedTokens[i], depositAmount);
             vm.stopPrank();

@@ -23,16 +23,7 @@ interface ILoanRequest {
         LoanStatus status;
     }
 
-    event LoanRequested(
-        uint256 indexed loanId,
-        address indexed borrower,
-        address indexed token,
-        uint256 amount
-    );
+    event LoanRequested(uint256 indexed loanId, address indexed borrower, address indexed token, uint256 amount);
 
-    function requestLoan(
-        address token,
-        uint256 amount,
-        uint256 deadline
-    ) external returns (uint256);
+    function requestLoan(address token, uint256 amount, uint256 deadline) external returns (uint256);
 }

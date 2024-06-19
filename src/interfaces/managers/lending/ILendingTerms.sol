@@ -9,11 +9,8 @@ interface ILendingTerms {
         uint256 comission; // TODO add balances and other ERC4626 custom fields
         uint256 balances;
     }
-    event LendingTermCreated(
-        uint256 indexed id,
-        address lender,
-        uint256 comission
-    );
+
+    event LendingTermCreated(uint256 indexed id, address lender, uint256 comission);
     event LendingTermRemoved(uint256 indexed id);
 
     function createLendingTerm(uint256 comission) external returns (uint256);

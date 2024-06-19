@@ -12,12 +12,10 @@ contract BaseVault is ERC4626 {
 
     StormbitAssetManager private assetManager;
 
-    constructor(
-        IERC20 _token,
-        address assetManagerAddr,
-        string memory _name,
-        string memory _symbol
-    ) ERC4626(_token) ERC20(_name, _symbol) {
+    constructor(IERC20 _token, address assetManagerAddr, string memory _name, string memory _symbol)
+        ERC4626(_token)
+        ERC20(_name, _symbol)
+    {
         assetManager = StormbitAssetManager(assetManagerAddr);
     }
 
@@ -26,57 +24,31 @@ contract BaseVault is ERC4626 {
         _;
     }
 
-    function deposit(
-        uint256 assets,
-        address receiver
-    ) public override onlyAssetManager returns (uint256) {
+    function deposit(uint256 assets, address receiver) public override onlyAssetManager returns (uint256) {
         return super.deposit(assets, receiver);
     }
 
-    function mint(
-        uint256 shares,
-        address receiver
-    ) public override onlyAssetManager returns (uint256) {
+    function mint(uint256 shares, address receiver) public override onlyAssetManager returns (uint256) {
         return super.mint(shares, receiver);
     }
 
-    function withdraw(
-        uint256 assets,
-        address receiver,
-        address owner
-    ) public override onlyAssetManager returns (uint256) {
+    function withdraw(uint256 assets, address receiver, address owner)
+        public
+        override
+        onlyAssetManager
+        returns (uint256)
+    {
         return super.withdraw(assets, receiver, owner);
     }
 
-    function redeem(
-        uint256 shares,
-        address receiver,
-        address owner
-    ) public override onlyAssetManager returns (uint256) {
+    function redeem(uint256 shares, address receiver, address owner)
+        public
+        override
+        onlyAssetManager
+        returns (uint256)
+    {
         return super.redeem(shares, receiver, owner);
     }
-
-    // function transfer(
-    //     address to,
-    //     uint256 value
-    // ) public override(ERC20, IERC20) onlyAssetManager returns (bool) {
-    //     return super.transfer(to, value);
-    // }
-
-    // function approve(
-    //     address spender,
-    //     uint256 value
-    // ) public override(ERC20, IERC20) onlyAssetManager returns (bool) {
-    //     super.approve(spender, value);
-    // }
-
-    // function transferFrom(
-    //     address from,
-    //     address to,
-    //     uint256 value
-    // ) public override(ERC20, IERC20) onlyAssetManager returns (bool) {
-    //     super.transferFrom(from, to, value);
-    // }
 
     function depositToStrategy() external onlyAssetManager {
         // some logic
