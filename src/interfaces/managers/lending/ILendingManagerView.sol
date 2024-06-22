@@ -14,7 +14,7 @@ interface ILendingManagerView {
 
     function getTermProfit(uint256 termId, address token) external returns (uint256);
 
-    function getDisposableSharesOnTerm(uint256 termId, address vaultToken) external view returns (uint256);
+    function getDisposableSharesOnTerm(uint256 termId, address token) external view returns (uint256);
 
-    function getUserTotalDelegatedShares(address user, address vaultToken) external view returns (uint256);
+    function getUserTotalDelegatedShares(address user, address token) external view returns (uint256);
 }

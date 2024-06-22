@@ -16,14 +16,14 @@ interface ILoanRequest {
     struct Loan {
         address borrower;
         address token;
-        uint256 repayAmount;
+        uint256 repayAssets;
         uint256 sharesRequired;
         uint256 sharesAllocated;
         uint256 deadlineAllocate;
         LoanStatus status;
     }
 
-    event LoanRequested(uint256 indexed loanId, address indexed borrower, address indexed token, uint256 amount);
+    event LoanRequested(uint256 indexed loanId, address indexed borrower, address indexed token, uint256 assets);
 
-    function requestLoan(address token, uint256 amount, uint256 deadline) external returns (uint256);
+    function requestLoan(address token, uint256 assets, uint256 deadline) external returns (uint256);
 }

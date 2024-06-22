@@ -7,7 +7,7 @@ interface IDepositWithdraw {
     event Deposit(address indexed user, address indexed token, uint256 assets);
 
     /// @dev note that withdraw event uses assets instead of shares
-    event Withdraw(address indexed user, address indexed token, uint256 assets);
+    event Withdraw(address indexed user, address indexed vaultToken, uint256 assets, uint256 sharesBurned);
 
     event BorrowerWithdraw(address indexed borrower, address indexed token, uint256 shares);
 

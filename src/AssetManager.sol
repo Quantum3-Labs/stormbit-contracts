@@ -97,8 +97,12 @@ contract StormbitAssetManager is
     }
 
     /// @dev note that we dont require the token to be whitelisted
-    function withdraw(address token, uint256 shares) public override {
+    function withdraw(address token, uint256 assets) public override {
         // withdraw here is withdraw from shares to asset
+        require(tokens[token], "StormbitAssetManager: token not supported");
+        address vaultToken = vaultTokens[token];
+        uint256 sharesBurned = IERC4626(vaultToken).withdraw(assets, msg.sender, msg.sender);
+        emit Withdraw(msg.sender, vaultToken, assets, sharesBurned);
     }
 
     /// @dev call by lending manager, use for execute loan, redeem shares for borrower
