@@ -19,11 +19,7 @@ abstract contract BaseHook is IHooks {
         _;
     }
 
-    function getHookPermissions()
-        public
-        pure
-        virtual
-        returns (Hooks.Permissions memory);
+    function getHookPermissions() public pure virtual returns (Hooks.Permissions memory);
 
     function validateHookAddress(BaseHook _this) internal pure virtual {
         Hooks.validateHookPermissions(_this, getHookPermissions());
