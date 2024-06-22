@@ -666,6 +666,19 @@ contract IntegrationTest is SetupTest {
             (10 ** vaultTokenInterface.decimals());
         assert(loan.sharesAllocated == expectedLoanAllocatedShares);
 
+        // try to withdraw from term2 as depositor 1, since depositor1 deposited 500 in term2, term2 has 1000 shares, allocated 500 shares, should freezed
+        // 250 on depositor1, 250 on depositor2
+        // so depositor1 should beable to withdraw 250, but not more than that
+        // uint256 depositor1BalanceBeforTryWithdraw = vaultTokenInterface
+        //     .balanceOf(depositor1);
+        // vm.startPrank(depositor1);
+        // lendingManager.withdrawFromTerm(
+        //     termId2,
+        //     address(token1),
+        //     260 * (10 ** vaultTokenInterface.decimals()) // ! 260 should fail, 250 should pass
+        // );
+        // vm.stopPrank();
+
         // borrower1 asset balance beofre loan
         uint256 borrowerBalanceBeforeLoan = token1.balanceOf(borrower1);
         // borrower execute loan

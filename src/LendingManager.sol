@@ -41,6 +41,8 @@ contract StormbitLendingManager is
     mapping(address user => mapping(address vaultToken => uint256 delegatedShares)) // track user total delegated shares
         public userTotalDelegatedShares;
     mapping(uint256 termId => mapping(address vaultToken => uint256 shares)) termFreezedShares; // track who delegated to the term
+    mapping(uint256 termId => mapping(uint256 loanId => mapping(address vaultToken => bool)))
+        public lenderClaimedProfit; // mapping to track lender claim profit
 
     constructor(address initialGovernor) {
         _governor = initialGovernor;
@@ -265,7 +267,12 @@ contract StormbitLendingManager is
         uint256 loanId,
         address token
     ) public override {
-        // todo: add another mapping to prevent double claim
+        address vaultToken = assetManager.getVaultToken(token);
+        // check if the profit has been claimed
+        require(
+            !lenderClaimedProfit[termId][loanId][vaultToken],
+            "StormbitLendingManager: profit already claimed"
+        );
         // get term owner
         address termOwner = lendingTerms[termId].owner;
         require(
@@ -278,7 +285,17 @@ contract StormbitLendingManager is
             loan.status == ILoanRequest.LoanStatus.Repaid,
             "StormbitLendingManager: loan not repaid"
         );
-        address vaultToken = assetManager.getVaultToken(token);
+        // term allocated on shares should > 0
+        uint256 weight = loanManager.getTermAllocatedSharesOnLoan(
+            loanId,
+            termId,
+            token
+        );
+        require(
+            weight > 0,
+            "StormbitLendingManager: term not allocated on loan"
+        );
+
         ILendingTerms.LendingTerm memory term = lendingTerms[termId];
         // convert repay amount to shares
         uint256 repayShares = assetManager.convertToShares(
@@ -288,25 +305,13 @@ contract StormbitLendingManager is
         // calculate profit
         uint256 profitShares = repayShares - loan.sharesRequired;
         // calculate weight of term in shares / loan required shares
-        uint256 weight = loanManager.getTermAllocatedSharesOnLoan(
-            loanId,
-            termId,
-            token
-        );
+
         uint256 termFundedPercent = (weight * 100) / loan.sharesRequired;
         // term owner profit shares
         uint256 termProfitShares = (profitShares * termFundedPercent) / 100;
         // from term profit shares, get commission for term owner
         uint256 termOwnerProfitShares = (termProfitShares * term.comission) /
             10000;
-        // transfer profit shares to term owner
-        bool isSuccess = IERC4626(vaultToken).transfer(
-            termOwner,
-            termOwnerProfitShares
-        );
-        if (!isSuccess) {
-            revert("StormbitLendingManager: failed to transfer profit");
-        }
         // calculate the remaining profit after term owner profit
         uint256 extraProfit = termProfitShares - termOwnerProfitShares;
         // update term profit
@@ -315,6 +320,16 @@ contract StormbitLendingManager is
         termFreezedShares[termId][vaultToken] -= weight;
         // update disposable shares
         termOwnerShares[termId][vaultToken].disposableAmount += weight;
+        // update claimed status
+        lenderClaimedProfit[termId][loanId][vaultToken] = true;
+        // transfer profit shares to term owner
+        bool isSuccess = IERC4626(vaultToken).transfer(
+            termOwner,
+            termOwnerProfitShares
+        );
+        if (!isSuccess) {
+            revert("StormbitLendingManager: failed to transfer profit");
+        }
         emit LenderClaimLoanProfit(
             termId,
             loanId,
