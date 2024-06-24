@@ -23,7 +23,7 @@ contract SetupTest is TestUtils {
 
     address[] supportedTokens;
 
-    function setUpEnvironment() public {
+    function setUp() public virtual {
         token1 = new ERC20Mock();
         token2 = new ERC20Mock();
         token3 = new ERC20Mock();

@@ -9,10 +9,6 @@ import {ILoanRequest} from "../../src/interfaces/managers/loan/ILoanRequest.sol"
 import {IHooks} from "../../src/interfaces/hooks/IHooks.sol";
 
 contract IntegrationTest is SetupTest {
-    function setUp() public {
-        SetupTest.setUpEnvironment();
-    }
-
     // todo: think some better name
     /// @dev this is the integrtion test case for
     /// 1 depositors, 1 term, 1 lender, 1 borrower
