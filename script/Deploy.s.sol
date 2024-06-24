@@ -1,49 +1,158 @@
-// SPDX-License-Identifier: UNLICENSED
+// pragma solidity 0.8.20;
+
+// import {Script, console} from "forge-std/Script.sol";
+
+// import {DiamondProxy, LibDiamond} from "../src/DiamondProxy.sol";
+// import {DiamondInit, InitParams} from "../src/initializers/DiamondInit.sol";
+
+// import {AdminFacet} from "../src/facets/AdminFacet.sol";
+// import {CoreFacet, PoolInitData} from "../src/facets/CoreFacet.sol";
+// import {LendingFacet} from "../src/facets/LendingFacet.sol";
+// import {RegistryFacet} from "../src/facets/RegistryFacet.sol";
+// import {BaseVault} from "../src/vaults/BaseVault.sol";
+// import {MockToken} from "../src/mocks/MockToken.sol";
+// import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+// import {Timelock} from "../src/libraries/common.sol";
+
+// contract DeployScript is Script {
+//     function run() public {
+//         uint256 pk = vm.envUint("PRIVATE_KEY");
+//         address governor = vm.addr(pk);
+//         vm.startBroadcast(pk);
+
+//         // deploy mocks
+
+//         // ------- MOCKS --------
+//         MockToken usdt = new MockToken("US Dollar", "USDT");
+//         // ------- VAULTS --------
+//         BaseVault usdtVault = new BaseVault(IERC20(usdt), governor, "USDT Vault", "sUSDT");
+
+//         AdminFacet adminFacet = new AdminFacet();
+//         CoreFacet coreFacet = new CoreFacet();
+//         LendingFacet lendingFacet = new LendingFacet();
+//         RegistryFacet registryFacet = new RegistryFacet();
+//         DiamondInit diamondInit = new DiamondInit();
+
+//         DiamondProxy stormbit;
+
+//         // ------- ADMIN FACET SELECTORS -----------
+//         bytes4[] memory adminFacetFunctionSelectors = new bytes4[](3);
+//         adminFacetFunctionSelectors[0] = adminFacet.setNewGovernor.selector;
+//         adminFacetFunctionSelectors[1] = adminFacet.governor.selector;
+//         adminFacetFunctionSelectors[2] = adminFacet.addSupportedAsset.selector;
+
+//         // ------- REGISTRY FACET SELECTORS -----------
+//         bytes4[] memory registryFacetFunctionSelectors = new bytes4[](3);
+//         registryFacetFunctionSelectors[0] = registryFacet.register.selector;
+//         registryFacetFunctionSelectors[1] = registryFacet.isRegistered.selector;
+//         registryFacetFunctionSelectors[2] = registryFacet.isUsernameUsed.selector;
+
+//         // ------- CORE FACET SELECTORS -----------
+//         bytes4[] memory coreFacetFunctionSelectors = new bytes4[](1);
+//         coreFacetFunctionSelectors[0] = coreFacet.createPool.selector;
+
+//         // ------- LENDING FACET SELECTORS -----------
+//         bytes4[] memory lendingFacetFunctionSelectors = new bytes4[](3);
+//         lendingFacetFunctionSelectors[0] = lendingFacet.deposit.selector;
+//         lendingFacetFunctionSelectors[1] = lendingFacet.withdraw.selector;
+//         lendingFacetFunctionSelectors[2] = lendingFacet.getTotalShares.selector;
+
+//         // ------- DIAMOND CUTS --------
+//         LibDiamond.FacetCut[] memory _diamondCut = new LibDiamond.FacetCut[](4);
+
+//         _diamondCut[0] = LibDiamond.FacetCut({
+//             facetAddress: address(adminFacet),
+//             action: LibDiamond.FacetCutAction.Add,
+//             functionSelectors: adminFacetFunctionSelectors
+//         });
+
+//         _diamondCut[1] = LibDiamond.FacetCut({
+//             facetAddress: address(coreFacet),
+//             action: LibDiamond.FacetCutAction.Add,
+//             functionSelectors: coreFacetFunctionSelectors
+//         });
+
+//         _diamondCut[2] = LibDiamond.FacetCut({
+//             facetAddress: address(lendingFacet),
+//             action: LibDiamond.FacetCutAction.Add,
+//             functionSelectors: lendingFacetFunctionSelectors
+//         });
+
+//         _diamondCut[3] = LibDiamond.FacetCut({
+//             facetAddress: address(registryFacet),
+//             action: LibDiamond.FacetCutAction.Add,
+//             functionSelectors: registryFacetFunctionSelectors
+//         });
+
+//         // ------- DIAMOND INIT PARAMS --------
+//         InitParams memory _initParams = InitParams({initialGovernor: governor});
+//         stormbit = new DiamondProxy(
+//             _diamondCut, address(diamondInit), abi.encodeWithSelector(DiamondInit.initialize.selector, _initParams)
+//         );
+
+//         AdminFacet(address(stormbit)).setNewGovernor(governor);
+
+//         // ------- Aditional Setup --------
+//         AdminFacet(address(stormbit)).addSupportedAsset(address(usdtVault));
+//         vm.stopBroadcast;
+
+//         // ------- Mint tokens ------------
+//         usdt.mint(governor, 1000 * 10 ** 18);
+//         usdt.approve(address(usdtVault), 100 * 10 ** 18);
+//         usdtVault.deposit(100 * 10 ** 18, governor);
+
+//         // ------- Register in the registry ------------
+//         RegistryFacet(address(stormbit)).register("governor");
+
+//         // Create pools
+//         usdtVault.approve(address(stormbit), 100 * 10 ** 18);
+
+//         uint256 poolId = CoreFacet(address(stormbit)).createPool(
+//             PoolInitData({
+//                 name: "Test Pool 1",
+//                 creditScore: 0,
+//                 maxAmountOfStakers: 10,
+//                 votingQuorum: 5,
+//                 maxPoolUsage: 100,
+//                 votingPowerCoolDown: 10,
+//                 assets: 100 * 10 ** 18,
+//                 assetVault: address(usdtVault),
+//                 timelock: Timelock.ONE_WEEK
+//             })
+//         );
+
+//         console.log("Pool ID: %s", poolId);
+//         console.log("Stormbit deployed at: %s", address(stormbit));
+//         console.log("Deplyed at block %s", block.number);
+//         console.log("usdtVault deployed at: %s", address(usdtVault));
+//         console.log("usdt deployed at: %s", address(usdt));
+//         console.log("user name used yes no", RegistryFacet(address(stormbit)).isUsernameUsed("governor"));
+//         console.log("user registered yes no", RegistryFacet(address(stormbit)).isRegistered(governor));
+
+//         // ------- End of deployment ------------
+//     }
+// }
+
 pragma solidity ^0.8.21;
 
-import "forge-std/Script.sol";
-import {SimpleAgreement} from "../src/agreements/SimpleAgreement.sol";
-import {IAgreement} from "../src/interfaces/IAgreement.sol";
-import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
-import {MockToken} from "src/mocks/MockToken.sol";
-import {MockNFT} from "src/mocks/MockNFT.sol";
+import {Script, console} from "forge-std/Script.sol";
+import {DeployHelpers} from "./DeployHelpers.s.sol";
+import {StormbitAssetManager} from "../src/AssetManager.sol";
 
+contract DeployScript is Script {
+    function run() public returns (DeployHelpers.NetworkConfig memory, StormbitAssetManager) {
+        console.log("Setting up deployments on Chain Id : ", block.chainid);
 
-contract BaseAgreementScript is Script {
-    SimpleAgreement public agreement;
-    MockToken public mockToken;
-    MockNFT public mockNFT; 
+        DeployHelpers deployHelpers = new DeployHelpers();
+        DeployHelpers.NetworkConfig memory activeNetworkConfig = deployHelpers.getActiveNetworkConfig();
 
-    function run() external {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        vm.startBroadcast(deployerPrivateKey);
-        console.log("trying with address", vm.addr(deployerPrivateKey));
-
-        // Deploy mockToken
-        mockToken = new MockToken();
-
-        uint256[] memory amounts = new uint256[](2);
-        amounts[0] = 200;
-        amounts[1] = 100;
-
-        uint256[] memory times = new uint256[](2);
-        times[0] = 2;
-        times[1] = 3;
-        bytes memory initData = abi.encode(
-            1000, // lateFee
-            "0x3",
-            "0x4",
-            address(mockToken), // PaymentToken address
-            amounts,
-            times
-        );
-
-        // Deploy BaseAgreement proxy
-        address agreementImpl = address(new SimpleAgreement());
-        bytes memory agreementData = abi.encodeWithSelector(IAgreement.initialize.selector, initData);
-        address agreementProxy = address(new ERC1967Proxy(agreementImpl, agreementData));
-        agreement = SimpleAgreement(payable(agreementProxy));
-
+        vm.startBroadcast(activeNetworkConfig.deployerKey);
+        // ----------------- Deploying AssetManager -----------------
+        StormbitAssetManager assetManager = new StormbitAssetManager(activeNetworkConfig.governor);
+        // ----------------- End of AssetManager deployment -----------------
         vm.stopBroadcast();
+
+        deployHelpers.logDeployment("AssetManager", address(assetManager));
+        return (activeNetworkConfig, assetManager);
     }
 }
