@@ -2,20 +2,13 @@ pragma solidity ^0.8.21;
 
 import {console} from "forge-std/Script.sol";
 import {SetupTest} from "../Setup.t.sol";
-import {ILendingTerms} from "../../src/interfaces/managers/lending/ILendingTerms.sol";
+// import {ILendingManager} from "../../src/interfaces/managers/lending/ILendingTerms.sol";
 import {IERC4626} from "../../src/interfaces/token/IERC4626.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
 
 contract LendingManagerTest is SetupTest {
     uint256 depositAmount;
     uint256 delegateAmount;
-
-    function setUp() public {
-        SetupTest.setUpEnvironment();
-        depositAmount = 1_000 * (10 ** token1.decimals());
-        delegateAmount = 500 * (10 ** vaultToken1.decimals());
-    }
-
     // function testRegister() public {
     //     vm.prank(lender1);
     //     lendingManager.register();
