@@ -1,39 +1,34 @@
 pragma solidity ^0.8.21;
 
-import {ILendingTerms} from "./interfaces/managers/lending/ILendingTerms.sol";
-import {ILoanRequest} from "./interfaces/managers/loan/ILoanRequest.sol";
-import {ILoanManager} from "./interfaces/managers/loan/ILoanManager.sol";
-import {ILoanManagerView} from "./interfaces/managers/loan/ILoanManagerView.sol";
-import {IAllocation} from "./interfaces/managers/loan/IAllocation.sol";
-import {IERC4626} from "./interfaces/token/IERC4626.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {IGovernable} from "./interfaces/utils/IGovernable.sol";
 import {IInitialize} from "./interfaces/utils/IInitialize.sol";
-import {StormbitAssetManager} from "./AssetManager.sol";
-import {StormbitLendingManager} from "./LendingManager.sol";
-import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import {IERC4626} from "./interfaces/token/IERC4626.sol";
+import {IAssetManager} from "./interfaces/managers/asset/IAssetManager.sol";
+import {ILoanManager} from "./interfaces/managers/loan/ILoanManager.sol";
+import {ILendingManager} from "./interfaces/managers/lending/ILendingManager.sol";
 
 /// @author Quantum3 Labs
 /// @title Stormbit Loan Manager
 /// @notice entrypoint for loan related operations
 
 contract StormbitLoanManager is
+    Initializable,
     IGovernable,
     IInitialize,
-    ILoanManager,
-    ILoanManagerView,
-    ILoanRequest,
-    IAllocation,
-    Initializable
+    ILoanManager
 {
     address private _governor;
-    StormbitLendingManager public lendingManager;
     uint256 public loanCounter;
-    StormbitAssetManager public assetManager;
+
+    ILendingManager public lendingManager;
+    IAssetManager public assetManager;
 
     mapping(uint256 loanId => Loan loan) public loans;
-    mapping(uint256 loanId => mapping(uint256 termId => mapping(address vaultToken => uint256 shares))) public
-        termAllocatedShares;
-    mapping(uint256 loanId => mapping(uint256 termId => bool isAllocated)) public loanTermAllocated;
+    mapping(uint256 loanId => mapping(uint256 termId => mapping(address vaultToken => uint256 shares)))
+        public termAllocatedShares;
+    mapping(uint256 loanId => mapping(uint256 termId => bool isAllocated))
+        public loanTermAllocated;
     // a counter use to track amount of loans a term was allocated to
     mapping(uint256 termId => uint256 loanAllocated) termLoanAllocatedCounter;
 
@@ -51,12 +46,10 @@ contract StormbitLoanManager is
     }
 
     modifier onlyBorrower(uint256 loanId) {
-        require(loans[loanId].borrower == msg.sender, "StormbitLoanManager: not borrower");
-        _;
-    }
-
-    modifier onlyLender() {
-        require(lendingManager.isRegistered(msg.sender), "StormbitLoanManager: not lender");
+        require(
+            loans[loanId].borrower == msg.sender,
+            "StormbitLoanManager: not borrower"
+        );
         _;
     }
 
@@ -64,9 +57,12 @@ contract StormbitLoanManager is
     // -------- PUBLIC FUNCTIONS ---------------
     // -----------------------------------------
 
-    function initialize(address assetManagerAddr, address lendingManagerAddr) public override initializer {
-        assetManager = StormbitAssetManager(assetManagerAddr);
-        lendingManager = StormbitLendingManager(lendingManagerAddr);
+    function initialize(
+        address assetManagerAddr,
+        address lendingManagerAddr
+    ) public override initializer {
+        assetManager = IAssetManager(assetManagerAddr);
+        lendingManager = ILendingManager(lendingManagerAddr);
     }
 
     /// @dev allow borrower to request loan
@@ -74,13 +70,22 @@ contract StormbitLoanManager is
     /// @param assets amount of token to borrow
     /// @param deadline deadline of the loan to be allocated
     /// @return loanId id of the loan
-    function requestLoan(address token, uint256 assets, uint256 deadline) public override returns (uint256) {
+    function requestLoan(
+        address token,
+        uint256 assets,
+        uint256 deadline
+    ) public override returns (uint256) {
         // todo: see which agreement to use
 
         // check if token is supported
-        require(assetManager.isTokenSupported(token), "StormbitLoanManager: token not supported");
+        require(
+            assetManager.isTokenSupported(token),
+            "StormbitLoanManager: token not supported"
+        );
         loanCounter += 1;
-        uint256 loanId = uint256(keccak256(abi.encode(msg.sender, loanCounter)));
+        uint256 loanId = uint256(
+            keccak256(abi.encode(msg.sender, loanCounter))
+        );
 
         // calculate shares required to fulfill the loan
         // todo: do safety check if amount is zero
@@ -112,10 +117,19 @@ contract StormbitLoanManager is
         Loan memory loan = loans[loanId];
         // require valid loan
         require(_validLoan(loanId), "StormbitLoanManager: invalid loan");
-        require(loan.status == LoanStatus.Pending, "StormbitLoanManager: loan not pending");
-        require(loan.sharesAllocated >= loan.sharesRequired, "StormbitLoanManager: insufficient allocation");
+        require(
+            loan.status == LoanStatus.Pending,
+            "StormbitLoanManager: loan not pending"
+        );
+        require(
+            loan.sharesAllocated >= loan.sharesRequired,
+            "StormbitLoanManager: insufficient allocation"
+        );
         // only if deadline is passed
-        require(block.timestamp >= loan.deadlineAllocate, "StormbitLoanManager: deadline not passed");
+        require(
+            block.timestamp >= loan.deadlineAllocate,
+            "StormbitLoanManager: deadline not passed"
+        );
         loans[loanId].status = LoanStatus.Active;
         lendingManager.borrowerWithdraw(
             // withdraw by asset manager
@@ -132,8 +146,16 @@ contract StormbitLoanManager is
         // check if loan is valid
         require(_validLoan(loanId), "StormbitLoanManager: invalid loan");
         Loan memory loan = loans[loanId];
-        require(loan.status == LoanStatus.Active, "StormbitLoanManager: loan not active");
-        assetManager.depositFrom(loan.token, loan.repayAssets, msg.sender, address(lendingManager));
+        require(
+            loan.status == LoanStatus.Active,
+            "StormbitLoanManager: loan not active"
+        );
+        assetManager.depositFrom(
+            loan.token,
+            loan.repayAssets,
+            msg.sender,
+            address(lendingManager)
+        );
         loans[loanId].status = LoanStatus.Repaid;
         emit LoanRepaid(loanId, msg.sender);
     }
@@ -141,15 +163,22 @@ contract StormbitLoanManager is
     /// @dev enable the lender to allocate certain term for the loan, until the loan is fully allocated
     /// @param loanId id of the loan
     /// @param termId id of the term
-    function allocateTerm(uint256 loanId, uint256 termId) public override onlyLender {
+    function allocateTerm(uint256 loanId, uint256 termId) public override {
         // check is valid loan
         require(_validLoan(loanId), "StormbitLoanManager: invalid loan");
         // only if allocate deadline not passed
-        require(block.timestamp < loans[loanId].deadlineAllocate, "StormbitLoanManager: deadline passed");
+        require(
+            block.timestamp < loans[loanId].deadlineAllocate,
+            "StormbitLoanManager: deadline passed"
+        );
 
         // check if term is valid
-        ILendingTerms.LendingTerm memory lendingTerm = lendingManager.getLendingTerm(termId);
-        require(lendingTerm.owner == msg.sender, "StormbitLoanManager: not term owner");
+        ILendingManager.LendingTerm memory lendingTerm = lendingManager
+            .getLendingTerm(termId);
+        require(
+            lendingTerm.owner == msg.sender,
+            "StormbitLoanManager: not term owner"
+        );
         // get loan instance
         Loan memory loan = loans[loanId];
         // check if term capable to fund the loan
@@ -159,7 +188,10 @@ contract StormbitLoanManager is
         );
 
         // check if term is already allocated
-        require(!loanTermAllocated[loanId][termId], "StormbitLoanManager: term already allocated");
+        require(
+            !loanTermAllocated[loanId][termId],
+            "StormbitLoanManager: term already allocated"
+        );
 
         loanTermAllocated[loanId][termId] = true;
         termLoanAllocatedCounter[termId] += 1; // ! todo: !where to decrement this?
@@ -171,16 +203,30 @@ contract StormbitLoanManager is
     /// @param loanId id of the loan
     /// @param termId id of the term
     /// @param assets amount of token to allocate
-    function allocateFundOnLoan(uint256 loanId, uint256 termId, uint256 assets) public override onlyLender {
+    function allocateFundOnLoan(
+        uint256 loanId,
+        uint256 termId,
+        uint256 assets
+    ) public override {
         // check is valid loan
         require(_validLoan(loanId), "StormbitLoanManager: invalid loan");
         // dont need to check term is valid, because it is already checked in allocateTerm
-        require(loanTermAllocated[loanId][termId], "StormbitLoanManager: term not allocated");
+        require(
+            loanTermAllocated[loanId][termId],
+            "StormbitLoanManager: term not allocated"
+        );
         // only if allocate deadline not passed
-        require(block.timestamp < loans[loanId].deadlineAllocate, "StormbitLoanManager: deadline passed");
+        require(
+            block.timestamp < loans[loanId].deadlineAllocate,
+            "StormbitLoanManager: deadline passed"
+        );
         // only owner of term can allocate fund
-        ILendingTerms.LendingTerm memory lendingTerm = lendingManager.getLendingTerm(termId);
-        require(lendingTerm.owner == msg.sender, "StormbitLoanManager: not term owner");
+        ILendingManager.LendingTerm memory lendingTerm = lendingManager
+            .getLendingTerm(termId);
+        require(
+            lendingTerm.owner == msg.sender,
+            "StormbitLoanManager: not term owner"
+        );
 
         Loan memory loan = loans[loanId];
         // get disposable shares on token of the term
@@ -188,7 +234,8 @@ contract StormbitLoanManager is
         // get the corresponding vault token
         address vaultToken = assetManager.getVaultToken(token);
         // get term owner disposable shares
-        uint256 termOwnerDisposableShares = lendingManager.getDisposableSharesOnTerm(termId, token);
+        uint256 termOwnerDisposableShares = lendingManager
+            .getDisposableSharesOnTerm(termId, token);
         // convert assets to shares
         uint256 sharesRequired = assetManager.convertToShares(token, assets);
         require(
@@ -216,7 +263,10 @@ contract StormbitLoanManager is
         return loans[loanId].borrower != address(0);
     }
 
-    function _calculateSharesRequired(address token, uint256 assets) private view returns (uint256) {
+    function _calculateSharesRequired(
+        address token,
+        uint256 assets
+    ) private view returns (uint256) {
         // get the vault token
         address vaultToken = assetManager.getVaultToken(token);
         // convert assets to shares
@@ -232,27 +282,33 @@ contract StormbitLoanManager is
     }
 
     /// @dev get the loan details
-    function getLoan(uint256 loanId) public view override returns (Loan memory) {
+    function getLoan(
+        uint256 loanId
+    ) public view override returns (Loan memory) {
         return loans[loanId];
     }
 
     /// @dev get the allocation status of a term on a loan
-    function getLoanTermAllocated(uint256 loanId, uint256 termId) public view override returns (bool) {
+    function getLoanTermAllocated(
+        uint256 loanId,
+        uint256 termId
+    ) public view override returns (bool) {
         return loanTermAllocated[loanId][termId];
     }
 
     /// @dev get the amount of loans a term was allocated to
-    function getTermLoanAllocatedCounter(uint256 termId) external view override returns (uint256) {
+    function getTermLoanAllocatedCounter(
+        uint256 termId
+    ) external view override returns (uint256) {
         return termLoanAllocatedCounter[termId];
     }
 
     /// @dev get the allocated shares on the loan
-    function getTermAllocatedSharesOnLoan(uint256 loanId, uint256 termId, address token)
-        public
-        view
-        override
-        returns (uint256)
-    {
+    function getTermAllocatedSharesOnLoan(
+        uint256 loanId,
+        uint256 termId,
+        address token
+    ) public view override returns (uint256) {
         address vaultToken = assetManager.getVaultToken(token);
         return termAllocatedShares[loanId][termId][vaultToken];
     }

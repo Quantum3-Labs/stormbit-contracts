@@ -1,0 +1,40 @@
+on:
+ push:
+  branches:
+   - main
+ pull_request:
+  branches:
+   - main
+
+name: Standard Foundry CLI
+
+jobs:
+ check:
+  strategy:
+   fail-fast: true
+  name: Foundry project
+  runs-on: ubuntu-latest
+  steps:
+   - uses: actions/checkout@v3
+    with:
+     submodules: recursive
+
+   - name: Install Foundry
+    uses: foundry-rs/foundry-toolchain@v1
+
+   - name: Build Smart Contracts
+    run: |
+     forge --version
+     forge build --sizes
+    id: build
+
+   - name: Run tests
+    run: forge test -vvv
+    id: test
+
+   - name: Print forge version
+    run: forge --version
+
+   - name: Check linting
+    run: forge fmt --check
+    id: lint
