@@ -131,11 +131,11 @@ contract StormbitAssetManager is
     function borrowerWithdraw(
         address borrower,
         address token,
-        uint256 shares
+        uint256 assets
     ) public override onlyLendingManager {
         address vaultToken = getVaultToken(token);
-        IERC4626(vaultToken).redeem(shares, borrower, msg.sender);
-        emit BorrowerWithdraw(borrower, token, shares);
+        IERC4626(vaultToken).withdraw(assets, borrower, msg.sender);
+        emit BorrowerWithdraw(borrower, token, assets);
     }
 
     /// @dev allow governor to add a new token

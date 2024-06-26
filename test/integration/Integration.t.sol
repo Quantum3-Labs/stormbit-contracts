@@ -31,13 +31,15 @@ contract IntegrationTest is SetupTest {
         );
         // 5% interest rate
         ILoanManager.Loan memory loan = loanManager.getLoan(loanId);
-        uint256 expectedRepayAssets = borrowAssets + (borrowAssets * 5) / 100;
+        uint256 expectedRepayAssets = borrowAssets +
+            (borrowAssets * 500) /
+            BASIS_POINTS;
         assert(loan.borrower == borrower1);
         assert(loan.token == address(token1));
         assert(loan.repayAssets == expectedRepayAssets);
 
         // lender take 10% commission on profit
-        uint256 termId = _registerAndCreateTerm(lender1, 1000);
+        uint256 termId = _createTerm(lender1, 1000, address(0));
 
         IERC4626 vaultTokenInterface = IERC4626(
             assetManager.getVaultToken(address(token1))
@@ -141,7 +143,7 @@ contract IntegrationTest is SetupTest {
 
         // repay loan
         // mint 5% interest to borrower to pay extra
-        uint256 interest = (borrowAssets * 5) / 100;
+        uint256 interest = (borrowAssets * 500) / BASIS_POINTS;
         token1.mint(borrower1, interest);
         // borrower repay loan
         vm.startPrank(borrower1);
@@ -179,10 +181,15 @@ contract IntegrationTest is SetupTest {
             address(token1),
             loan.repayAssets
         );
-        uint256 profitShares = repayAssetsInShares - loan.sharesRequired;
+        // calculate shares required
+        uint256 sharesRequired = assetManager.convertToShares(
+            address(token1),
+            loan.assetsRequired
+        );
+        uint256 profitShares = repayAssetsInShares - sharesRequired;
         uint256 lender1Balance = vaultTokenInterface.balanceOf(lender1);
         // 10% commission on profit
-        uint256 expectedLender1Balance = (profitShares * 10) / 100;
+        uint256 expectedLender1Balance = (profitShares * 1000) / BASIS_POINTS;
         assert(lender1Balance == expectedLender1Balance);
 
         // calculate remaining profit shares
@@ -269,13 +276,15 @@ contract IntegrationTest is SetupTest {
         );
         // 5% interest rate
         ILoanManager.Loan memory loan = loanManager.getLoan(loanId);
-        uint256 expectedRepayAssets = borrowAssets + (borrowAssets * 5) / 100;
+        uint256 expectedRepayAssets = borrowAssets +
+            (borrowAssets * 500) /
+            BASIS_POINTS;
         assert(loan.borrower == borrower1);
         assert(loan.token == address(token1));
         assert(loan.repayAssets == expectedRepayAssets);
 
         // lender take 10% commission on profit
-        uint256 termId = _registerAndCreateTerm(lender1, 1000);
+        uint256 termId = _createTerm(lender1, 1000, address(0));
 
         IERC4626 vaultTokenInterface = IERC4626(
             assetManager.getVaultToken(address(token1))
@@ -393,7 +402,7 @@ contract IntegrationTest is SetupTest {
 
         // repay loan
         // mint 5% interest to borrower to pay extra
-        uint256 interest = (borrowAssets * 5) / 100;
+        uint256 interest = (borrowAssets * 500) / BASIS_POINTS;
         token1.mint(borrower1, interest);
         // borrower repay loan
         vm.startPrank(borrower1);
@@ -431,10 +440,15 @@ contract IntegrationTest is SetupTest {
             address(token1),
             loan.repayAssets
         );
-        uint256 profitShares = repayAssetsInShares - loan.sharesRequired;
+        // calculate shares required
+        uint256 sharesRequired = assetManager.convertToShares(
+            address(token1),
+            loan.assetsRequired
+        );
+        uint256 profitShares = repayAssetsInShares - sharesRequired;
         uint256 lender1Balance = vaultTokenInterface.balanceOf(lender1);
         // 10% commission on profit
-        uint256 expectedLender1Balance = (profitShares * 10) / 100;
+        uint256 expectedLender1Balance = (profitShares * 1000) / BASIS_POINTS;
         assert(lender1Balance == expectedLender1Balance);
 
         // calculate remaining profit shares
@@ -541,14 +555,16 @@ contract IntegrationTest is SetupTest {
         );
         // 5% interest rate
         ILoanManager.Loan memory loan = loanManager.getLoan(loanId);
-        uint256 expectedRepayAssets = borrowAssets + (borrowAssets * 5) / 100;
+        uint256 expectedRepayAssets = borrowAssets +
+            (borrowAssets * 500) /
+            BASIS_POINTS;
         assert(loan.borrower == borrower1);
         assert(loan.token == address(token1));
         assert(loan.repayAssets == expectedRepayAssets);
 
         // lender take 10% commission on profit
-        uint256 termId1 = _registerAndCreateTerm(lender1, 1000);
-        uint256 termId2 = _registerAndCreateTerm(lender1, 500);
+        uint256 termId1 = _createTerm(lender1, 1000, address(0));
+        uint256 termId2 = _createTerm(lender1, 500, address(1));
 
         IERC4626 vaultTokenInterface = IERC4626(
             assetManager.getVaultToken(address(token1))
@@ -706,7 +722,7 @@ contract IntegrationTest is SetupTest {
 
         // repay loan
         // mint 5% interest to borrower to pay extra
-        uint256 interest = (borrowAssets * 5) / 100;
+        uint256 interest = (borrowAssets * 500) / BASIS_POINTS;
         token1.mint(borrower1, interest);
         // borrower repay loan
         vm.startPrank(borrower1);
@@ -747,17 +763,22 @@ contract IntegrationTest is SetupTest {
             address(token1),
             loan.repayAssets
         );
-        uint256 profitShares = repayAssetsInShares - loan.sharesRequired;
+        // calculate shares required
+        uint256 sharesRequired = assetManager.convertToShares(
+            address(token1),
+            loan.assetsRequired
+        );
+        uint256 profitShares = repayAssetsInShares - sharesRequired;
         // get term weight on loan
         uint256 term1Weight = (loanManager.getTermAllocatedSharesOnLoan(
             loanId,
             termId1,
             address(token1)
-        ) * 100) / loan.sharesAllocated;
+        ) * BASIS_POINTS) / loan.sharesAllocated;
         // calculate profit for term1
-        uint256 term1Profit = (profitShares * term1Weight) / 100;
+        uint256 term1Profit = (profitShares * term1Weight) / BASIS_POINTS;
         // from term1 profit calculate lender profit
-        uint256 lender1ProfitTerm1 = (term1Profit * 10) / 100;
+        uint256 lender1ProfitTerm1 = (term1Profit * 1000) / BASIS_POINTS;
         uint256 lender1Balance = vaultTokenInterface.balanceOf(lender1);
         assert(lender1Balance == lender1ProfitTerm1);
         // check term1 profit
@@ -777,17 +798,22 @@ contract IntegrationTest is SetupTest {
             address(token1),
             loan.repayAssets
         );
-        profitShares = repayAssetsInShares - loan.sharesRequired;
+        // calculate shares required
+        sharesRequired = assetManager.convertToShares(
+            address(token1),
+            loan.assetsRequired
+        );
+        profitShares = repayAssetsInShares - sharesRequired;
         // get term weight on loan
         uint256 term2Weight = (loanManager.getTermAllocatedSharesOnLoan(
             loanId,
             termId2,
             address(token1)
-        ) * 100) / loan.sharesAllocated;
+        ) * BASIS_POINTS) / loan.sharesAllocated;
         // calculate profit for term1
-        uint256 term2Profit = (profitShares * term2Weight) / 100;
+        uint256 term2Profit = (profitShares * term2Weight) / BASIS_POINTS;
         // from term1 profit calculate lender profit
-        uint256 lender1ProfitTerm2 = (term2Profit * 5) / 100;
+        uint256 lender1ProfitTerm2 = (term2Profit * 500) / BASIS_POINTS;
         lender1Balance = vaultTokenInterface.balanceOf(lender1);
         assert(lender1Balance == lender1ProfitTerm1 + lender1ProfitTerm2);
         // check term1 profit
@@ -898,14 +924,15 @@ contract IntegrationTest is SetupTest {
         return loanId;
     }
 
-    function _registerAndCreateTerm(
+    function _createTerm(
         address lender,
-        uint96 commission
+        uint96 commission,
+        address hook
     ) private returns (uint256) {
         vm.startPrank(lender);
         uint256 termId = lendingManager.createLendingTerm(
             commission,
-            IHooks(address(0))
+            IHooks(hook)
         );
         vm.stopPrank();
         return termId;

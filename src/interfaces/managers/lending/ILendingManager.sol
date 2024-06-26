@@ -7,15 +7,22 @@ import {IHooks} from "../../hooks/IHooks.sol";
 /// TODO split into different interfaces according to funcionality
 interface ILendingManager {
     struct Shares {
-        uint256 disposableShares;
-        uint256 totalShares;
+        uint256 available;
+        uint256 total;
         uint256 profit;
     }
 
     struct LendingTerm {
         address owner;
         uint256 comission; // TODO add balances and other ERC4626 custom fields
-        uint256 balances;
+        IHooks hooks;
+        mapping(uint256 termId => mapping(address vaultToken => Shares shares)) termOwnerShares; // total shares controlled by the term owner
+        mapping(uint256 termId => uint256 nonZeroTokenBalanceCounter) termNonZeroTokenCounter; // track non zero token counter
+    }
+
+    struct LendingTermMetadata {
+        address owner;
+        uint256 comission; // TODO add balances and other ERC4626 custom fields
         IHooks hooks;
     }
 
@@ -37,7 +44,7 @@ interface ILendingManager {
     event BorrowerWithdraw(
         address indexed borrower,
         address indexed token,
-        uint256 shares
+        uint256 assets
     );
 
     event DepositToTerm(
@@ -70,7 +77,7 @@ interface ILendingManager {
     function borrowerWithdraw(
         address borrower,
         address token,
-        uint256 shares
+        uint256 assets
     ) external;
 
     function lenderClaimLoanProfit(
@@ -97,7 +104,9 @@ interface ILendingManager {
         address token
     ) external;
 
-    function getLendingTerm(uint256 id) external returns (LendingTerm memory);
+    function getLendingTerm(
+        uint256 id
+    ) external returns (LendingTermMetadata memory);
 
     function getTotalSharesOnTerm(
         uint256 termId,

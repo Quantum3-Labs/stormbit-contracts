@@ -61,6 +61,6 @@ interface IAssetManager {
     function borrowerWithdraw(
         address borrower,
         address token,
-        uint256 shares
+        uint256 assets
     ) external;
 }

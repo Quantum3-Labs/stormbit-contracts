@@ -15,7 +15,8 @@ interface ILoanManager {
         address borrower;
         address token;
         uint256 repayAssets;
-        uint256 sharesRequired;
+        uint256 assetsRequired;
+        uint256 assetsAllocated;
         uint256 sharesAllocated;
         uint256 deadlineAllocate;
         LoanStatus status;

@@ -18,8 +18,10 @@ contract StormbitLoanManager is
     IInitialize,
     ILoanManager
 {
+    uint16 public constant BASIS_POINTS = 10_000;
+
     address private _governor;
-    uint256 public loanCounter;
+    uint256 public userLoanNonce;
 
     ILendingManager public lendingManager;
     IAssetManager public assetManager;
@@ -82,26 +84,21 @@ contract StormbitLoanManager is
             assetManager.isTokenSupported(token),
             "StormbitLoanManager: token not supported"
         );
-        loanCounter += 1;
+        userLoanNonce += 1;
         uint256 loanId = uint256(
-            keccak256(abi.encode(msg.sender, loanCounter))
+            keccak256(abi.encode(msg.sender, userLoanNonce))
         );
-
-        // calculate shares required to fulfill the loan
-        // todo: do safety check if amount is zero
-        // todo: should be fine to remove, convertToShares has totalAssets() + 1, will not lead to 0
-        uint256 sharesRequired = _calculateSharesRequired(token, assets);
-        require(sharesRequired > 0, "StormbitLoanManager: insufficient shares");
 
         // todo: change the fixed rate
         // 5% interest rate
-        uint256 repayAssets = assets + (assets * 5) / 100;
+        uint256 repayAssets = assets + (assets * 500) / BASIS_POINTS;
 
         loans[loanId] = Loan({
             borrower: msg.sender,
             token: token,
             repayAssets: repayAssets,
-            sharesRequired: sharesRequired,
+            assetsRequired: assets,
+            assetsAllocated: 0,
             sharesAllocated: 0,
             deadlineAllocate: deadline,
             status: LoanStatus.Pending
@@ -122,7 +119,7 @@ contract StormbitLoanManager is
             "StormbitLoanManager: loan not pending"
         );
         require(
-            loan.sharesAllocated >= loan.sharesRequired,
+            loan.assetsAllocated >= loan.assetsRequired,
             "StormbitLoanManager: insufficient allocation"
         );
         // only if deadline is passed
@@ -135,7 +132,7 @@ contract StormbitLoanManager is
             // withdraw by asset manager
             loan.borrower,
             loan.token,
-            loan.sharesRequired
+            loan.assetsRequired
         );
         emit LoanExecuted(loanId, loan.borrower, loan.token, loan.repayAssets);
     }
@@ -173,7 +170,7 @@ contract StormbitLoanManager is
         );
 
         // check if term is valid
-        ILendingManager.LendingTerm memory lendingTerm = lendingManager
+        ILendingManager.LendingTermMetadata memory lendingTerm = lendingManager
             .getLendingTerm(termId);
         require(
             lendingTerm.owner == msg.sender,
@@ -221,7 +218,7 @@ contract StormbitLoanManager is
             "StormbitLoanManager: deadline passed"
         );
         // only owner of term can allocate fund
-        ILendingManager.LendingTerm memory lendingTerm = lendingManager
+        ILendingManager.LendingTermMetadata memory lendingTerm = lendingManager
             .getLendingTerm(termId);
         require(
             lendingTerm.owner == msg.sender,
@@ -244,14 +241,15 @@ contract StormbitLoanManager is
         );
         // fund shares should less than loan shares required
         require(
-            loan.sharesAllocated + sharesRequired <= loan.sharesRequired,
-            "StormbitLoanManager: loan shares required exceeded"
+            loan.assetsAllocated + assets <= loan.assetsRequired,
+            "StormbitLoanManager: loan assets required exceeded"
         );
 
         // freeze the term owner shares
         lendingManager.freezeTermShares(termId, sharesRequired, token);
 
         loans[loanId].sharesAllocated += sharesRequired;
+        loans[loanId].assetsAllocated += assets;
         termAllocatedShares[loanId][termId][vaultToken] += sharesRequired;
         emit AllocatedFundOnLoan(loanId, termId, assets);
     }
