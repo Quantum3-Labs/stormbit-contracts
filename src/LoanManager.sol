@@ -33,6 +33,8 @@ contract StormbitLoanManager is
         public loanTermAllocated;
     // a counter use to track amount of loans a term was allocated to
     mapping(uint256 termId => uint256 loanAllocated) termLoanAllocatedCounter;
+    mapping(uint256 termId => mapping(uint256 loanId => mapping(address vaultToken => bool)))
+        public lenderClaimedProfit; // mapping to track lender claim profit
 
     constructor(address initialGovernor) {
         _governor = initialGovernor;
@@ -52,6 +54,12 @@ contract StormbitLoanManager is
             loans[loanId].borrower == msg.sender,
             "StormbitLoanManager: not borrower"
         );
+        _;
+    }
+
+    modifier onlyTermOwner(uint256 termId) {
+        address owner = lendingManager.getLendingTerm(termId).owner;
+        require(owner == msg.sender, "StormbitLendingManager: not term owner");
         _;
     }
 
@@ -127,6 +135,7 @@ contract StormbitLoanManager is
             block.timestamp >= loan.deadlineAllocate,
             "StormbitLoanManager: deadline not passed"
         );
+
         loans[loanId].status = LoanStatus.Active;
         lendingManager.borrowerWithdraw(
             // withdraw by asset manager
@@ -157,82 +166,41 @@ contract StormbitLoanManager is
         emit LoanRepaid(loanId, msg.sender);
     }
 
-    /// @dev enable the lender to allocate certain term for the loan, until the loan is fully allocated
-    /// @param loanId id of the loan
-    /// @param termId id of the term
-    function allocateTerm(uint256 loanId, uint256 termId) public override {
-        // check is valid loan
-        require(_validLoan(loanId), "StormbitLoanManager: invalid loan");
-        // only if allocate deadline not passed
-        require(
-            block.timestamp < loans[loanId].deadlineAllocate,
-            "StormbitLoanManager: deadline passed"
-        );
-
-        // check if term is valid
-        ILendingManager.LendingTermMetadata memory lendingTerm = lendingManager
-            .getLendingTerm(termId);
-        require(
-            lendingTerm.owner == msg.sender,
-            "StormbitLoanManager: not term owner"
-        );
-        // get loan instance
-        Loan memory loan = loans[loanId];
-        // check if term capable to fund the loan
-        require(
-            lendingManager.getDisposableSharesOnTerm(termId, loan.token) > 0,
-            "StormbitLoanManager: term insufficient shares"
-        );
-
-        // check if term is already allocated
-        require(
-            !loanTermAllocated[loanId][termId],
-            "StormbitLoanManager: term already allocated"
-        );
-
-        loanTermAllocated[loanId][termId] = true;
-        termLoanAllocatedCounter[termId] += 1; // ! todo: !where to decrement this?
-
-        emit TermAllocated(loanId, termId);
-    }
-
     /// @dev allow lender to allocate fund on the loan, but only when the term is already allocated
     /// @param loanId id of the loan
     /// @param termId id of the term
     /// @param assets amount of token to allocate
-    function allocateFundOnLoan(
+    function allocateTermAndFundOnLoan(
         uint256 loanId,
         uint256 termId,
         uint256 assets
-    ) public override {
+    ) public override onlyTermOwner(termId) {
+        Loan memory loan = loans[loanId];
         // check is valid loan
         require(_validLoan(loanId), "StormbitLoanManager: invalid loan");
-        // dont need to check term is valid, because it is already checked in allocateTerm
         require(
-            loanTermAllocated[loanId][termId],
-            "StormbitLoanManager: term not allocated"
+            block.timestamp < loan.deadlineAllocate,
+            "StormbitLoanManager: deadline passed"
         );
         // only if allocate deadline not passed
         require(
             block.timestamp < loans[loanId].deadlineAllocate,
             "StormbitLoanManager: deadline passed"
         );
-        // only owner of term can allocate fund
-        ILendingManager.LendingTermMetadata memory lendingTerm = lendingManager
-            .getLendingTerm(termId);
-        require(
-            lendingTerm.owner == msg.sender,
-            "StormbitLoanManager: not term owner"
-        );
 
-        Loan memory loan = loans[loanId];
+        // if first time allocate to the loan, update status
+        if (!loanTermAllocated[loanId][termId]) {
+            loanTermAllocated[loanId][termId] = true;
+            termLoanAllocatedCounter[termId] += 1;
+        }
+
         // get disposable shares on token of the term
         address token = loan.token;
         // get the corresponding vault token
         address vaultToken = assetManager.getVaultToken(token);
         // get term owner disposable shares
-        uint256 termOwnerDisposableShares = lendingManager
-            .getDisposableSharesOnTerm(termId, token);
+        (, uint256 termOwnerDisposableShares, ) = lendingManager
+            .getLendingTermBalances(termId, token);
         // convert assets to shares
         uint256 sharesRequired = assetManager.convertToShares(token, assets);
         require(
@@ -251,7 +219,69 @@ contract StormbitLoanManager is
         loans[loanId].sharesAllocated += sharesRequired;
         loans[loanId].assetsAllocated += assets;
         termAllocatedShares[loanId][termId][vaultToken] += sharesRequired;
-        emit AllocatedFundOnLoan(loanId, termId, assets);
+
+        emit AllocatedTermAndFundOnLoan(loanId, termId, assets);
+    }
+
+    /// @dev allow lender to claim the profit for loan, then add the remaining profit to term profit
+    function claimLoanProfit(uint256 termId, uint256 loanId) public override {
+        Loan memory loan = loans[loanId];
+        address vaultToken = assetManager.getVaultToken(loan.token);
+        // check if the profit has been claimed
+        require(
+            !lenderClaimedProfit[termId][loanId][vaultToken],
+            "StormbitLendingManager: profit already claimed"
+        );
+        // get loan
+        require(
+            loan.status == ILoanManager.LoanStatus.Repaid,
+            "StormbitLendingManager: loan not repaid"
+        );
+        // term allocated on shares should > 0
+        uint256 weight = termAllocatedShares[loanId][termId][vaultToken];
+        require(
+            weight > 0,
+            "StormbitLendingManager: term not allocated on loan"
+        );
+
+        // get lending term
+        ILendingManager.LendingTermMetadata memory term = lendingManager
+            .getLendingTerm(termId);
+        // convert repay assets to shares
+        uint256 repayShares = assetManager.convertToShares(
+            loan.token,
+            loan.repayAssets
+        );
+        // calculate profit
+        // calculate shares required, convert assets to shares
+        uint256 sharesRequired = assetManager.convertToShares(
+            loan.token,
+            loan.assetsRequired
+        );
+        uint256 profitShares = repayShares - sharesRequired;
+        // calculate weight of term in shares / loan required shares
+        uint256 termFundedPercent = (weight * BASIS_POINTS) / sharesRequired;
+        // term owner profit shares
+        uint256 termProfitShares = (profitShares * termFundedPercent) /
+            BASIS_POINTS;
+        // from term profit shares, get commission for term owner
+        uint256 termOwnerProfitShares = (termProfitShares * term.comission) /
+            BASIS_POINTS;
+        // calculate the remaining profit after term owner profit
+        uint256 extraProfit = termProfitShares - termOwnerProfitShares;
+
+        lendingManager.distributeProfit(
+            termId,
+            loan.token,
+            extraProfit,
+            weight,
+            termOwnerProfitShares
+        );
+
+        // update claimed status
+        lenderClaimedProfit[termId][loanId][vaultToken] = true;
+
+        emit ClaimLoanProfit(termId, loanId, loan.token, termOwnerProfitShares);
     }
 
     // -----------------------------------------
