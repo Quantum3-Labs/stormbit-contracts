@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.21;
 
 /// @author Quantum3 Labs
@@ -22,19 +23,46 @@ interface ILoanManager {
         LoanStatus status;
     }
 
-    event LoanRequested(uint256 indexed loanId, address indexed borrower, address indexed token, uint256 assets);
+    event LoanRequested(
+        uint256 indexed loanId,
+        address indexed borrower,
+        address indexed token,
+        uint256 assets
+    );
 
-    event AllocatedTermAndFundOnLoan(uint256 indexed loanId, uint256 indexed termId, uint256 assets);
+    event AllocatedTermAndFundOnLoan(
+        uint256 indexed loanId,
+        uint256 indexed termId,
+        uint256 assets
+    );
 
-    event LoanExecuted(uint256 indexed loanId, address indexed borrower, address indexed token, uint256 repayAssets);
+    event LoanExecuted(
+        uint256 indexed loanId,
+        address indexed borrower,
+        address indexed token,
+        uint256 repayAssets
+    );
 
     event LoanRepaid(uint256 indexed loanId, address indexed repayUser);
 
-    event ClaimLoanProfit(uint256 indexed termId, uint256 indexed loanId, address indexed token, uint256 profit);
+    event ClaimLoanProfit(
+        uint256 indexed termId,
+        uint256 indexed loanId,
+        address indexed token,
+        uint256 profit
+    );
 
-    function requestLoan(address token, uint256 assets, uint256 deadline) external returns (uint256);
+    function requestLoan(
+        address token,
+        uint256 assets,
+        uint256 deadline
+    ) external returns (uint256);
 
-    function allocateTermAndFundOnLoan(uint256 loanId, uint256 termId, uint256 assets) external;
+    function allocateTermAndFundOnLoan(
+        uint256 loanId,
+        uint256 termId,
+        uint256 assets
+    ) external;
 
     function executeLoan(uint256 loanId) external;
 
@@ -44,12 +72,18 @@ interface ILoanManager {
 
     function getLoan(uint256 loanId) external view returns (Loan memory);
 
-    function getLoanTermAllocated(uint256 loanId, uint256 termId) external view returns (bool);
+    function getLoanTermAllocated(
+        uint256 loanId,
+        uint256 termId
+    ) external view returns (bool);
 
-    function getTermLoanAllocatedCounter(uint256 termId) external view returns (uint256);
+    function getTermLoanAllocatedCounter(
+        uint256 termId
+    ) external view returns (uint256);
 
-    function getTermAllocatedSharesOnLoan(uint256 loanId, uint256 termId, address token)
-        external
-        view
-        returns (uint256);
+    function getTermAllocatedSharesOnLoan(
+        uint256 loanId,
+        uint256 termId,
+        address token
+    ) external view returns (uint256);
 }

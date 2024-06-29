@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.21;
 
 import {IHooks} from "../interfaces/hooks/IHooks.sol";
@@ -19,7 +20,11 @@ abstract contract BaseHook is IHooks {
         _;
     }
 
-    function getHookPermissions() public pure virtual returns (Hooks.Permissions memory);
+    function getHookPermissions()
+        public
+        pure
+        virtual
+        returns (Hooks.Permissions memory);
 
     function validateHookAddress(BaseHook _this) internal pure virtual {
         Hooks.validateHookPermissions(_this, getHookPermissions());

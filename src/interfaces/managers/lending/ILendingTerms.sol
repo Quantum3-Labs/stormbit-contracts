@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.21;
 
 import {IHooks} from "../../hooks/IHooks.sol";
@@ -13,10 +14,17 @@ interface ILendingTerms {
         IHooks hooks;
     }
 
-    event LendingTermCreated(uint256 indexed id, address lender, uint256 comission);
+    event LendingTermCreated(
+        uint256 indexed id,
+        address lender,
+        uint256 comission
+    );
     event LendingTermRemoved(uint256 indexed id);
 
-    function createLendingTerm(uint256 comission, IHooks hooks) external returns (uint256);
+    function createLendingTerm(
+        uint256 comission,
+        IHooks hooks
+    ) external returns (uint256);
 
     function removeLendingTerm(uint256 id) external;
 }
