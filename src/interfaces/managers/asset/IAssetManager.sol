@@ -11,18 +11,9 @@ interface IAssetManager {
     event Deposit(address indexed user, address indexed token, uint256 assets);
 
     /// @dev note that withdraw event uses assets instead of shares
-    event Withdraw(
-        address indexed user,
-        address indexed vaultToken,
-        uint256 assets,
-        uint256 sharesBurned
-    );
+    event Withdraw(address indexed user, address indexed vaultToken, uint256 assets, uint256 sharesBurned);
 
-    event BorrowerWithdraw(
-        address indexed borrower,
-        address indexed token,
-        uint256 shares
-    );
+    event BorrowerWithdraw(address indexed borrower, address indexed token, uint256 shares);
 
     function addToken(address _asset) external;
 
@@ -32,35 +23,17 @@ interface IAssetManager {
 
     function getVaultToken(address token) external view returns (address);
 
-    function getUserShares(
-        address token,
-        address user
-    ) external view returns (uint256);
+    function getUserShares(address token, address user) external view returns (uint256);
 
-    function convertToShares(
-        address token,
-        uint256 assets
-    ) external view returns (uint256);
+    function convertToShares(address token, uint256 assets) external view returns (uint256);
 
-    function convertToAssets(
-        address token,
-        uint256 shares
-    ) external view returns (uint256);
+    function convertToAssets(address token, uint256 shares) external view returns (uint256);
 
     function deposit(address token, uint256 assets) external;
 
-    function depositFrom(
-        address token,
-        uint256 assets,
-        address depositor,
-        address receiver
-    ) external;
+    function depositFrom(address token, uint256 assets, address depositor, address receiver) external;
 
     function withdraw(address token, uint256 shares) external;
 
-    function borrowerWithdraw(
-        address borrower,
-        address token,
-        uint256 assets
-    ) external;
+    function borrowerWithdraw(address borrower, address token, uint256 assets) external;
 }
