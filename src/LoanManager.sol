@@ -214,6 +214,9 @@ contract StormbitLoanManager is Initializable, IGovernable, IInitialize, ILoanMa
         // update claimed status
         lenderClaimedProfit[termId][loanId][vaultToken] = true;
 
+        // decrement term allocated counter
+        termLoanAllocatedCounter[termId] -= 1;
+
         emit ClaimLoanProfit(termId, loanId, loan.token, termOwnerProfitShares);
     }
 
