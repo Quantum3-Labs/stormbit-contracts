@@ -141,21 +141,15 @@ import {DeployHelpers} from "./DeployHelpers.s.sol";
 import {StormbitAssetManager} from "../src/AssetManager.sol";
 
 contract DeployScript is Script {
-    function run()
-        public
-        returns (DeployHelpers.NetworkConfig memory, StormbitAssetManager)
-    {
+    function run() public returns (DeployHelpers.NetworkConfig memory, StormbitAssetManager) {
         console.log("Setting up deployments on Chain Id : ", block.chainid);
 
         DeployHelpers deployHelpers = new DeployHelpers();
-        DeployHelpers.NetworkConfig memory activeNetworkConfig = deployHelpers
-            .getActiveNetworkConfig();
+        DeployHelpers.NetworkConfig memory activeNetworkConfig = deployHelpers.getActiveNetworkConfig();
 
         vm.startBroadcast(activeNetworkConfig.deployerKey);
         // ----------------- Deploying AssetManager -----------------
-        StormbitAssetManager assetManager = new StormbitAssetManager(
-            activeNetworkConfig.governor
-        );
+        StormbitAssetManager assetManager = new StormbitAssetManager(activeNetworkConfig.governor);
         // ----------------- End of AssetManager deployment -----------------
         vm.stopBroadcast();
 

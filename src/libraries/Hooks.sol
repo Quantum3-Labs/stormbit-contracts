@@ -12,10 +12,7 @@ library Hooks {
 
     error HookAddressNotValid(address hooks);
 
-    function validateHookPermissions(
-        IHooks self,
-        Permissions memory permissions
-    ) internal pure {
+    function validateHookPermissions(IHooks self, Permissions memory permissions) internal pure {
         // the hook contract must implement at least one hook
         if (!permissions.beforeDepositToTerm) {
             revert HookAddressNotValid(address(self));

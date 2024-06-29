@@ -7,17 +7,9 @@ pragma solidity ^0.8.21;
 interface IAllocation {
     event TermAllocated(uint256 indexed loanId, uint256 indexed termId);
 
-    event AllocatedFundOnLoan(
-        uint256 indexed loanId,
-        uint256 indexed termId,
-        uint256 assets
-    );
+    event AllocatedFundOnLoan(uint256 indexed loanId, uint256 indexed termId, uint256 assets);
 
     function allocateTerm(uint256 loanId, uint256 termId) external;
 
-    function allocateFundOnLoan(
-        uint256 loanId,
-        uint256 termId,
-        uint256 assets
-    ) external;
+    function allocateFundOnLoan(uint256 loanId, uint256 termId, uint256 assets) external;
 }

@@ -26,19 +26,11 @@ contract DeployHelpers is Script {
         }
     }
 
-    function getActiveNetworkConfig()
-        public
-        view
-        returns (NetworkConfig memory)
-    {
+    function getActiveNetworkConfig() public view returns (NetworkConfig memory) {
         return activeNetworkConfig;
     }
 
-    function getHoleskyConfig()
-        public
-        view
-        returns (NetworkConfig memory networkConfig)
-    {
+    function getHoleskyConfig() public view returns (NetworkConfig memory networkConfig) {
         // update the tokens address
         address[] memory tokens = new address[](3);
 
@@ -50,10 +42,7 @@ contract DeployHelpers is Script {
         });
     }
 
-    function getOrCreateAnvilConfig()
-        public
-        returns (NetworkConfig memory networkConfig)
-    {
+    function getOrCreateAnvilConfig() public returns (NetworkConfig memory networkConfig) {
         if (activeNetworkConfig.initialSupportedTokens.length != 0) {
             return activeNetworkConfig;
         }

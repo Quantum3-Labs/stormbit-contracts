@@ -27,101 +27,40 @@ interface ILendingManager {
         IHooks hooks;
     }
 
-    event LendingTermCreated(
-        uint256 indexed id,
-        address lender,
-        uint256 comission
-    );
+    event LendingTermCreated(uint256 indexed id, address lender, uint256 comission);
 
     event LendingTermRemoved(uint256 indexed id);
 
-    event BorrowerWithdraw(
-        address indexed borrower,
-        address indexed token,
-        uint256 assets
-    );
+    event BorrowerWithdraw(address indexed borrower, address indexed token, uint256 assets);
 
-    event DepositToTerm(
-        uint256 indexed id,
-        address indexed user,
-        address indexed token,
-        uint256 shares
-    );
+    event DepositToTerm(uint256 indexed id, address indexed user, address indexed token, uint256 shares);
 
-    event WithdrawFromTerm(
-        uint256 indexed id,
-        address indexed user,
-        address indexed token,
-        uint256 shares
-    );
+    event WithdrawFromTerm(uint256 indexed id, address indexed user, address indexed token, uint256 shares);
 
-    event FreezeSharesOnTerm(
-        uint256 indexed termId,
-        address indexed token,
-        uint256 shares
-    );
+    event FreezeSharesOnTerm(uint256 indexed termId, address indexed token, uint256 shares);
 
-    event DistributeProfit(
-        uint256 indexed termId,
-        address indexed token,
-        uint256 profit
-    );
+    event DistributeProfit(uint256 indexed termId, address indexed token, uint256 profit);
 
-    function createLendingTerm(
-        uint256 comission,
-        IHooks hooks
-    ) external returns (uint256);
+    function createLendingTerm(uint256 comission, IHooks hooks) external returns (uint256);
 
     function removeLendingTerm(uint256 id) external;
 
-    function borrowerWithdraw(
-        address borrower,
-        address token,
-        uint256 assets
-    ) external;
+    function borrowerWithdraw(address borrower, address token, uint256 assets) external;
 
-    function depositToTerm(
-        uint256 termId,
-        address token,
-        uint256 shares
-    ) external;
+    function depositToTerm(uint256 termId, address token, uint256 shares) external;
 
-    function withdrawFromTerm(
-        uint256 termId,
-        address token,
-        uint256 requestedDecrease
-    ) external;
+    function withdrawFromTerm(uint256 termId, address token, uint256 requestedDecrease) external;
 
-    function freezeTermShares(
-        uint256 termId,
-        uint256 shares,
-        address token
-    ) external;
+    function freezeTermShares(uint256 termId, uint256 shares, address token) external;
 
-    function distributeProfit(
-        uint256 termId,
-        address token,
-        uint256 weight,
-        uint256 shares,
-        uint256 ownerProfit
-    ) external;
+    function distributeProfit(uint256 termId, address token, uint256 weight, uint256 shares, uint256 ownerProfit)
+        external;
 
-    function getLendingTerm(
-        uint256 id
-    ) external returns (LendingTermMetadata memory);
+    function getLendingTerm(uint256 id) external returns (LendingTermMetadata memory);
 
-    function getTermFreezedShares(
-        uint256 termId,
-        address token
-    ) external view returns (uint256);
+    function getTermFreezedShares(uint256 termId, address token) external view returns (uint256);
 
-    function getUserTotalDelegatedShares(
-        address user,
-        address token
-    ) external view returns (uint256);
+    function getUserTotalDelegatedShares(address user, address token) external view returns (uint256);
 
-    function getLendingTermBalances(
-        uint256 termId,
-        address token
-    ) external view returns (uint256, uint256, uint256);
+    function getLendingTermBalances(uint256 termId, address token) external view returns (uint256, uint256, uint256);
 }
