@@ -3,7 +3,6 @@ cache/
 out/
 
 # Ignores development broadcast logs
-!/broadcast
 /broadcast
 ## ignore all inside broadcast folder
 /broadcast/**
