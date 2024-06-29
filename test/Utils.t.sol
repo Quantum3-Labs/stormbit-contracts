@@ -1,6 +1,6 @@
 pragma solidity ^0.8.21;
 
-import "forge-std/test.sol";
+import {Test} from "forge-std/Test.sol";
 
 contract TestUtils is Test {
     uint16 public constant BASIS_POINTS = 10_000;
