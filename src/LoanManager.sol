@@ -21,7 +21,8 @@ contract StormbitLoanManager is
     uint16 public constant BASIS_POINTS = 10_000;
 
     address private _governor;
-    uint256 public userLoanNonce;
+
+    mapping(address user => uint256 counter) public userLoanNonce;
 
     ILendingManager public lendingManager;
     IAssetManager public assetManager;
@@ -92,10 +93,11 @@ contract StormbitLoanManager is
             assetManager.isTokenSupported(token),
             "StormbitLoanManager: token not supported"
         );
-        userLoanNonce += 1;
-        uint256 loanId = uint256(
-            keccak256(abi.encode(msg.sender, userLoanNonce))
-        );
+
+        uint256 loanNonce = userLoanNonce[msg.sender];
+        uint256 loanId = uint256(keccak256(abi.encode(msg.sender, loanNonce)));
+        loanNonce += 1;
+        userLoanNonce[msg.sender] = loanNonce;
 
         // todo: change the fixed rate
         // 5% interest rate
