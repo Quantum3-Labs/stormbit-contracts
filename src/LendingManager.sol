@@ -205,6 +205,22 @@ contract StormbitLendingManager is Initializable, IGovernable, IInitialize, ILen
         emit FreezeSharesOnTerm(termId, token, shares);
     }
 
+    /// @dev unfreeze the shares on term allocated fund to loan
+    function unfreezeTermShares(uint256 termId, uint256 shares, address token) public override onlyLoanManager {
+        require(_validLendingTerm(termId), "StormbitLendingManager: lending term does not exist");
+        address vaultToken = assetManager.getVaultToken(token);
+
+        LendingTerm storage term = lendingTerms[termId];
+
+        uint256 freezedShares =
+            term.termBalances[termId][vaultToken].shares - term.termBalances[termId][vaultToken].available;
+
+        require(shares <= freezedShares, "StormbitLendingManager: insufficient freezed shares");
+        term.termBalances[termId][vaultToken].available += shares;
+
+        emit UnfreezeSharesOnTerm(termId, token, shares);
+    }
+
     function distributeProfit(uint256 termId, address token, uint256 profit, uint256 shares, uint256 ownerProfit)
         public
         override
