@@ -1,72 +1,88 @@
-// SPDX-License-Identifier: MIT
+//SPDX-License-Identifier: MIT
 pragma solidity ^0.8.21;
 
-import {Script, console} from "forge-std/Script.sol";
-import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
+import "forge-std/Script.sol";
+import "forge-std/Vm.sol";
 
 contract DeployHelpers is Script {
-    struct NetworkConfig {
-        address[] initialSupportedTokens;
-        address governor;
-        address owner;
-        uint256 deployerKey;
+    error InvalidChain();
+
+    struct Deployment {
+        string name;
+        address addr;
     }
 
-    NetworkConfig public activeNetworkConfig;
-    uint256 public constant DEFAULT_ANVIL_PRIVATE_KEY =
-        0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
+    string root;
+    string path;
+    Deployment[] public deployments;
 
-    constructor() {
-        if (block.chainid == 17000) {
-            // holesky testnet
-            activeNetworkConfig = getHoleskyConfig();
+    function setupLocalhostEnv() internal returns (uint256 localhostPrivateKey) {
+        if (block.chainid == 31337) {
+            root = vm.projectRoot();
+            path = string.concat(root, "/localhost.json");
+            string memory json = vm.readFile(path);
+            bytes memory mnemonicBytes = vm.parseJson(json, ".wallet.mnemonic");
+            string memory mnemonic = abi.decode(mnemonicBytes, (string));
+            return vm.deriveKey(mnemonic, 0);
         } else {
-            // devnet
-            activeNetworkConfig = getOrCreateAnvilConfig();
+            return vm.envUint("DEPLOYER_PRIVATE_KEY");
         }
     }
 
-    function getActiveNetworkConfig() public view returns (NetworkConfig memory) {
-        return activeNetworkConfig;
-    }
+    function exportDeployments() internal {
+        // fetch already existing contracts
+        root = vm.projectRoot();
+        path = string.concat(root, "/deployments/");
+        string memory chainIdStr = vm.toString(block.chainid);
+        path = string.concat(path, string.concat(chainIdStr, ".json"));
 
-    function getHoleskyConfig() public view returns (NetworkConfig memory networkConfig) {
-        // update the tokens address
-        address[] memory tokens = new address[](3);
+        string memory jsonWrite;
 
-        networkConfig = NetworkConfig({
-            initialSupportedTokens: tokens,
-            governor: address(0), // todo: change to real governor
-            owner: address(0), // todo: change to real owner
-            deployerKey: vm.envUint("PRIVATE_KEY")
-        });
-    }
+        uint256 len = deployments.length;
 
-    function getOrCreateAnvilConfig() public returns (NetworkConfig memory networkConfig) {
-        if (activeNetworkConfig.initialSupportedTokens.length != 0) {
-            return activeNetworkConfig;
+        for (uint256 i = 0; i < len; i++) {
+            vm.serializeString(jsonWrite, deployments[i].name, vm.toString(deployments[i].addr));
         }
-        // deploy 3 mock erc20 tokens
-        vm.startBroadcast();
-        ERC20Mock mockERC201 = new ERC20Mock();
-        ERC20Mock mockERC202 = new ERC20Mock();
-        ERC20Mock mockERC203 = new ERC20Mock();
-        vm.stopBroadcast();
 
-        address[] memory tokens = new address[](3);
-        tokens[0] = address(mockERC201);
-        tokens[1] = address(mockERC202);
-        tokens[2] = address(mockERC203);
+        string memory chainName;
 
-        networkConfig = NetworkConfig({
-            initialSupportedTokens: tokens,
-            governor: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266,
-            owner: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266,
-            deployerKey: DEFAULT_ANVIL_PRIVATE_KEY
-        });
+        try this.getChain() returns (Chain memory chain) {
+            chainName = chain.name;
+        } catch {
+            chainName = findChainName();
+        }
+        jsonWrite = vm.serializeString(jsonWrite, "networkName", chainName);
+        vm.writeJson(jsonWrite, path);
     }
 
-    function logDeployment(string memory name, address addr) public view {
-        console.log(name, " : ", addr);
+    function getDeployment(string memory name) internal returns (address) {
+        root = vm.projectRoot();
+        path = string.concat(root, "/deployments/");
+        string memory chainIdStr = vm.toString(block.chainid);
+        path = string.concat(path, string.concat(chainIdStr, ".json"));
+        string memory json = vm.readFile(path);
+        string memory nameKey = string.concat(".", name);
+        bytes memory addressBytes = vm.parseJson(json, nameKey);
+
+        return abi.decode(addressBytes, (address));
+    }
+
+    function getChain() public returns (Chain memory) {
+        return getChain(block.chainid);
+    }
+
+    function findChainName() public returns (string memory) {
+        uint256 thisChainId = block.chainid;
+        string[2][] memory allRpcUrls = vm.rpcUrls();
+        for (uint256 i = 0; i < allRpcUrls.length; i++) {
+            try vm.createSelectFork(allRpcUrls[i][1]) {
+                if (block.chainid == thisChainId) {
+                    return allRpcUrls[i][0];
+                }
+            } catch {
+                continue;
+            }
+        }
+        revert InvalidChain();
     }
 }
