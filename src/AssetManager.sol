@@ -1,35 +1,27 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.21;
 
-import {IDepositWithdraw} from "./interfaces/managers/asset/IDepositWithdraw.sol";
-import {IGovernable} from "./interfaces/utils/IGovernable.sol";
-import {IAssetManager} from "./interfaces/managers/asset/IAssetManager.sol";
-import {IAssetManagerView} from "./interfaces/managers/asset/IAssetManagerView.sol";
-import {IERC20} from "./interfaces/token/IERC20.sol";
-import {IERC4626} from "./interfaces/token/IERC4626.sol";
-import {IInitialize} from "./interfaces/utils/IInitialize.sol";
-import {BaseVault} from "./vaults/BaseVault.sol";
-import {StormbitLoanManager} from "./LoanManager.sol";
-import {StormbitLendingManager} from "./LendingManager.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import {IERC20} from "./interfaces/token/IERC20.sol";
+import {IERC4626} from "./interfaces/token/IERC4626.sol";
+import {IGovernable} from "./interfaces/utils/IGovernable.sol";
+import {IInitialize} from "./interfaces/utils/IInitialize.sol";
+import {BaseVault} from "./vaults/BaseVault.sol";
+import {IAssetManager} from "./interfaces/managers/asset/IAssetManager.sol";
+import {ILoanManager} from "./interfaces/managers/loan/ILoanManager.sol";
+import {ILendingManager} from "./interfaces/managers/lending/ILendingManager.sol";
 
 /// @author Quantum3 Labs
 /// @title Stormbit Asset Manager
 /// @notice entrypoint for all asset management operations
 
-contract StormbitAssetManager is
-    IInitialize,
-    IGovernable,
-    IDepositWithdraw,
-    IAssetManager,
-    IAssetManagerView,
-    Initializable
-{
+contract StormbitAssetManager is Initializable, IGovernable, IInitialize, IAssetManager {
     using Math for uint256;
 
     address private _governor;
-    StormbitLoanManager public loanManager;
-    StormbitLendingManager public lendingManager;
+    ILoanManager public loanManager;
+    ILendingManager public lendingManager;
 
     mapping(address token => bool isSupported) tokens; // check if token is supported
     mapping(address token => address vaultToken) vaultTokens; // token to vault mapping
@@ -61,15 +53,15 @@ contract StormbitAssetManager is
     /// @param loanManagerAddr address of the loan manager
     /// @param lendingManagerAddr address of the lending manager
     function initialize(address loanManagerAddr, address lendingManagerAddr) public override initializer {
-        loanManager = StormbitLoanManager(loanManagerAddr);
-        lendingManager = StormbitLendingManager(lendingManagerAddr);
+        loanManager = ILoanManager(loanManagerAddr);
+        lendingManager = ILendingManager(lendingManagerAddr);
     }
 
     /// @dev allow depositor deposit assets to the vault
     /// @param token address of the token
     /// @param assets amount of assets to deposit
     function deposit(address token, uint256 assets) public override {
-        require(tokens[token], "StormbitAssetManager: token not supported");
+        _checkTokenSupported(token);
         address vaultToken = vaultTokens[token]; // get the corresponding vault
         // first make sure can transfer user token to manager
         // todo: use safe transfer
@@ -84,7 +76,7 @@ contract StormbitAssetManager is
 
     /// @dev same function as deposit, but allow user to deposit on behalf of another user
     function depositFrom(address token, uint256 assets, address depositor, address receiver) public override {
-        require(tokens[token], "StormbitAssetManager: token not supported");
+        _checkTokenSupported(token);
         address vaultToken = vaultTokens[token]; // get the corresponding vault
         // first make sure can transfer user token to manager
         bool isSuccess = IERC20(token).transferFrom(depositor, address(this), assets);
@@ -99,17 +91,17 @@ contract StormbitAssetManager is
     /// @dev note that we dont require the token to be whitelisted
     function withdraw(address token, uint256 assets) public override {
         // withdraw here is withdraw from shares to asset
-        require(tokens[token], "StormbitAssetManager: token not supported");
+        _checkTokenSupported(token);
         address vaultToken = vaultTokens[token];
         uint256 sharesBurned = IERC4626(vaultToken).withdraw(assets, msg.sender, msg.sender);
         emit Withdraw(msg.sender, vaultToken, assets, sharesBurned);
     }
 
     /// @dev call by lending manager, use for execute loan, redeem shares for borrower
-    function borrowerWithdraw(address borrower, address token, uint256 shares) public override onlyLendingManager {
+    function borrowerWithdraw(address borrower, address token, uint256 assets) public override onlyLendingManager {
         address vaultToken = getVaultToken(token);
-        IERC4626(vaultToken).redeem(shares, borrower, msg.sender);
-        emit BorrowerWithdraw(borrower, token, shares);
+        IERC4626(vaultToken).withdraw(assets, borrower, msg.sender);
+        emit BorrowerWithdraw(borrower, token, assets);
     }
 
     /// @dev allow governor to add a new token
@@ -138,6 +130,13 @@ contract StormbitAssetManager is
         require(IERC4626(vaultToken).totalSupply() == 0, "StormbitAssetManager: vault not empty");
         tokens[token] = false;
         emit RemoveToken(token, vaultToken);
+    }
+
+    // -----------------------------------------
+    // ----------- INTERNAL FUNCTIONS ----------
+    // -----------------------------------------
+    function _checkTokenSupported(address token) internal view {
+        require(tokens[token], "StormbitAssetManager: token not supported");
     }
 
     // -----------------------------------------

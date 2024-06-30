@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.21;
 
 import {Hooks} from "../libraries/Hooks.sol";
@@ -17,8 +18,13 @@ contract WhiteList is BaseHook {
         return Hooks.Permissions({beforeDepositToTerm: true});
     }
 
-    function beforeDepositToTerm(address sender) external override onlyByManager returns (bool) {
-        require(whitelist[sender], "WhiteList: not whitelisted");
+    function beforeDepositToTerm(address from, address token, uint256 termId, uint256 shares)
+        external
+        override
+        onlyByManager
+        returns (bool)
+    {
+        require(whitelist[from], "WhiteList: not whitelisted");
         return true;
     }
 
