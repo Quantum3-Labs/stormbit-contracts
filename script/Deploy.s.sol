@@ -7,6 +7,7 @@ import {StormbitAssetManager} from "../src/AssetManager.sol";
 import {StormbitLendingManager} from "../src/LendingManager.sol";
 import {StormbitLoanManager} from "../src/LoanManager.sol";
 import {DeployHelpers} from "script/DeployHelpers.s.sol";
+import {StormbitRegistry} from "src/StormbitRegistry.sol";
 
 contract Deploy is DeployHelpers {
     function run() public {
@@ -14,6 +15,9 @@ contract Deploy is DeployHelpers {
         vm.startBroadcast(pk);
 
         address deployer = vm.addr(pk);
+
+        // deploy registry
+        StormbitRegistry registry = new StormbitRegistry(deployer);
 
         // TODO add checks when on anvil or testnet should be diff to mainnet
         MockToken mockUsdt = new MockToken("USD Tether", "USDT");
@@ -33,8 +37,7 @@ contract Deploy is DeployHelpers {
         assetManager.addToken(address(mockDai));
         assetManager.addToken(address(mockUsdc));
 
-        vm.stopBroadcast();
-
+        deployments.push(Deployment("StormbitRegistry", address(registry)));
         deployments.push(Deployment("AssetManager", address(assetManager)));
         deployments.push(Deployment("LendingManager", address(lendingManager)));
         deployments.push(Deployment("LoanManager", address(loanManager)));
@@ -42,8 +45,7 @@ contract Deploy is DeployHelpers {
         deployments.push(Deployment("MockDai", address(mockDai)));
         deployments.push(Deployment("MockUsdc", address(mockUsdc)));
 
+        vm.stopBroadcast();
         exportDeployments();
-
-        getDeployment("AssetManager");
     }
 }
