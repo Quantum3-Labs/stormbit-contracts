@@ -64,15 +64,7 @@ contract DeployHelpers is Script {
         string memory nameKey = string.concat(".", name);
         bytes memory addressBytes = vm.parseJson(json, nameKey);
 
-        console.log(abi.decode(addressBytes, (address)));
-        // bytes memory mnemonicBytes = vm.parseJson(json, ".wallet.mnemonic");
-        // string memory mnemonic = abi.decode(mnemonicBytes, (string));
-        // for (uint256 i = 0; i < deployments.length; i++) {
-        //     if (vm.equals(deployments[i].name, name)) {
-        //         return deployments[i].addr;
-        //     }
-        // }
-        // return address(0);
+        return abi.decode(addressBytes, (address));
     }
 
     function getChain() public returns (Chain memory) {
