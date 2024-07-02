@@ -13,7 +13,7 @@ import {ILendingManager} from "./interfaces/managers/lending/ILendingManager.sol
 /// @title Stormbit Loan Manager
 /// @notice entrypoint for loan related operations
 
-contract StormbitLoanManager is Initializable, IGovernable, IInitialize, ILoanManager {
+contract LoanManager is Initializable, IGovernable, IInitialize, ILoanManager {
     uint16 public constant BASIS_POINTS = 10_000;
 
     address private _governor;

@@ -15,7 +15,7 @@ import {ILendingManager} from "./interfaces/managers/lending/ILendingManager.sol
 /// @notice entrypoint for all lender and lending terms operations
 
 /// @dev Think of terms are minimal ERC4626, this contract is using word "shares" to represent ERC4626 assets, and "weight" to represent ERC4626 shares
-contract StormbitLendingManager is Initializable, IGovernable, IInitialize, ILendingManager {
+contract LendingManager is Initializable, IGovernable, IInitialize, ILendingManager {
     uint16 public constant BASIS_POINTS = 10_000;
 
     address private _governor;
