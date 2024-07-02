@@ -16,12 +16,8 @@ contract Integration is DeployHelpers {
     function run() public {
         uint256 pk = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(pk);
-        LendingManager lendingManager = LendingManager(
-            getDeployment("LendingManager")
-        );
-        StormbitRegistry registry = StormbitRegistry(
-            getDeployment("StormbitRegistry")
-        );
+        LendingManager lendingManager = LendingManager(getDeployment("LendingManager"));
+        StormbitRegistry registry = StormbitRegistry(getDeployment("StormbitRegistry"));
         AssetManager assetManager = AssetManager(getDeployment("AssetManager"));
 
         MockToken mockUsdt = MockToken(getDeployment("MockUsdt"));
@@ -29,10 +25,7 @@ contract Integration is DeployHelpers {
 
         // rebister and create a lending term
         registry.register("0xquantum3labs");
-        uint256 term = lendingManager.createLendingTerm(
-            1000,
-            IHooks(address(0))
-        );
+        uint256 term = lendingManager.createLendingTerm(1000, IHooks(address(0)));
 
         // depoist and delegate to term
 
@@ -41,14 +34,9 @@ contract Integration is DeployHelpers {
 
         address usdtVaultAddr = assetManager.getVaultToken(address(mockUsdt));
         IERC4626 usdtVault = IERC4626(usdtVaultAddr);
-        uint256 usdtVaultAmountWithDecimals = INITIAL_DEPOSIT *
-            usdtVault.decimals();
+        uint256 usdtVaultAmountWithDecimals = INITIAL_DEPOSIT * usdtVault.decimals();
         usdtVault.approve(address(lendingManager), usdtVaultAmountWithDecimals);
-        lendingManager.depositToTerm(
-            term,
-            address(mockUsdt),
-            usdtVaultAmountWithDecimals
-        );
+        lendingManager.depositToTerm(term, address(mockUsdt), usdtVaultAmountWithDecimals);
         vm.stopBroadcast();
     }
 }
