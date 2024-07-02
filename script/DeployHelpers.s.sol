@@ -51,7 +51,8 @@ contract DeployHelpers is Script {
         } catch {
             chainName = findChainName();
         }
-        jsonWrite = vm.serializeString(jsonWrite, "networkName", chainName);
+        vm.serializeString(jsonWrite, "block", vm.toString(block.number));
+        jsonWrite = vm.serializeString(jsonWrite, "network-name", chainName);
         vm.writeJson(jsonWrite, path);
     }
 
