@@ -35,13 +35,13 @@ interface ILoanManager {
 
     function requestLoan(address token, uint256 assets, uint256 deadline) external returns (uint256);
 
-    function allocateTermAndFundOnLoan(uint256 loanId, uint256 termId, uint256 assets) external;
+    function allocate(uint256 loanId, uint256 termId, uint256 assets) external;
 
     function executeLoan(uint256 loanId) external;
 
     function repay(uint256 loanId) external;
 
-    function claimAllocation(uint256 termId, uint256 loanId) external;
+    function claim(uint256 termId, uint256 loanId) external;
 
     function getLoan(uint256 loanId) external view returns (Loan memory);
 

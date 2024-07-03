@@ -136,11 +136,7 @@ contract LoanManager is Initializable, IGovernable, IInitialize, ILoanManager {
     /// @param loanId id of the loan
     /// @param termId id of the term
     /// @param assets amount of token to allocate
-    function allocateTermAndFundOnLoan(uint256 loanId, uint256 termId, uint256 assets)
-        public
-        override
-        onlyTermOwner(termId)
-    {
+    function allocate(uint256 loanId, uint256 termId, uint256 assets) public override onlyTermOwner(termId) {
         Loan memory loan = loans[loanId];
         // check is valid loan
         require(_validLoan(loanId), "StormbitLoanManager: invalid loan");
@@ -181,8 +177,9 @@ contract LoanManager is Initializable, IGovernable, IInitialize, ILoanManager {
         emit AllocatedTermAndFundOnLoan(loanId, termId, assets);
     }
 
-    /// @dev allow lender to claim the profit for loan or claim the allocated fund to loan but loan deadline pass and not executed, then add the remaining profit to term profit
-    function claimAllocation(uint256 termId, uint256 loanId) public override {
+    /// @dev claim the profit for loan and add the remaining profit to term profit or
+    /// claim the allocated fund to loan but loan deadline pass and not executed
+    function claim(uint256 termId, uint256 loanId) public override {
         Loan memory loan = loans[loanId];
         address vaultToken = assetManager.getVaultToken(loan.token);
 

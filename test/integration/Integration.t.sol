@@ -57,7 +57,7 @@ contract IntegrationTest is SetupTest {
         (uint256 termTotalShares,,) = lendingManager.getLendingTermBalances(termId, address(token1));
         assert(termTotalShares == depositedShares);
 
-        _allocateTermAndFundOnLoan(lender1, address(token1), loanId, termId, 1000);
+        _allocate(lender1, address(token1), loanId, termId, 1000);
 
         // check term allocated counter
         uint256 termAllocatedCounter = loanManager.getTermLoanAllocatedCounter(termId);
@@ -126,7 +126,7 @@ contract IntegrationTest is SetupTest {
 
         // term owner claim loan profit
         vm.startPrank(lender1);
-        loanManager.claimAllocation(termId, loanId);
+        loanManager.claim(termId, loanId);
         vm.stopPrank();
 
         // check term owner balance
@@ -232,7 +232,7 @@ contract IntegrationTest is SetupTest {
         (uint256 termTotalShares,,) = lendingManager.getLendingTermBalances(termId, address(token1));
         assert(termTotalShares == expectedTotalDepositedShares);
 
-        _allocateTermAndFundOnLoan(lender1, address(token1), loanId, termId, 1000);
+        _allocate(lender1, address(token1), loanId, termId, 1000);
 
         // check term allocated counter
         uint256 termAllocatedCounter = loanManager.getTermLoanAllocatedCounter(termId);
@@ -301,7 +301,7 @@ contract IntegrationTest is SetupTest {
 
         // term owner claim loan profit
         vm.startPrank(lender1);
-        loanManager.claimAllocation(termId, loanId);
+        loanManager.claim(termId, loanId);
         vm.stopPrank();
 
         // check term owner balance
@@ -426,8 +426,8 @@ contract IntegrationTest is SetupTest {
         uint256 expectedTerm2DelegatedShares = depositedShares + depositedShares;
         assert(term2DelegatedShares == expectedTerm2DelegatedShares);
 
-        _allocateTermAndFundOnLoan(lender1, address(token1), loanId, termId1, 500);
-        _allocateTermAndFundOnLoan(lender1, address(token1), loanId, termId2, 500);
+        _allocate(lender1, address(token1), loanId, termId1, 500);
+        _allocate(lender1, address(token1), loanId, termId2, 500);
 
         // check term allocated counter
         uint256 term1AllocatedCounter = loanManager.getTermLoanAllocatedCounter(termId1);
@@ -517,7 +517,7 @@ contract IntegrationTest is SetupTest {
 
         // term owner claim loan profit for term1
         vm.startPrank(lender1);
-        loanManager.claimAllocation(termId1, loanId);
+        loanManager.claim(termId1, loanId);
         vm.stopPrank();
 
         // check term owner balance
@@ -544,7 +544,7 @@ contract IntegrationTest is SetupTest {
 
         // term owner claim loan profit for term2
         vm.startPrank(lender1);
-        loanManager.claimAllocation(termId2, loanId);
+        loanManager.claim(termId2, loanId);
         vm.stopPrank();
 
         // check term owner balance
@@ -663,18 +663,12 @@ contract IntegrationTest is SetupTest {
         vm.stopPrank();
     }
 
-    function _allocateTermAndFundOnLoan(
-        address lender,
-        address token,
-        uint256 loanId,
-        uint256 termId,
-        uint256 allocateAssets
-    ) private {
+    function _allocate(address lender, address token, uint256 loanId, uint256 termId, uint256 allocateAssets) private {
         vm.startPrank(lender);
         // allocate term
         ERC20Mock mockToken = ERC20Mock(token);
         uint256 allocateFundOnTermAssets = allocateAssets * (10 ** mockToken.decimals());
-        loanManager.allocateTermAndFundOnLoan(loanId, termId, allocateFundOnTermAssets);
+        loanManager.allocate(loanId, termId, allocateFundOnTermAssets);
         vm.stopPrank();
     }
 }
