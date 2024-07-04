@@ -9,7 +9,7 @@ interface IAssetManager {
 
     event RemoveToken(address indexed token, address indexed vault);
 
-    event Deposit(address indexed user, address indexed token, uint256 assets);
+    event Deposit(address indexed user, address indexed token, uint256 assets, uint256 shares);
 
     /// @dev note that withdraw event uses assets instead of shares
     event Withdraw(address indexed user, address indexed vaultToken, uint256 assets, uint256 sharesBurned);

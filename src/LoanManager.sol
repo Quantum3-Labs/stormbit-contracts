@@ -95,7 +95,7 @@ contract LoanManager is Initializable, IGovernable, IInitialize, ILoanManager {
             status: LoanStatus.Pending
         });
 
-        emit LoanRequested(loanId, msg.sender, token, assets);
+        emit LoanRequested(loanId, msg.sender, token, assets, deadline);
         return loanId;
     }
 
@@ -108,7 +108,6 @@ contract LoanManager is Initializable, IGovernable, IInitialize, ILoanManager {
         require(loan.status == LoanStatus.Pending, "StormbitLoanManager: loan not pending");
         require(loan.assetsAllocated >= loan.assetsRequired, "StormbitLoanManager: insufficient allocation");
         // only if deadline is passed
-        require(block.timestamp >= loan.deadlineAllocate, "StormbitLoanManager: deadline not passed");
 
         loans[loanId].status = LoanStatus.Active;
         lendingManager.borrowerWithdraw(

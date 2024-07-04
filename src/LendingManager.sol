@@ -22,7 +22,7 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
     IAssetManager public assetManager;
     ILoanManager public loanManager;
 
-    mapping(uint256 => ILendingManager.LendingTerm) public lendingTerms;
+    mapping(uint256 => LendingTerm) public lendingTerms;
     mapping(uint256 termId => mapping(address user => mapping(address vaultToken => uint256 shares))) public
         termUserDelegatedShares; // total shares delegated by the depositor on term
     mapping(address user => mapping(address vaultToken => uint256 delegatedShares)) // track user total delegated shares

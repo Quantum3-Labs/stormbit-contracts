@@ -70,8 +70,8 @@ contract AssetManager is Initializable, IGovernable, IInitialize, IAssetManager 
             revert("StormbitAssetManager: transfer failed");
         }
         IERC20(token).approve(vaultToken, assets);
-        IERC4626(vaultToken).deposit(assets, msg.sender);
-        emit Deposit(msg.sender, token, assets);
+        uint256 shares = IERC4626(vaultToken).deposit(assets, msg.sender);
+        emit Deposit(msg.sender, token, assets, shares);
     }
 
     /// @dev same function as deposit, but allow user to deposit on behalf of another user
@@ -84,8 +84,8 @@ contract AssetManager is Initializable, IGovernable, IInitialize, IAssetManager 
             revert("StormbitAssetManager: transfer failed");
         }
         IERC20(token).approve(vaultToken, assets);
-        IERC4626(vaultToken).deposit(assets, receiver);
-        emit Deposit(receiver, token, assets);
+        uint256 shares = IERC4626(vaultToken).deposit(assets, receiver);
+        emit Deposit(receiver, token, assets, shares);
     }
 
     /// @dev note that we dont require the token to be whitelisted

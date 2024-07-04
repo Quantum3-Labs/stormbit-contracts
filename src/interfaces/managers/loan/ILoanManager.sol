@@ -23,7 +23,13 @@ interface ILoanManager {
         LoanStatus status;
     }
 
-    event LoanRequested(uint256 indexed loanId, address indexed borrower, address indexed token, uint256 assets);
+    event LoanRequested(
+        uint256 indexed loanId,
+        address indexed borrower,
+        address indexed token,
+        uint256 assets,
+        uint256 deadlineAllocate
+    );
 
     event AllocatedTermAndFundOnLoan(uint256 indexed loanId, uint256 indexed termId, uint256 assets);
 
