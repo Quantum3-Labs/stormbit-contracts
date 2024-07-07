@@ -107,8 +107,6 @@ contract LoanManager is Initializable, IGovernable, IInitialize, ILoanManager {
         require(_validLoan(loanId), "StormbitLoanManager: invalid loan");
         require(loan.status == LoanStatus.Pending, "StormbitLoanManager: loan not pending");
         require(loan.assetsAllocated >= loan.assetsRequired, "StormbitLoanManager: insufficient allocation");
-        // only if deadline is passed
-        require(block.timestamp >= loan.deadlineAllocate, "StormbitLoanManager: deadline not passed");
 
         loans[loanId].status = LoanStatus.Active;
         lendingManager.borrowerWithdraw(
@@ -140,9 +138,8 @@ contract LoanManager is Initializable, IGovernable, IInitialize, ILoanManager {
         Loan memory loan = loans[loanId];
         // check is valid loan
         require(_validLoan(loanId), "StormbitLoanManager: invalid loan");
-        require(block.timestamp < loan.deadlineAllocate, "StormbitLoanManager: deadline passed");
         // only if allocate deadline not passed
-        require(block.timestamp < loans[loanId].deadlineAllocate, "StormbitLoanManager: deadline passed");
+        require(block.timestamp < loan.deadlineAllocate, "StormbitLoanManager: deadline passed");
 
         // if first time allocate to the loan, update status
         if (!loanTermAllocated[loanId][termId]) {
