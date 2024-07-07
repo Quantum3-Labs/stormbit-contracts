@@ -2,6 +2,8 @@
 pragma solidity ^0.8.21;
 
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {IGovernable} from "./interfaces/utils/IGovernable.sol";
 import {IInitialize} from "./interfaces/utils/IInitialize.sol";
 import {IERC4626} from "./interfaces/token/IERC4626.sol";
@@ -25,11 +27,9 @@ contract LoanManager is Initializable, IGovernable, IInitialize, ILoanManager {
 
     mapping(uint256 loanId => Loan loan) public loans;
     mapping(uint256 loanId => mapping(uint256 termId => mapping(address vaultToken => uint256 shares))) public
-        termAllocatedShares;
-    mapping(uint256 loanId => mapping(uint256 termId => bool isAllocated)) public loanTermAllocated;
-    // a counter use to track amount of loans a term was allocated to
-    mapping(uint256 termId => uint256 loanAllocated) termLoanAllocatedCounter;
-    mapping(uint256 termId => mapping(uint256 loanId => mapping(address vaultToken => bool))) public lenderClaimedProfit; // mapping to track lender claim profit
+        allocatedShares;
+    mapping(uint256 loanId => mapping(uint256 termId => uint256 blockNumber)) public allocatedCheckpoints;
+    mapping(uint256 termId => mapping(uint256 loanId => mapping(address vaultToken => bool))) public claimedProfit; // mapping to track lender claim profit
 
     constructor(address initialGovernor) {
         _governor = initialGovernor;
@@ -141,12 +141,6 @@ contract LoanManager is Initializable, IGovernable, IInitialize, ILoanManager {
         // only if allocate deadline not passed
         require(block.timestamp < loan.deadlineAllocate, "StormbitLoanManager: deadline passed");
 
-        // if first time allocate to the loan, update status
-        if (!loanTermAllocated[loanId][termId]) {
-            loanTermAllocated[loanId][termId] = true;
-            termLoanAllocatedCounter[termId] += 1;
-        }
-
         // get disposable shares on token of the term
         address token = loan.token;
         // get the corresponding vault token
@@ -169,7 +163,8 @@ contract LoanManager is Initializable, IGovernable, IInitialize, ILoanManager {
 
         loans[loanId].sharesAllocated += sharesRequired;
         loans[loanId].assetsAllocated += assets;
-        termAllocatedShares[loanId][termId][vaultToken] += sharesRequired;
+        allocatedShares[loanId][termId][vaultToken] += sharesRequired;
+        allocatedCheckpoints[loanId][termId] = SafeCast.toUint32(Time.blockNumber());
 
         emit Allocate(loanId, termId, assets);
     }
@@ -185,12 +180,12 @@ contract LoanManager is Initializable, IGovernable, IInitialize, ILoanManager {
             "StormbitLendingManager: loan not repaid nor pending"
         );
         // term allocated on shares should > 0
-        uint256 weight = termAllocatedShares[loanId][termId][vaultToken];
+        uint256 weight = allocatedShares[loanId][termId][vaultToken];
         require(weight > 0, "StormbitLendingManager: term not allocated on loan");
 
         if (loan.status == ILoanManager.LoanStatus.Repaid) {
             // check if the profit has been claimed
-            if (lenderClaimedProfit[termId][loanId][vaultToken]) {
+            if (claimedProfit[termId][loanId][vaultToken]) {
                 revert("StormbitLendingManager: profit already claimed");
             }
             // get lending term
@@ -213,10 +208,7 @@ contract LoanManager is Initializable, IGovernable, IInitialize, ILoanManager {
             lendingManager.distributeProfit(termId, loan.token, extraProfit, weight, termOwnerProfitShares);
 
             // update claimed status
-            lenderClaimedProfit[termId][loanId][vaultToken] = true;
-
-            // decrement term allocated counter
-            termLoanAllocatedCounter[termId] -= 1;
+            claimedProfit[termId][loanId][vaultToken] = true;
 
             emit ClaimAllocation(termId, loanId, loan.token, termOwnerProfitShares);
         } else if (loan.status == ILoanManager.LoanStatus.Pending) {
@@ -260,24 +252,9 @@ contract LoanManager is Initializable, IGovernable, IInitialize, ILoanManager {
         return loans[loanId];
     }
 
-    /// @dev get the allocation status of a term on a loan
-    function getLoanTermAllocated(uint256 loanId, uint256 termId) public view override returns (bool) {
-        return loanTermAllocated[loanId][termId];
-    }
-
-    /// @dev get the amount of loans a term was allocated to
-    function getTermLoanAllocatedCounter(uint256 termId) external view override returns (uint256) {
-        return termLoanAllocatedCounter[termId];
-    }
-
     /// @dev get the allocated shares on the loan
-    function getTermAllocatedSharesOnLoan(uint256 loanId, uint256 termId, address token)
-        public
-        view
-        override
-        returns (uint256)
-    {
+    function getAllocatedShares(uint256 loanId, uint256 termId, address token) public view override returns (uint256) {
         address vaultToken = assetManager.getVaultToken(token);
-        return termAllocatedShares[loanId][termId][vaultToken];
+        return allocatedShares[loanId][termId][vaultToken];
     }
 }

@@ -59,14 +59,6 @@ contract IntegrationTest is SetupTest {
 
         _allocate(lender1, address(token1), loanId, termId, 1000);
 
-        // check term allocated counter
-        uint256 termAllocatedCounter = loanManager.getTermLoanAllocatedCounter(termId);
-        assert(termAllocatedCounter == 1);
-
-        // check if term allocated to loan
-        bool termAllocatedToLoan = loanManager.getLoanTermAllocated(loanId, termId);
-        assert(termAllocatedToLoan == true);
-
         // check freezed shares on term
         uint256 termFreezedShares = lendingManager.getTermFreezedShares(termId, address(token1));
         uint256 expectedTermFreezedShares = 1000 * (10 ** vaultTokenInterface.decimals());
@@ -233,14 +225,6 @@ contract IntegrationTest is SetupTest {
         assert(termTotalShares == expectedTotalDepositedShares);
 
         _allocate(lender1, address(token1), loanId, termId, 1000);
-
-        // check term allocated counter
-        uint256 termAllocatedCounter = loanManager.getTermLoanAllocatedCounter(termId);
-        assert(termAllocatedCounter == 1);
-
-        // check if term allocated to loan
-        bool termAllocatedToLoan = loanManager.getLoanTermAllocated(loanId, termId);
-        assert(termAllocatedToLoan == true);
 
         // check freezed shares on term
         uint256 termFreezedShares = lendingManager.getTermFreezedShares(termId, address(token1));
@@ -429,20 +413,6 @@ contract IntegrationTest is SetupTest {
         _allocate(lender1, address(token1), loanId, termId1, 500);
         _allocate(lender1, address(token1), loanId, termId2, 500);
 
-        // check term allocated counter
-        uint256 term1AllocatedCounter = loanManager.getTermLoanAllocatedCounter(termId1);
-        assert(term1AllocatedCounter == 1);
-        uint256 term2AllocatedCounter = loanManager.getTermLoanAllocatedCounter(termId2);
-        assert(term2AllocatedCounter == 1);
-
-        // check if term1 allocated to loan
-        bool term1AllocatedToLoan = loanManager.getLoanTermAllocated(loanId, termId1);
-        assert(term1AllocatedToLoan == true);
-
-        // check if term2 allocated to loan
-        bool term2AllocatedToLoan = loanManager.getLoanTermAllocated(loanId, termId2);
-        assert(term2AllocatedToLoan == true);
-
         // check freezed shares on term1
         uint256 term1FreezedShares = lendingManager.getTermFreezedShares(termId1, address(token1));
         uint256 term2FreezedShares = lendingManager.getTermFreezedShares(termId1, address(token1));
@@ -527,9 +497,8 @@ contract IntegrationTest is SetupTest {
         uint256 sharesRequired = assetManager.convertToShares(address(token1), loan.assetsRequired);
         uint256 profitShares = repayAssetsInShares - sharesRequired;
         // get term weight on loan
-        uint256 term1Weight = (
-            loanManager.getTermAllocatedSharesOnLoan(loanId, termId1, address(token1)) * BASIS_POINTS
-        ) / loan.sharesAllocated;
+        uint256 term1Weight =
+            (loanManager.getAllocatedShares(loanId, termId1, address(token1)) * BASIS_POINTS) / loan.sharesAllocated;
         // calculate profit for term1
         uint256 term1Profit = (profitShares * term1Weight) / BASIS_POINTS;
         // from term1 profit calculate lender profit
@@ -554,9 +523,8 @@ contract IntegrationTest is SetupTest {
         sharesRequired = assetManager.convertToShares(address(token1), loan.assetsRequired);
         profitShares = repayAssetsInShares - sharesRequired;
         // get term weight on loan
-        uint256 term2Weight = (
-            loanManager.getTermAllocatedSharesOnLoan(loanId, termId2, address(token1)) * BASIS_POINTS
-        ) / loan.sharesAllocated;
+        uint256 term2Weight =
+            (loanManager.getAllocatedShares(loanId, termId2, address(token1)) * BASIS_POINTS) / loan.sharesAllocated;
         // calculate profit for term1
         uint256 term2Profit = (profitShares * term2Weight) / BASIS_POINTS;
         // from term1 profit calculate lender profit

@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.21;
 
+import {Checkpoints} from "@openzeppelin/contracts/utils/structs/Checkpoints.sol";
+import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {IERC4626} from "./interfaces/token/IERC4626.sol";
 import {IGovernable} from "./interfaces/utils/IGovernable.sol";
@@ -16,6 +19,8 @@ import {ILendingManager} from "./interfaces/managers/lending/ILendingManager.sol
 
 /// @dev Think of terms are minimal ERC4626, this contract is using word "shares" to represent ERC4626 assets, and "weight" to represent ERC4626 shares
 contract LendingManager is Initializable, IGovernable, IInitialize, ILendingManager {
+    using Checkpoints for Checkpoints.Trace224;
+
     uint16 public constant BASIS_POINTS = 10_000;
 
     address private _governor;
@@ -23,14 +28,22 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
     ILoanManager public loanManager;
 
     mapping(uint256 => ILendingManager.LendingTerm) public lendingTerms;
-    mapping(uint256 termId => mapping(address user => mapping(address vaultToken => uint256 shares))) public
-        termUserDelegatedShares; // total shares delegated by the depositor on term
     mapping(address user => mapping(address vaultToken => uint256 delegatedShares)) // track user total delegated shares
         public userTotalDelegatedShares;
 
     constructor(address initialGovernor) {
         _governor = initialGovernor;
     }
+
+    /**
+     * @dev The clock was incorrectly modified.
+     */
+    error ERC6372InconsistentClock();
+
+    /**
+     * @dev Lookup to future votes is not available.
+     */
+    error ERC5805FutureLookup(uint256 timepoint, uint48 clock);
 
     // -----------------------------------------
     // ------------- Modifiers -----------------
@@ -60,6 +73,10 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
         loanManager = ILoanManager(loanManagerAddr);
     }
 
+    function clock() public view virtual returns (uint32) {
+        return SafeCast.toUint32(Time.blockNumber());
+    }
+
     /// @dev create a lending term
     /// @param comission comission rate
     /// @param hooks customizable hooks, reference uniswap v4 hooks
@@ -82,7 +99,7 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
         require(_validLendingTerm(termId), "StormbitLendingManager: lending term does not exist");
         // if there are delegated shares, the term cannot be removed
         require(
-            lendingTerms[termId].termNonZeroTokenCounter[termId] <= 0,
+            lendingTerms[termId].nonZeroTokenBalanceCounter <= 0,
             "StormbitLendingManager: term has non zero token balance"
         );
 
@@ -98,10 +115,6 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
         require(_beforeDepositToTerm(termId, token, shares), "StormbitLendingManager: before deposit failed");
         require(assetManager.isTokenSupported(token), "StormbitLendingManager: token not supported");
         require(_validLendingTerm(termId), "StormbitLendingManager: lending term does not exist");
-        require(
-            loanManager.getTermLoanAllocatedCounter(termId) == 0,
-            "StormbitLendingManager: term already allocated to loan"
-        );
 
         address vaultToken = assetManager.getVaultToken(token);
 
@@ -117,27 +130,28 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
         }
         LendingTerm storage term = lendingTerms[termId];
 
-        uint256 termSharesBalance = term.termBalances[termId][vaultToken].weight;
+        uint256 termSharesBalance = term.termBalances[vaultToken].weight;
 
         // check if the vault token term has 0 balance
         if (termSharesBalance <= 0) {
-            term.termNonZeroTokenCounter[termId]++;
+            term.nonZeroTokenBalanceCounter++;
         }
-
-        // update the amount of shares delegated to the term by the user
-        termUserDelegatedShares[termId][msg.sender][vaultToken] += shares;
 
         // get current delegated shares to the term
         uint256 currentDelegatedShares = userTotalDelegatedShares[msg.sender][vaultToken];
-
         uint256 userCurrentTotalDelegatedShares = currentDelegatedShares + shares;
         // update user total delegated shares, prevent scenario delegate more than user has
         userTotalDelegatedShares[msg.sender][vaultToken] = userCurrentTotalDelegatedShares;
 
+        // get last user shares checkpoint
+        uint256 lastUserShares = term.userSharesCheckpoints[msg.sender][vaultToken].latest();
+        // update the amount of shares delegated to the term by the user
+        term.userSharesCheckpoints[msg.sender][vaultToken].push(clock(), SafeCast.toUint224(lastUserShares + shares));
+
         // update term total disposable shares
-        term.termBalances[termId][vaultToken].available += shares;
-        term.termBalances[termId][vaultToken].weight += shares;
-        term.termBalances[termId][vaultToken].shares += shares;
+        term.termBalances[vaultToken].available += shares;
+        term.termBalances[vaultToken].weight += shares;
+        term.termBalances[vaultToken].shares += shares;
 
         emit DepositToTerm(termId, msg.sender, token, shares);
     }
@@ -152,12 +166,11 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
         address vaultToken = assetManager.getVaultToken(token);
         LendingTerm storage term = lendingTerms[termId];
 
-        uint256 totalDelegatedShares = termUserDelegatedShares[termId][msg.sender][vaultToken];
+        uint256 totalDelegatedShares = term.userSharesCheckpoints[msg.sender][vaultToken].latest();
 
         // check how many percentage of shares are freezed on term
-        uint256 freezedShares =
-            term.termBalances[termId][vaultToken].shares - term.termBalances[termId][vaultToken].available;
-        uint256 freezedSharesPercentage = (freezedShares * BASIS_POINTS) / term.termBalances[termId][vaultToken].shares;
+        uint256 freezedShares = term.termBalances[vaultToken].shares - term.termBalances[vaultToken].available;
+        uint256 freezedSharesPercentage = (freezedShares * BASIS_POINTS) / term.termBalances[vaultToken].shares;
         // get the freezeAmount from disposable shares
         uint256 freezeAmount = (totalDelegatedShares * freezedSharesPercentage) / BASIS_POINTS;
 
@@ -166,15 +179,15 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
 
         require(shares <= maximumWithdraw, "StormbitLendingManager: insufficient shares to withdraw");
 
-        termUserDelegatedShares[termId][msg.sender][vaultToken] -= shares;
+        // termUserDelegatedShares[termId][msg.sender][vaultToken] -= shares;
         userTotalDelegatedShares[msg.sender][vaultToken] -= shares;
 
         // convert shares to weight
         uint256 redeemShares = getWeight(token, shares, termId);
 
-        term.termBalances[termId][vaultToken].weight -= redeemShares;
-        term.termBalances[termId][vaultToken].available -= shares;
-        term.termBalances[termId][vaultToken].shares -= shares;
+        term.termBalances[vaultToken].weight -= redeemShares;
+        term.termBalances[vaultToken].available -= shares;
+        term.termBalances[vaultToken].shares -= shares;
 
         // transfer shares back to user
         bool isSuccess = IERC4626(vaultToken).transfer(msg.sender, redeemShares);
@@ -183,8 +196,8 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
         }
 
         // if term shares balance is 0, decrement the counter
-        if (term.termBalances[termId][vaultToken].shares <= 0) {
-            term.termNonZeroTokenCounter[termId]--;
+        if (term.termBalances[vaultToken].shares <= 0) {
+            term.nonZeroTokenBalanceCounter--;
         }
 
         emit WithdrawFromTerm(termId, msg.sender, token, shares);
@@ -198,10 +211,9 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
         LendingTerm storage term = lendingTerms[termId];
 
         require(
-            term.termBalances[termId][vaultToken].available >= shares,
-            "StormbitLendingManager: insufficient disposable shares"
+            term.termBalances[vaultToken].available >= shares, "StormbitLendingManager: insufficient disposable shares"
         );
-        term.termBalances[termId][vaultToken].available -= shares;
+        term.termBalances[vaultToken].available -= shares;
 
         emit FreezeSharesOnTerm(termId, token, shares);
     }
@@ -213,11 +225,10 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
 
         LendingTerm storage term = lendingTerms[termId];
 
-        uint256 freezedShares =
-            term.termBalances[termId][vaultToken].shares - term.termBalances[termId][vaultToken].available;
+        uint256 freezedShares = term.termBalances[vaultToken].shares - term.termBalances[vaultToken].available;
 
         require(shares <= freezedShares, "StormbitLendingManager: insufficient freezed shares");
-        term.termBalances[termId][vaultToken].available += shares;
+        term.termBalances[vaultToken].available += shares;
 
         emit UnfreezeSharesOnTerm(termId, token, shares);
     }
@@ -238,8 +249,8 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
             revert("StormbitLendingManager: failed to transfer profit");
         }
 
-        term.termBalances[termId][vaultToken].weight += profit;
-        term.termBalances[termId][vaultToken].available += shares;
+        term.termBalances[vaultToken].weight += profit;
+        term.termBalances[vaultToken].available += shares;
 
         emit DistributeProfit(termId, token, profit);
     }
@@ -296,16 +307,16 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
     {
         address vaultToken = assetManager.getVaultToken(token);
         return (
-            lendingTerms[termId].termBalances[termId][vaultToken].weight,
-            lendingTerms[termId].termBalances[termId][vaultToken].available,
-            lendingTerms[termId].termBalances[termId][vaultToken].shares
+            lendingTerms[termId].termBalances[vaultToken].weight,
+            lendingTerms[termId].termBalances[vaultToken].available,
+            lendingTerms[termId].termBalances[vaultToken].shares
         );
     }
 
     function getTermFreezedShares(uint256 termId, address token) public view override returns (uint256) {
         address vaultToken = assetManager.getVaultToken(token);
-        return lendingTerms[termId].termBalances[termId][vaultToken].shares
-            - lendingTerms[termId].termBalances[termId][vaultToken].available;
+        return lendingTerms[termId].termBalances[vaultToken].shares
+            - lendingTerms[termId].termBalances[vaultToken].available;
     }
 
     function getUserTotalDelegatedShares(address user, address token) public view override returns (uint256) {
@@ -321,12 +332,44 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
         // get term
         LendingTerm storage term = lendingTerms[termId];
         // get term weight balance (shares)
-        uint256 termWeightBalance = term.termBalances[termId][vaultToken].weight;
+        uint256 termWeightBalance = term.termBalances[vaultToken].weight;
         // get term shares balance (assets)
-        uint256 termSharesBalance = term.termBalances[termId][vaultToken].shares;
+        uint256 termSharesBalance = term.termBalances[vaultToken].shares;
         // convert shares to weight
         uint256 weight = (shares * termWeightBalance) / termSharesBalance;
 
         return weight;
+    }
+
+    /**
+     * @dev Returns the `account` current delegated amount of shares on term
+     */
+    function getShares(address account, address token, uint256 termId) public view virtual returns (uint256) {
+        address vaultToken = assetManager.getVaultToken(token);
+        return lendingTerms[termId].userSharesCheckpoints[account][vaultToken].latest();
+    }
+
+    /**
+     * @dev Returns the amount of shares that `account` had delegated at a specific moment in the past. If the `clock()` is
+     * configured to use block numbers, this will return the value at the end of the corresponding block.
+     *
+     * Requirements:
+     *
+     * - `timepoint` must be in the past. If operating using block numbers, the block must be already mined.
+     */
+    function getPastShares(address account, address token, uint256 termId, uint256 timepoint)
+        public
+        view
+        virtual
+        returns (uint256)
+    {
+        uint48 currentTimepoint = clock();
+        if (timepoint >= currentTimepoint) {
+            revert ERC5805FutureLookup(timepoint, currentTimepoint);
+        }
+        address vaultToken = assetManager.getVaultToken(token);
+        return lendingTerms[termId].userSharesCheckpoints[account][vaultToken].upperLookupRecent(
+            SafeCast.toUint32(timepoint)
+        );
     }
 }

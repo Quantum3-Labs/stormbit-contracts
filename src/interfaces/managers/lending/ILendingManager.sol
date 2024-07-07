@@ -2,6 +2,7 @@
 pragma solidity ^0.8.21;
 
 import {IHooks} from "../../hooks/IHooks.sol";
+import {Checkpoints} from "@openzeppelin/contracts/utils/structs/Checkpoints.sol";
 
 /// @author Quantum3 Labs
 /// @title Stormbit Lending Manager Interface
@@ -16,9 +17,10 @@ interface ILendingManager {
     struct LendingTerm {
         address owner;
         uint256 comission; // TODO add balances and other ERC4626 custom fields
+        uint256 nonZeroTokenBalanceCounter; // track non zero token counter
         IHooks hooks;
-        mapping(uint256 termId => mapping(address vaultToken => Balances balances)) termBalances; // total shares controlled by the term owner
-        mapping(uint256 termId => uint256 nonZeroTokenBalanceCounter) termNonZeroTokenCounter; // track non zero token counter
+        mapping(address vaultToken => Balances balances) termBalances; // total shares controlled by the term owner
+        mapping(address user => mapping(address vaultToken => Checkpoints.Trace224)) userSharesCheckpoints;
     }
 
     struct LendingTermMetadata {
