@@ -25,7 +25,7 @@ interface ILoanManager {
 
     event LoanRequested(uint256 indexed loanId, address indexed borrower, address indexed token, uint256 assets);
 
-    event AllocatedTermAndFundOnLoan(uint256 indexed loanId, uint256 indexed termId, uint256 assets);
+    event Allocate(uint256 indexed loanId, uint256 indexed termId, uint256 assets);
 
     event LoanExecuted(uint256 indexed loanId, address indexed borrower, address indexed token, uint256 repayAssets);
 

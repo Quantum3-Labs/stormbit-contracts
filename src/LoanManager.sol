@@ -174,7 +174,7 @@ contract LoanManager is Initializable, IGovernable, IInitialize, ILoanManager {
         loans[loanId].assetsAllocated += assets;
         termAllocatedShares[loanId][termId][vaultToken] += sharesRequired;
 
-        emit AllocatedTermAndFundOnLoan(loanId, termId, assets);
+        emit Allocate(loanId, termId, assets);
     }
 
     /// @dev claim the profit for loan and add the remaining profit to term profit or

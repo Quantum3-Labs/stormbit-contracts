@@ -66,27 +66,28 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
     /// @return id of the lending term
     function createLendingTerm(uint256 comission, IHooks hooks) public override returns (uint256) {
         // unique id by hashing the sender and hooks address
-        uint256 id = uint256(keccak256(abi.encode(msg.sender, address(hooks))));
-        require(!_validLendingTerm(id), "StormbitLendingManager: lending term already exists");
-        lendingTerms[id].owner = msg.sender;
-        lendingTerms[id].comission = comission;
-        lendingTerms[id].hooks = hooks;
+        uint256 termId = uint256(keccak256(abi.encode(msg.sender, address(hooks))));
+        require(!_validLendingTerm(termId), "StormbitLendingManager: lending term already exists");
+        lendingTerms[termId].owner = msg.sender;
+        lendingTerms[termId].comission = comission;
+        lendingTerms[termId].hooks = hooks;
 
-        emit LendingTermCreated(id, msg.sender, comission);
-        return id;
+        emit LendingTermCreated(termId, msg.sender, comission);
+        return termId;
     }
 
     /// @dev remove a lending term
-    /// @param id id of the lending term
-    function removeLendingTerm(uint256 id) public override onlyTermOwner(id) {
-        require(_validLendingTerm(id), "StormbitLendingManager: lending term does not exist");
+    /// @param termId id of the lending term
+    function removeLendingTerm(uint256 termId) public override onlyTermOwner(termId) {
+        require(_validLendingTerm(termId), "StormbitLendingManager: lending term does not exist");
         // if there are delegated shares, the term cannot be removed
         require(
-            lendingTerms[id].termNonZeroTokenCounter[id] <= 0, "StormbitLendingManager: term has non zero token balance"
+            lendingTerms[termId].termNonZeroTokenCounter[termId] <= 0,
+            "StormbitLendingManager: term has non zero token balance"
         );
 
-        delete lendingTerms[id];
-        emit LendingTermRemoved(id);
+        delete lendingTerms[termId];
+        emit LendingTermRemoved(termId);
     }
 
     /// @dev allow depositor to delegate shares to a lending term
@@ -269,9 +270,9 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
     // -----------------------------------------
 
     /// @dev check if lending term exists
-    /// @param id id of the lending term
-    function _validLendingTerm(uint256 id) internal view returns (bool) {
-        return lendingTerms[id].owner != address(0);
+    /// @param termId id of the lending term
+    function _validLendingTerm(uint256 termId) internal view returns (bool) {
+        return lendingTerms[termId].owner != address(0);
     }
 
     // -----------------------------------------
@@ -282,8 +283,9 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
         return _governor;
     }
 
-    function getLendingTerm(uint256 id) public view override returns (LendingTermMetadata memory) {
-        return LendingTermMetadata(lendingTerms[id].owner, lendingTerms[id].comission, lendingTerms[id].hooks);
+    function getLendingTerm(uint256 termId) public view override returns (LendingTermMetadata memory) {
+        return
+            LendingTermMetadata(lendingTerms[termId].owner, lendingTerms[termId].comission, lendingTerms[termId].hooks);
     }
 
     function getLendingTermBalances(uint256 termId, address token)

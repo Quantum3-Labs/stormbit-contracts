@@ -27,15 +27,15 @@ interface ILendingManager {
         IHooks hooks;
     }
 
-    event LendingTermCreated(uint256 indexed id, address lender, uint256 comission);
+    event LendingTermCreated(uint256 indexed termId, address lender, uint256 comission);
 
-    event LendingTermRemoved(uint256 indexed id);
+    event LendingTermRemoved(uint256 indexed termId);
 
     event BorrowerWithdraw(address indexed borrower, address indexed token, uint256 assets);
 
-    event DepositToTerm(uint256 indexed id, address indexed user, address indexed token, uint256 shares);
+    event DepositToTerm(uint256 indexed termId, address indexed user, address indexed token, uint256 shares);
 
-    event WithdrawFromTerm(uint256 indexed id, address indexed user, address indexed token, uint256 shares);
+    event WithdrawFromTerm(uint256 indexed termId, address indexed user, address indexed token, uint256 shares);
 
     event FreezeSharesOnTerm(uint256 indexed termId, address indexed token, uint256 shares);
 
@@ -45,7 +45,7 @@ interface ILendingManager {
 
     function createLendingTerm(uint256 comission, IHooks hooks) external returns (uint256);
 
-    function removeLendingTerm(uint256 id) external;
+    function removeLendingTerm(uint256 termId) external;
 
     function borrowerWithdraw(address borrower, address token, uint256 assets) external;
 
@@ -60,7 +60,7 @@ interface ILendingManager {
     function distributeProfit(uint256 termId, address token, uint256 weight, uint256 shares, uint256 ownerProfit)
         external;
 
-    function getLendingTerm(uint256 id) external returns (LendingTermMetadata memory);
+    function getLendingTerm(uint256 termId) external returns (LendingTermMetadata memory);
 
     function getTermFreezedShares(uint256 termId, address token) external view returns (uint256);
 
