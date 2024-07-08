@@ -3,6 +3,7 @@ pragma solidity ^0.8.21;
 
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "./interfaces/token/IERC20.sol";
 import {IERC4626} from "./interfaces/token/IERC4626.sol";
 import {IGovernable} from "./interfaces/utils/IGovernable.sol";
@@ -17,6 +18,7 @@ import {ILendingManager} from "./interfaces/managers/lending/ILendingManager.sol
 /// @notice entrypoint for all asset management operations
 
 contract AssetManager is Initializable, IGovernable, IInitialize, IAssetManager {
+    using SafeERC20 for IERC20;
     using Math for uint256;
 
     address private _governor;
@@ -61,20 +63,10 @@ contract AssetManager is Initializable, IGovernable, IInitialize, IAssetManager 
     /// @param token address of the token
     /// @param assets amount of assets to deposit
     function deposit(address token, uint256 assets) public override {
-        _checkTokenSupported(token);
-        address vaultToken = vaultTokens[token]; // get the corresponding vault
-        // first make sure can transfer user token to manager
-        // todo: use safe transfer
-        bool isSuccess = IERC20(token).transferFrom(msg.sender, address(this), assets);
-        if (!isSuccess) {
-            revert("StormbitAssetManager: transfer failed");
-        }
-        IERC20(token).approve(vaultToken, assets);
-        uint256 shares = IERC4626(vaultToken).deposit(assets, msg.sender);
-        emit Deposit(msg.sender, token, assets, shares);
+        _deposit(token, assets, msg.sender, msg.sender);
     }
-
     /// @dev same function as deposit, but allow user to deposit on behalf of another user
+
     function depositFrom(address token, uint256 assets, address depositor, address receiver) public override {
         _checkTokenSupported(token);
         address vaultToken = vaultTokens[token]; // get the corresponding vault
@@ -135,6 +127,24 @@ contract AssetManager is Initializable, IGovernable, IInitialize, IAssetManager 
     // -----------------------------------------
     // ----------- INTERNAL FUNCTIONS ----------
     // -----------------------------------------
+
+    function _deposit(address token, uint256 assets, address depositor, address receiver) internal {
+        _checkTokenSupported(token);
+
+        address vaultToken = vaultTokens[token];
+
+        // Transfer tokens safely from the depositor to this contract
+        IERC20(token).safeTransferFrom(depositor, address(this), assets);
+
+        // Approve the vault to spend the tokens
+        IERC20(token).forceApprove(vaultToken, assets);
+
+        // Deposit the assets into the vault and get shares
+        uint256 shares= IERC4626(vaultToken).deposit(assets, receiver);
+
+        emit Deposit(receiver, token, assets, shares);
+    }
+
     function _checkTokenSupported(address token) internal view {
         require(tokens[token], "StormbitAssetManager: token not supported");
     }
