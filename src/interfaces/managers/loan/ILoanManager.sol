@@ -23,17 +23,40 @@ interface ILoanManager {
         LoanStatus status;
     }
 
-    event LoanRequested(uint256 indexed loanId, address indexed borrower, address indexed token, uint256 assets);
+    event LoanRequested(
+        uint256 indexed loanId,
+        address indexed borrower,
+        address indexed token,
+        uint256 assets
+    );
 
-    event Allocate(uint256 indexed loanId, uint256 indexed termId, uint256 assets);
+    event Allocate(
+        uint256 indexed loanId,
+        uint256 indexed termId,
+        uint256 assets
+    );
 
-    event LoanExecuted(uint256 indexed loanId, address indexed borrower, address indexed token, uint256 repayAssets);
+    event LoanExecuted(
+        uint256 indexed loanId,
+        address indexed borrower,
+        address indexed token,
+        uint256 repayAssets
+    );
 
     event LoanRepaid(uint256 indexed loanId, address indexed repayUser);
 
-    event ClaimAllocation(uint256 indexed termId, uint256 indexed loanId, address indexed token, uint256 shares);
+    event ClaimAllocation(
+        uint256 indexed termId,
+        uint256 indexed loanId,
+        address indexed token,
+        uint256 shares
+    );
 
-    function requestLoan(address token, uint256 assets, uint256 deadline) external returns (uint256);
+    function requestLoan(
+        address token,
+        uint256 assets,
+        uint256 deadline
+    ) external returns (uint256);
 
     function allocate(uint256 loanId, uint256 termId, uint256 assets) external;
 
@@ -45,5 +68,14 @@ interface ILoanManager {
 
     function getLoan(uint256 loanId) external view returns (Loan memory);
 
-    function getAllocatedShares(uint256 loanId, uint256 termId, address token) external view returns (uint256);
+    function getAllocatedShares(
+        uint256 loanId,
+        uint256 termId,
+        address token
+    ) external view returns (uint256);
+
+    function getAllocatedCheckpoint(
+        uint256 loanId,
+        uint256 termId
+    ) external returns (uint32);
 }
