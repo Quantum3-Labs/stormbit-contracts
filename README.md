@@ -8,3 +8,16 @@ Borrowers can request loans by specifying the token type and amount required. On
 
 #### Terms
 Terms define the conditions under which assets are lent and borrowed. They include parameters like commission rates and customizable hooks. Terms are created by lenders, who also manage the allocation of shares and profit distribution. Each term tracks the balance of shares and profits, ensuring transparent and fair distribution of returns to lenders.
+
+#### Readable Data in Stormbit Smart Contracts
+- Governor Address
+- Supported Tokens
+- User Shares in Vaults
+- Vault Token Addresses
+- Lending Term Metadata (owner, commission rate, hooks)
+- Lending Term Balances (available, weight, shares)
+- Number of Loans Allocated to a Term
+- Loan Details (borrower, token, repay amount, assets required, assets allocated, shares allocated, allocation deadline, status)
+- Loan Allocation Status for Terms
+- Allocated Shares on a Loan for Specific Terms and Tokens
+- Term Frozen Shares
