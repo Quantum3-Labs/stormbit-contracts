@@ -36,4 +36,21 @@ contract AssetManagerTest is SetupTest {
         assertEq(vaultBalance, depositAmount, "Vault should have the deposited amount");
         assertEq(vaultBalance2, depositAmount, "Vault should have the deposited amount");
     }
+
+    function testDepositTokenNotSupported() public {
+        address depositor = depositor1;
+        ERC20Mock token = new ERC20Mock();
+        uint256 depositAmount = 1000; 
+
+        vm.prank(depositor);
+        token.approve(address(assetManager), depositAmount);
+
+        vm.prank(depositor);
+        vm.expectRevert(abi.encodeWithSignature("TokenNotSupported()"));
+        assetManager.deposit(address(token), depositAmount);
+    }
+
+
 }
+
+
