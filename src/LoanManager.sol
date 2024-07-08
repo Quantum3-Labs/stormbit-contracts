@@ -28,7 +28,6 @@ contract LoanManager is Initializable, IGovernable, IInitialize, ILoanManager {
     mapping(uint256 loanId => Loan loan) public loans;
     mapping(uint256 loanId => mapping(uint256 termId => mapping(address vaultToken => uint256 shares))) public
         allocatedShares;
-    mapping(uint256 loanId => mapping(uint256 termId => uint32 blockNumber)) public allocatedCheckpoints;
     mapping(uint256 termId => mapping(uint256 loanId => mapping(address vaultToken => bool))) private claimedProfit; // mapping to track lender claim profit
 
     constructor(address initialGovernor) {
@@ -165,7 +164,6 @@ contract LoanManager is Initializable, IGovernable, IInitialize, ILoanManager {
         loans[loanId].sharesAllocated += sharesRequired;
         loans[loanId].assetsAllocated += assets;
         allocatedShares[loanId][termId][vaultToken] += sharesRequired;
-        allocatedCheckpoints[loanId][termId] = SafeCast.toUint32(Time.blockNumber());
 
         emit Allocate(loanId, termId, assets);
     }
@@ -206,7 +204,7 @@ contract LoanManager is Initializable, IGovernable, IInitialize, ILoanManager {
             // calculate the remaining profit after term owner profit
             uint256 extraProfit = termProfitShares - termOwnerProfitShares;
 
-            lendingManager.distributeProfit(termId, loanId, loan.token, extraProfit, weight, termOwnerProfitShares);
+            lendingManager.distributeProfit(termId, loan.token, extraProfit, weight, termOwnerProfitShares);
 
             // update claimed status
             claimedProfit[termId][loanId][vaultToken] = true;
@@ -257,9 +255,5 @@ contract LoanManager is Initializable, IGovernable, IInitialize, ILoanManager {
     function getAllocatedShares(uint256 loanId, uint256 termId, address token) public view override returns (uint256) {
         address vaultToken = assetManager.getVaultToken(token);
         return allocatedShares[loanId][termId][vaultToken];
-    }
-
-    function getAllocatedCheckpoint(uint256 loanId, uint256 termId) public view override returns (uint32) {
-        return allocatedCheckpoints[loanId][termId];
     }
 }

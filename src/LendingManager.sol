@@ -145,14 +145,7 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
             uint256 lastDepositShares = term.userSharesCheckpoints[msg.sender][vaultToken].upperLookupRecent(
                 SafeCast.toUint32(lastDepositTime[msg.sender][termId])
             );
-            uint256 currentTimeShares = term.termBalances[vaultToken].shares.latest();
-            uint256 lastTimeProfit = term.termBalances[vaultToken].profit.upperLookupRecent(
-                SafeCast.toUint32(lastDepositTime[msg.sender][termId])
-            );
-            uint256 currentProfit = term.termBalances[vaultToken].profit.latest();
-            uint256 profit = (currentProfit - lastTimeProfit);
-            // calculate the profit based on the last deposit shares
-            uint256 userProfit = (lastDepositShares * profit) / currentTimeShares;
+            uint256 userProfit = _calculateUserProfit(termId, lastDepositShares, token);
             _unclaimProfit[msg.sender][vaultToken] += userProfit;
         }
 
@@ -193,16 +186,8 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
 
         require(shares <= maximumWithdraw, "StormbitLendingManager: insufficient shares to withdraw");
 
-        uint256 currentTimeShares = term.termBalances[vaultToken].shares.latest();
-        uint256 lastTimeProfit = term.termBalances[vaultToken].profit.upperLookupRecent(
-            SafeCast.toUint32(lastDepositTime[msg.sender][termId])
-        );
-        uint256 currentProfit = term.termBalances[vaultToken].profit.latest();
-
-        uint256 profit = currentProfit - lastTimeProfit;
-
         // calculate the profit based on the last deposit shares
-        uint256 userProfit = (shares * profit) / currentTimeShares;
+        uint256 userProfit = _calculateUserProfit(termId, shares, token);
 
         uint256 redeemShares = userProfit + shares + _unclaimProfit[msg.sender][vaultToken];
 
@@ -254,14 +239,11 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
         _unfreezeTermShares(token, termId, shares);
     }
 
-    function distributeProfit(
-        uint256 termId,
-        uint256 loanId,
-        address token,
-        uint256 profit,
-        uint256 shares,
-        uint256 ownerProfit
-    ) public override onlyLoanManager {
+    function distributeProfit(uint256 termId, address token, uint256 profit, uint256 shares, uint256 ownerProfit)
+        public
+        override
+        onlyLoanManager
+    {
         require(_validLendingTerm(termId), "StormbitLendingManager: lending term does not exist");
 
         address vaultToken = assetManager.getVaultToken(token);
@@ -315,6 +297,21 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
         term.termBalances[vaultToken].available += shares;
 
         emit UnfreezeSharesOnTerm(termId, token, shares);
+    }
+
+    function _calculateUserProfit(uint256 termId, uint256 shares, address token) private view returns (uint256) {
+        LendingTerm storage term = lendingTerms[termId];
+        address vaultToken = assetManager.getVaultToken(token);
+
+        uint256 currentTimeShares = term.termBalances[vaultToken].shares.latest();
+        uint256 lastTimeProfit = term.termBalances[vaultToken].profit.upperLookupRecent(
+            SafeCast.toUint32(lastDepositTime[msg.sender][termId])
+        );
+        uint256 currentProfit = term.termBalances[vaultToken].profit.latest();
+        uint256 profit = (currentProfit - lastTimeProfit);
+        // calculate the profit based on the last deposit shares
+        uint256 userProfit = (shares * profit) / currentTimeShares;
+        return userProfit;
     }
 
     // -----------------------------------------

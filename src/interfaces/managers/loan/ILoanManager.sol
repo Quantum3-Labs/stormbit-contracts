@@ -46,6 +46,4 @@ interface ILoanManager {
     function getLoan(uint256 loanId) external view returns (Loan memory);
 
     function getAllocatedShares(uint256 loanId, uint256 termId, address token) external view returns (uint256);
-
-    function getAllocatedCheckpoint(uint256 loanId, uint256 termId) external returns (uint32);
 }

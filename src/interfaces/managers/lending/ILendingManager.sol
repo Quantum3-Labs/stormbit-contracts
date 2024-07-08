@@ -59,14 +59,8 @@ interface ILendingManager {
 
     function unfreezeTermShares(uint256 termId, uint256 shares, address token) external;
 
-    function distributeProfit(
-        uint256 termId,
-        uint256 loanId,
-        address token,
-        uint256 weight,
-        uint256 shares,
-        uint256 ownerProfit
-    ) external;
+    function distributeProfit(uint256 termId, address token, uint256 weight, uint256 shares, uint256 ownerProfit)
+        external;
 
     function getLendingTerm(uint256 termId) external returns (LendingTermMetadata memory);
 
