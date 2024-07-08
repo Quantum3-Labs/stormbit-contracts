@@ -32,18 +32,30 @@ contract AssetManager is Initializable, IGovernable, IInitialize, IAssetManager 
         _governor = initialGovernor;
     }
 
+    // -----------------------------------------
+    // -------- CUSTOM ERRORS ------------------
+    // -----------------------------------------
+    error NotGovernor();
+    error NotLoanManager();
+    error NotLendingManager();
+    error TokenNotSupported();
+    error TransferFailed();
+    error VaultNotEmpty();
+
     modifier onlyGovernor() {
-        require(msg.sender == _governor, "StormbitAssetManager: not governor");
+        if (msg.sender != _governor) revert NotGovernor();
         _;
     }
 
     modifier onlyLoanManager() {
-        require(msg.sender == address(loanManager), "StormbitAssetManager: not loan manager");
+        if (msg.sender != address(loanManager)) revert NotLoanManager();
         _;
     }
 
     modifier onlyLendingManager() {
-        require(msg.sender == address(lendingManager), "StormbitAssetManager: not lending manager");
+        if (msg.sender != address(lendingManager)) {
+            revert NotLendingManager();
+        }
         _;
     }
 
@@ -65,8 +77,8 @@ contract AssetManager is Initializable, IGovernable, IInitialize, IAssetManager 
     function deposit(address token, uint256 assets) public override {
         _deposit(token, assets, msg.sender, msg.sender);
     }
-    /// @dev same function as deposit, but allow user to deposit on behalf of another user
 
+    /// @dev same function as deposit, but allow user to deposit on behalf of another user
     function depositFrom(address token, uint256 assets, address depositor, address receiver) public override {
         _checkTokenSupported(token);
         address vaultToken = vaultTokens[token]; // get the corresponding vault
@@ -116,11 +128,20 @@ contract AssetManager is Initializable, IGovernable, IInitialize, IAssetManager 
     /// @dev allow governor to remove the support of a token
     /// @param token address of the token
     function removeToken(address token) public override onlyGovernor {
+        if (!tokens[token]) {
+            revert TokenNotSupported();
+        }
         // get the vault address
         address vaultToken = vaultTokens[token];
         // check if vault is empty
-        require(IERC4626(vaultToken).totalSupply() == 0, "StormbitAssetManager: vault not empty");
+        if (IERC4626(vaultToken).totalSupply() != 0) {
+            revert VaultNotEmpty();
+        }
         tokens[token] = false;
+
+        // Remove the vault token mapping 
+        delete vaultTokens[token];
+
         emit RemoveToken(token, vaultToken);
     }
 
@@ -136,11 +157,14 @@ contract AssetManager is Initializable, IGovernable, IInitialize, IAssetManager 
         // Transfer tokens safely from the depositor to this contract
         IERC20(token).safeTransferFrom(depositor, address(this), assets);
 
-        // Approve the vault to spend the tokens
-        IERC20(token).forceApprove(vaultToken, assets);
+        // Approve the vault to spend the tokens if necessary
+        uint256 currentAllowance = IERC20(token).allowance(address(this), vaultToken);
+        if (currentAllowance < assets) {
+            IERC20(token).forceApprove(vaultToken, assets);
+        }
 
         // Deposit the assets into the vault and get shares
-        uint256 shares= IERC4626(vaultToken).deposit(assets, receiver);
+        uint256 shares = IERC4626(vaultToken).deposit(assets, receiver);
 
         emit Deposit(receiver, token, assets, shares);
     }
