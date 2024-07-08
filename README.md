@@ -1,6 +1,6 @@
-## Stormbit : on-chain lending structure 
+## Stormbit : p2p on-chain lending structure 
 
-#### Lenders
+#### Lenders 
 Lenders use the Stormbit protocol to deposit assets into lending terms, earning returns through interest and profit sharing. They can create and manage lending terms, delegate shares to specific terms, and withdraw from terms. Lenders also have the ability to claim profits once loans are repaid. They are incentivized to participate by earning a commission on the profits generated from loans.
 
 #### Borrowers
