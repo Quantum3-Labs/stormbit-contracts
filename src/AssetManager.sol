@@ -85,7 +85,7 @@ contract AssetManager is Initializable, IGovernable, IInitialize, IAssetManager 
         // first make sure can transfer user token to manager
         bool isSuccess = IERC20(token).transferFrom(depositor, address(this), assets);
         if (!isSuccess) {
-            revert("StormbitAssetManager: transfer failed");
+            revert TransferFailed();
         }
         IERC20(token).approve(vaultToken, assets);
         uint256 shares = IERC4626(vaultToken).deposit(assets, receiver);
@@ -139,7 +139,7 @@ contract AssetManager is Initializable, IGovernable, IInitialize, IAssetManager 
         }
         tokens[token] = false;
 
-        // Remove the vault token mapping 
+        // Remove the vault token mapping
         delete vaultTokens[token];
 
         emit RemoveToken(token, vaultToken);
@@ -170,7 +170,9 @@ contract AssetManager is Initializable, IGovernable, IInitialize, IAssetManager 
     }
 
     function _checkTokenSupported(address token) internal view {
-        require(tokens[token], "StormbitAssetManager: token not supported");
+        if (!tokens[token]) {
+            revert TokenNotSupported();
+        }
     }
 
     // -----------------------------------------
