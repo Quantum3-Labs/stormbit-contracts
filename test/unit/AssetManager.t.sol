@@ -40,7 +40,7 @@ contract AssetManagerTest is SetupTest {
     function testDepositTokenNotSupported() public {
         address depositor = depositor1;
         ERC20Mock token = new ERC20Mock();
-        uint256 depositAmount = 1000; 
+        uint256 depositAmount = 1000;
 
         vm.prank(depositor);
         token.approve(address(assetManager), depositAmount);
@@ -49,8 +49,4 @@ contract AssetManagerTest is SetupTest {
         vm.expectRevert(abi.encodeWithSignature("TokenNotSupported()"));
         assetManager.deposit(address(token), depositAmount);
     }
-
-
 }
-
-
