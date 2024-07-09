@@ -9,7 +9,7 @@ import {LoanManager} from "../src/LoanManager.sol";
 import {DeployHelpers} from "script/DeployHelpers.s.sol";
 import {StormbitRegistry} from "src/StormbitRegistry.sol";
 
-contract Deploy is DeployHelpers {
+contract DeployScript is DeployHelpers {
     function run() public {
         uint256 pk = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(pk);

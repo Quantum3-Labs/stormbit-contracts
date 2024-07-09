@@ -10,7 +10,7 @@ import {DeployHelpers, console} from "script/DeployHelpers.s.sol";
 import {IHooks} from "src/interfaces/hooks/IHooks.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
-contract Integration is DeployHelpers {
+contract IntegrationScript is DeployHelpers {
     uint256 INITIAL_DEPOSIT = 1000 * 1e18;
     uint256 LOAN_AMOUNT = 100 * 1e18;
     uint16 constant BASIS_POINTS = 10000;
@@ -30,9 +30,9 @@ contract Integration is DeployHelpers {
         mockUsdt.mint(vm.addr(lenderPk2), INITIAL_DEPOSIT);
 
         // Register and create lending terms for two lenders
-        registry.register("0xquantum3labs");
+        registry.register("mehdi");
         uint256 term1 = lendingManager.createLendingTerm(1000, IHooks(address(0)));
-        uint256 term2 = lendingManager.createLendingTerm(1000, IHooks(address(0)));
+        uint256 term2 = lendingManager.createLendingTerm(120, IHooks(address(0)));
 
         // Deposit and delegate to term for lender 1
         mockUsdt.approve(address(assetManager), INITIAL_DEPOSIT);

@@ -10,6 +10,8 @@ import {IAssetManager} from "./interfaces/managers/asset/IAssetManager.sol";
 import {ILoanManager} from "./interfaces/managers/loan/ILoanManager.sol";
 import {ILendingManager} from "./interfaces/managers/lending/ILendingManager.sol";
 
+import "forge-std/Console.sol";
+
 /// @author Quantum3 Labs
 /// @title Stormbit Lending Manager
 /// @notice entrypoint for all lender and lending terms operations
@@ -67,6 +69,8 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
     function createLendingTerm(uint256 comission, IHooks hooks) public override returns (uint256) {
         // unique id by hashing the sender and hooks address
         uint256 id = uint256(keccak256(abi.encode(msg.sender, address(hooks))));
+        console.log("Generated Lending Term ID:", id);
+
         require(!_validLendingTerm(id), "StormbitLendingManager: lending term already exists");
         lendingTerms[id].owner = msg.sender;
         lendingTerms[id].comission = comission;

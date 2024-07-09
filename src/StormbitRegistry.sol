@@ -25,7 +25,7 @@ contract StormbitRegistry is Initializable, IGovernable, IStormbitRegistry {
     }
 
     function register(string memory _username) external override {
-        require(bytes(usernames[msg.sender]).length == 0, "StormbitRegistry: user already registered");
+        // require(bytes(usernames[msg.sender]).length == 0, "StormbitRegistry: user already registered");
         require(bytes(_username).length > 0, "StormbitRegistry: username is empty");
 
         usernames[msg.sender] = _username;
