@@ -22,12 +22,8 @@ contract IntegrationScript is DeployHelpers {
         uint256 borrowerPk2 = vm.envUint("BORROWER2_PRIVATE_KEY");
 
         vm.startBroadcast(lenderPk1);
-        LendingManager lendingManager = LendingManager(
-            getDeployment("LendingManager")
-        );
-        StormbitRegistry registry = StormbitRegistry(
-            getDeployment("StormbitRegistry")
-        );
+        LendingManager lendingManager = LendingManager(getDeployment("LendingManager"));
+        StormbitRegistry registry = StormbitRegistry(getDeployment("StormbitRegistry"));
         AssetManager assetManager = AssetManager(getDeployment("AssetManager"));
         MockToken mockUsdt = MockToken(getDeployment("MockUsdt"));
         mockUsdt.mint(vm.addr(lenderPk1), INITIAL_DEPOSIT);
@@ -35,10 +31,7 @@ contract IntegrationScript is DeployHelpers {
 
         // Register and create lending terms for two lenders
         registry.register("carlos");
-        uint256 term1 = lendingManager.createLendingTerm(
-            1000,
-            IHooks(address(0))
-        );
+        uint256 term1 = lendingManager.createLendingTerm(1000, IHooks(address(0)));
 
         // Deposit and delegate to term for lender 1
         mockUsdt.approve(address(assetManager), INITIAL_DEPOSIT);
@@ -47,60 +40,35 @@ contract IntegrationScript is DeployHelpers {
         IERC4626 usdtVault = IERC4626(usdtVaultAddr);
         uint256 sharesOfUser1 = usdtVault.balanceOf(vm.addr(lenderPk1));
         uint256 usdtVaultAmountWithDecimals1 = sharesOfUser1 / 2;
-        usdtVault.approve(
-            address(lendingManager),
-            usdtVaultAmountWithDecimals1
-        );
-        lendingManager.depositToTerm(
-            term1,
-            address(mockUsdt),
-            usdtVaultAmountWithDecimals1
-        );
+        usdtVault.approve(address(lendingManager), usdtVaultAmountWithDecimals1);
+        lendingManager.depositToTerm(term1, address(mockUsdt), usdtVaultAmountWithDecimals1);
 
         vm.stopBroadcast();
 
         vm.startBroadcast(lenderPk2);
         registry.register("yixuan");
 
-        uint256 term2 = lendingManager.createLendingTerm(
-            120,
-            IHooks(address(0))
-        );
+        uint256 term2 = lendingManager.createLendingTerm(120, IHooks(address(0)));
 
         // Deposit and delegate to term for lender 2
         mockUsdt.approve(address(assetManager), INITIAL_DEPOSIT);
         assetManager.deposit(address(mockUsdt), INITIAL_DEPOSIT);
         uint256 sharesOfUser2 = usdtVault.balanceOf(vm.addr(lenderPk2));
         uint256 usdtVaultAmountWithDecimals2 = sharesOfUser2 / 2;
-        usdtVault.approve(
-            address(lendingManager),
-            usdtVaultAmountWithDecimals2
-        );
-        lendingManager.depositToTerm(
-            term2,
-            address(mockUsdt),
-            usdtVaultAmountWithDecimals2
-        );
+        usdtVault.approve(address(lendingManager), usdtVaultAmountWithDecimals2);
+        lendingManager.depositToTerm(term2, address(mockUsdt), usdtVaultAmountWithDecimals2);
 
         vm.stopBroadcast();
 
         // Borrower 1 requests a loan
         vm.startBroadcast(borrowerPk1);
         LoanManager loanManager = LoanManager(getDeployment("LoanManager"));
-        uint256 loanId1 = loanManager.requestLoan(
-            getDeployment("MockUsdt"),
-            LOAN_AMOUNT,
-            block.timestamp + 1 days
-        );
+        uint256 loanId1 = loanManager.requestLoan(getDeployment("MockUsdt"), LOAN_AMOUNT, block.timestamp + 1 days);
         vm.stopBroadcast();
 
         // Borrower 2 requests a loan
         vm.startBroadcast(borrowerPk2);
-        uint256 loanId2 = loanManager.requestLoan(
-            getDeployment("MockUsdt"),
-            LOAN_AMOUNT,
-            block.timestamp + 1 days
-        );
+        uint256 loanId2 = loanManager.requestLoan(getDeployment("MockUsdt"), LOAN_AMOUNT, block.timestamp + 1 days);
         vm.stopBroadcast();
 
         // Lender 1 allocates to loan 1
@@ -123,12 +91,8 @@ contract IntegrationScript is DeployHelpers {
         loanManager.executeLoan(loanId2);
         vm.stopBroadcast();
 
-        (, address token1, uint256 repayAsset1, , , , , ) = loanManager.loans(
-            loanId1
-        );
-        (, address token2, uint256 repayAsset2, , , , , ) = loanManager.loans(
-            loanId2
-        );
+        (, address token1, uint256 repayAsset1,,,,,) = loanManager.loans(loanId1);
+        (, address token2, uint256 repayAsset2,,,,,) = loanManager.loans(loanId2);
         vm.startBroadcast(borrowerPk1);
         // Borrowers repay loans
         mockUsdt.mint(vm.addr(borrowerPk1), repayAsset1);
