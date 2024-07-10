@@ -61,14 +61,12 @@ contract IntegrationScript is DeployHelpers {
         // Borrower 1 requests a loan
         vm.startBroadcast(borrowerPk1);
         LoanManager loanManager = LoanManager(getDeployment("LoanManager"));
-        uint256 loanId1 =
-            loanManager.requestLoan(getDeployment("MockUsdt"), LOAN_AMOUNT, block.timestamp + 1 days);
+        uint256 loanId1 = loanManager.requestLoan(getDeployment("MockUsdt"), LOAN_AMOUNT, block.timestamp + 1 days);
         vm.stopBroadcast();
 
         // Borrower 2 requests a loan
         vm.startBroadcast(borrowerPk2);
-        uint256 loanId2 =
-            loanManager.requestLoan(getDeployment("MockUsdt"), LOAN_AMOUNT, block.timestamp + 1 days);
+        uint256 loanId2 = loanManager.requestLoan(getDeployment("MockUsdt"), LOAN_AMOUNT, block.timestamp + 1 days);
         vm.stopBroadcast();
 
         // Lender 1 allocates to loan 1
