@@ -30,9 +30,8 @@ contract IntegrationScript is DeployHelpers {
         mockUsdt.mint(vm.addr(lenderPk2), INITIAL_DEPOSIT);
 
         // Register and create lending terms for two lenders
-        registry.register("mehdi");
+        registry.register("carlos");
         uint256 term1 = lendingManager.createLendingTerm(1000, IHooks(address(0)));
-        uint256 term2 = lendingManager.createLendingTerm(120, IHooks(address(0)));
 
         // Deposit and delegate to term for lender 1
         mockUsdt.approve(address(assetManager), INITIAL_DEPOSIT);
@@ -47,6 +46,9 @@ contract IntegrationScript is DeployHelpers {
         vm.stopBroadcast();
 
         vm.startBroadcast(lenderPk2);
+        registry.register("yixuan");
+
+        uint256 term2 = lendingManager.createLendingTerm(120, IHooks(address(0)));
 
         // Deposit and delegate to term for lender 2
         mockUsdt.approve(address(assetManager), INITIAL_DEPOSIT);
@@ -89,18 +91,19 @@ contract IntegrationScript is DeployHelpers {
         loanManager.executeLoan(loanId2);
         vm.stopBroadcast();
 
-        // Borrowers repay loans
-        uint256 interest = (LOAN_AMOUNT * 500) / BASIS_POINTS;
-        mockUsdt.mint(vm.addr(borrowerPk1), interest);
-        mockUsdt.mint(vm.addr(borrowerPk2), interest);
-
+        (, address token1, uint256 repayAsset1,,,,,) = loanManager.loans(loanId1);
+        (, address token2, uint256 repayAsset2,,,,,) = loanManager.loans(loanId2);
         vm.startBroadcast(borrowerPk1);
-        mockUsdt.approve(address(assetManager), LOAN_AMOUNT + interest);
+        // Borrowers repay loans
+        mockUsdt.mint(vm.addr(borrowerPk1), repayAsset1);
+        mockUsdt.mint(vm.addr(borrowerPk2), repayAsset2);
+
+        mockUsdt.approve(address(assetManager), repayAsset1);
         loanManager.repay(loanId1);
         vm.stopBroadcast();
 
         vm.startBroadcast(borrowerPk2);
-        mockUsdt.approve(address(assetManager), LOAN_AMOUNT + interest);
+        mockUsdt.approve(address(assetManager), repayAsset2);
         loanManager.repay(loanId2);
         vm.stopBroadcast();
 
