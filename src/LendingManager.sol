@@ -85,7 +85,7 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
     /// @return id of the lending term
     function createLendingTerm(uint256 comission, IHooks hooks) public override returns (uint256) {
         // unique id by hashing the sender and hooks address
-        uint256 termId = uint256(keccak256(abi.encode(msg.sender, address(hooks))));
+        uint256 termId = uint256(keccak256(abi.encode(msg.sender, comission, address(hooks))));
         require(!_validLendingTerm(termId), "StormbitLendingManager: lending term already exists");
         lendingTerms[termId].owner = msg.sender;
         lendingTerms[termId].comission = comission;
@@ -279,8 +279,7 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
     // -----------------------------------------
     function _beforeDepositToTerm(uint256 termId, address token, uint256 shares) private returns (bool) {
         IHooks hooks = lendingTerms[termId].hooks;
-        // ! todo: remove this
-        if (address(hooks) == address(0) || address(hooks) == address(1)) {
+        if (address(hooks) == address(0)) {
             return true;
         }
         return hooks.beforeDepositToTerm(msg.sender, token, termId, shares);

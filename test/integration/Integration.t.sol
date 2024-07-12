@@ -364,7 +364,7 @@ contract IntegrationTest is SetupTest {
 
         // lender take 10% commission on profit
         uint256 termId1 = _createTerm(lender1, 1000, address(0));
-        uint256 termId2 = _createTerm(lender1, 500, address(1));
+        uint256 termId2 = _createTerm(lender1, 500, address(0));
 
         IERC4626 vaultTokenInterface = IERC4626(assetManager.getVaultToken(address(token1)));
         _depositAndDelegate(depositor1, 500, 500, address(token1), termId1);
