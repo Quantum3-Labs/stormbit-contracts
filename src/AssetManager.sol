@@ -3,6 +3,7 @@ pragma solidity ^0.8.21;
 
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "./interfaces/token/IERC20.sol";
 import {IERC4626} from "./interfaces/token/IERC4626.sol";
 import {IGovernable} from "./interfaces/utils/IGovernable.sol";
@@ -17,6 +18,7 @@ import {ILendingManager} from "./interfaces/managers/lending/ILendingManager.sol
 /// @notice entrypoint for all asset management operations
 
 contract AssetManager is Initializable, IGovernable, IInitialize, IAssetManager {
+    using SafeERC20 for IERC20;
     using Math for uint256;
 
     address private _governor;
@@ -30,18 +32,30 @@ contract AssetManager is Initializable, IGovernable, IInitialize, IAssetManager 
         _governor = initialGovernor;
     }
 
+    // -----------------------------------------
+    // -------- CUSTOM ERRORS ------------------
+    // -----------------------------------------
+    error NotGovernor();
+    error NotLoanManager();
+    error NotLendingManager();
+    error TokenNotSupported();
+    error TransferFailed();
+    error VaultNotEmpty();
+
     modifier onlyGovernor() {
-        require(msg.sender == _governor, "StormbitAssetManager: not governor");
+        if (msg.sender != _governor) revert NotGovernor();
         _;
     }
 
     modifier onlyLoanManager() {
-        require(msg.sender == address(loanManager), "StormbitAssetManager: not loan manager");
+        if (msg.sender != address(loanManager)) revert NotLoanManager();
         _;
     }
 
     modifier onlyLendingManager() {
-        require(msg.sender == address(lendingManager), "StormbitAssetManager: not lending manager");
+        if (msg.sender != address(lendingManager)) {
+            revert NotLendingManager();
+        }
         _;
     }
 
@@ -61,17 +75,7 @@ contract AssetManager is Initializable, IGovernable, IInitialize, IAssetManager 
     /// @param token address of the token
     /// @param assets amount of assets to deposit
     function deposit(address token, uint256 assets) public override {
-        _checkTokenSupported(token);
-        address vaultToken = vaultTokens[token]; // get the corresponding vault
-        // first make sure can transfer user token to manager
-        // todo: use safe transfer
-        bool isSuccess = IERC20(token).transferFrom(msg.sender, address(this), assets);
-        if (!isSuccess) {
-            revert("StormbitAssetManager: transfer failed");
-        }
-        IERC20(token).approve(vaultToken, assets);
-        IERC4626(vaultToken).deposit(assets, msg.sender);
-        emit Deposit(msg.sender, token, assets);
+        _deposit(token, assets, msg.sender, msg.sender);
     }
 
     /// @dev same function as deposit, but allow user to deposit on behalf of another user
@@ -81,11 +85,11 @@ contract AssetManager is Initializable, IGovernable, IInitialize, IAssetManager 
         // first make sure can transfer user token to manager
         bool isSuccess = IERC20(token).transferFrom(depositor, address(this), assets);
         if (!isSuccess) {
-            revert("StormbitAssetManager: transfer failed");
+            revert TransferFailed();
         }
         IERC20(token).approve(vaultToken, assets);
-        IERC4626(vaultToken).deposit(assets, receiver);
-        emit Deposit(receiver, token, assets);
+        uint256 shares = IERC4626(vaultToken).deposit(assets, receiver);
+        emit Deposit(receiver, token, assets, shares);
     }
 
     /// @dev note that we dont require the token to be whitelisted
@@ -124,19 +128,51 @@ contract AssetManager is Initializable, IGovernable, IInitialize, IAssetManager 
     /// @dev allow governor to remove the support of a token
     /// @param token address of the token
     function removeToken(address token) public override onlyGovernor {
+        if (!tokens[token]) {
+            revert TokenNotSupported();
+        }
         // get the vault address
         address vaultToken = vaultTokens[token];
         // check if vault is empty
-        require(IERC4626(vaultToken).totalSupply() == 0, "StormbitAssetManager: vault not empty");
+        if (IERC4626(vaultToken).totalSupply() != 0) {
+            revert VaultNotEmpty();
+        }
         tokens[token] = false;
+
+        // Remove the vault token mapping
+        delete vaultTokens[token];
+
         emit RemoveToken(token, vaultToken);
     }
 
     // -----------------------------------------
     // ----------- INTERNAL FUNCTIONS ----------
     // -----------------------------------------
+
+    function _deposit(address token, uint256 assets, address depositor, address receiver) internal {
+        _checkTokenSupported(token);
+
+        address vaultToken = vaultTokens[token];
+
+        // Transfer tokens safely from the depositor to this contract
+        IERC20(token).safeTransferFrom(depositor, address(this), assets);
+
+        // Approve the vault to spend the tokens if necessary
+        uint256 currentAllowance = IERC20(token).allowance(address(this), vaultToken);
+        if (currentAllowance < assets) {
+            IERC20(token).forceApprove(vaultToken, assets);
+        }
+
+        // Deposit the assets into the vault and get shares
+        uint256 shares = IERC4626(vaultToken).deposit(assets, receiver);
+
+        emit Deposit(receiver, token, assets, shares);
+    }
+
     function _checkTokenSupported(address token) internal view {
-        require(tokens[token], "StormbitAssetManager: token not supported");
+        if (!tokens[token]) {
+            revert TokenNotSupported();
+        }
     }
 
     // -----------------------------------------
