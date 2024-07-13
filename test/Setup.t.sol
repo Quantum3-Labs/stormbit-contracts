@@ -8,10 +8,14 @@ import {LoanManager} from "../src/LoanManager.sol";
 import {TestUtils} from "./Utils.t.sol";
 import {BaseVault} from "../src/vaults/BaseVault.sol";
 
+import {MockHooks} from "../src/mocks/MockHooks.sol";
+
 contract SetupTest is TestUtils {
     ERC20Mock token1;
     ERC20Mock token2;
     ERC20Mock token3;
+
+    MockHooks mockHooks;
 
     AssetManager assetManager;
     LendingManager lendingManager;
@@ -27,6 +31,8 @@ contract SetupTest is TestUtils {
         token1 = new ERC20Mock();
         token2 = new ERC20Mock();
         token3 = new ERC20Mock();
+
+        mockHooks = new MockHooks();
 
         supportedTokens = [address(token1), address(token2), address(token3)];
         assetManager = new AssetManager(governor);

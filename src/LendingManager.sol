@@ -32,6 +32,7 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
     mapping(uint256 => ILendingManager.LendingTerm) public lendingTerms;
     mapping(address user => mapping(uint256 termId => uint32 lastDepositTime)) public lastDepositTime;
     mapping(address user => mapping(address vaultToken => uint256 unclaimWeight)) private _unclaimProfit;
+    mapping(uint256 termId => ILendingManager.LendingTermMetadata) public lendingTermMetadata;
 
     constructor(address initialGovernor) {
         _governor = initialGovernor;
@@ -332,8 +333,8 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
     }
 
     function getLendingTerm(uint256 termId) public view override returns (LendingTermMetadata memory) {
-        return
-            LendingTermMetadata(lendingTerms[termId].owner, lendingTerms[termId].comission, lendingTerms[termId].hooks);
+        LendingTerm storage term = lendingTerms[termId];
+        return LendingTermMetadata(term.owner, term.comission, term.hooks);
     }
 
     function getLendingTermBalances(uint256 termId, address token)
