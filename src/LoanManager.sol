@@ -35,22 +35,39 @@ contract LoanManager is Initializable, IGovernable, IInitialize, ILoanManager {
     }
 
     // -----------------------------------------
+    // ------------- Custom Errors -------------
+    // -----------------------------------------
+
+    error NotGovernor();
+    error NotBorrower();
+    error NotTermOwner();
+    error TokenNotSupported();
+    error InvalidLoan();
+    error LoanNotPending();
+    error InsufficientAllocation();
+    error LoanNotActive();
+    error LoanAssetsRequiredExceeded();
+    error ProfitAlreadyClaimed();
+    error LoanNotEligibleForClaiming();
+    error FailedToTransferProfit();
+
+    // -----------------------------------------
     // ------------- Modifiers -----------------
     // -----------------------------------------
 
     modifier onlyGovernor() {
-        require(msg.sender == _governor, "StormbitAssetManager: not governor");
+        if (msg.sender != _governor) revert NotGovernor();
         _;
     }
 
     modifier onlyBorrower(uint256 loanId) {
-        require(loans[loanId].borrower == msg.sender, "StormbitLoanManager: not borrower");
+        if (loans[loanId].borrower != msg.sender) revert NotBorrower();
         _;
     }
 
     modifier onlyTermOwner(uint256 termId) {
         address owner = lendingManager.getLendingTerm(termId).owner;
-        require(owner == msg.sender, "StormbitLendingManager: not term owner");
+        if (owner != msg.sender) revert NotTermOwner();
         _;
     }
 
@@ -72,7 +89,7 @@ contract LoanManager is Initializable, IGovernable, IInitialize, ILoanManager {
         // todo: see which agreement to use
 
         // check if token is supported
-        require(assetManager.isTokenSupported(token), "StormbitLoanManager: token not supported");
+        if (!assetManager.isTokenSupported(token)) revert TokenNotSupported();
 
         uint256 loanNonce = userLoanNonce[msg.sender];
         uint256 loanId = uint256(keccak256(abi.encode(msg.sender, loanNonce)));
@@ -103,9 +120,9 @@ contract LoanManager is Initializable, IGovernable, IInitialize, ILoanManager {
     function executeLoan(uint256 loanId) public override onlyBorrower(loanId) {
         Loan memory loan = loans[loanId];
         // require valid loan
-        require(_validLoan(loanId), "StormbitLoanManager: invalid loan");
-        require(loan.status == LoanStatus.Pending, "StormbitLoanManager: loan not pending");
-        require(loan.assetsAllocated >= loan.assetsRequired, "StormbitLoanManager: insufficient allocation");
+        if (!_validLoan(loanId)) revert InvalidLoan();
+        if (loan.status != LoanStatus.Pending) revert LoanNotPending();
+        if (loan.assetsAllocated < loan.assetsRequired) revert InsufficientAllocation();
 
         loans[loanId].status = LoanStatus.Active;
         lendingManager.borrowerWithdraw(
@@ -121,9 +138,9 @@ contract LoanManager is Initializable, IGovernable, IInitialize, ILoanManager {
     /// @param loanId id of the loan
     function repay(uint256 loanId) public override {
         // check if loan is valid
-        require(_validLoan(loanId), "StormbitLoanManager: invalid loan");
+        if (!_validLoan(loanId)) revert InvalidLoan();
         Loan memory loan = loans[loanId];
-        require(loan.status == LoanStatus.Active, "StormbitLoanManager: loan not active");
+        if (loan.status != LoanStatus.Active) revert LoanNotActive();
         assetManager.depositFrom(loan.token, loan.repayAssets, msg.sender, address(lendingManager));
         loans[loanId].status = LoanStatus.Repaid;
 
@@ -137,9 +154,9 @@ contract LoanManager is Initializable, IGovernable, IInitialize, ILoanManager {
     function allocate(uint256 loanId, uint256 termId, uint256 assets) public override onlyTermOwner(termId) {
         Loan memory loan = loans[loanId];
         // check is valid loan
-        require(_validLoan(loanId), "StormbitLoanManager: invalid loan");
+        if (!_validLoan(loanId)) revert InvalidLoan();
         // only if allocate deadline not passed
-        require(block.timestamp < loan.deadlineAllocate, "StormbitLoanManager: deadline passed");
+        if (block.timestamp >= loan.deadlineAllocate) revert LoanNotEligibleForClaiming();
 
         // get disposable shares on token of the term
         address token = loan.token;
@@ -149,14 +166,9 @@ contract LoanManager is Initializable, IGovernable, IInitialize, ILoanManager {
         (, uint256 termOwnerDisposableShares,) = lendingManager.getLendingTermBalances(termId, token);
         // convert assets to shares
         uint256 sharesRequired = assetManager.convertToShares(token, assets);
-        require(
-            termOwnerDisposableShares >= sharesRequired,
-            "StormbitLoanManager: term owner insufficient disposable shares"
-        );
+        if (termOwnerDisposableShares < sharesRequired) revert InsufficientAllocation();
         // fund shares should less than loan shares required
-        require(
-            loan.assetsAllocated + assets <= loan.assetsRequired, "StormbitLoanManager: loan assets required exceeded"
-        );
+        if (loan.assetsAllocated + assets > loan.assetsRequired) revert LoanAssetsRequiredExceeded();
 
         // freeze the term owner shares
         lendingManager.freezeTermShares(termId, sharesRequired, token);
@@ -174,18 +186,16 @@ contract LoanManager is Initializable, IGovernable, IInitialize, ILoanManager {
         Loan memory loan = loans[loanId];
         address vaultToken = assetManager.getVaultToken(loan.token);
 
-        require(
-            loan.status == ILoanManager.LoanStatus.Repaid || loan.status == ILoanManager.LoanStatus.Pending,
-            "StormbitLendingManager: loan not repaid nor pending"
-        );
+        if (loan.status != ILoanManager.LoanStatus.Repaid && loan.status != ILoanManager.LoanStatus.Pending)
+            revert LoanNotEligibleForClaiming();
         // term allocated on shares should > 0
         uint256 weight = allocatedShares[loanId][termId][vaultToken];
-        require(weight > 0, "StormbitLendingManager: term not allocated on loan");
+        if (weight <= 0) revert InsufficientAllocation();
 
         if (loan.status == ILoanManager.LoanStatus.Repaid) {
             // check if the profit has been claimed
             if (claimedProfit[termId][loanId][vaultToken]) {
-                revert("StormbitLendingManager: profit already claimed");
+                revert ProfitAlreadyClaimed();
             }
             // get lending term
             ILendingManager.LendingTermMetadata memory term = lendingManager.getLendingTerm(termId);
@@ -213,7 +223,7 @@ contract LoanManager is Initializable, IGovernable, IInitialize, ILoanManager {
         } else if (loan.status == ILoanManager.LoanStatus.Pending) {
             // if block.timestamp not passed the deadline
             if (block.timestamp < loan.deadlineAllocate) {
-                revert("StormbitLendingManager: loan not eligible for claiming");
+                revert LoanNotEligibleForClaiming();
             }
             // If the loan deadline has passed and was not executed, unfreeze the term shares
             lendingManager.unfreezeTermShares(termId, weight, loan.token);
