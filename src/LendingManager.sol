@@ -270,7 +270,7 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
         // convert assets to shares
         uint256 shares = assetManager.convertToShares(token, assets);
         IERC4626(vaultToken).approve(address(assetManager), shares);
-        assetManager.borrowerWithdraw(borrower, token, assets);
+        assetManager.withdrawTo(borrower, token, assets);
         emit BorrowerWithdraw(borrower, token, assets);
     }
 

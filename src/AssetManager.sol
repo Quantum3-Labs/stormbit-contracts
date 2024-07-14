@@ -84,19 +84,14 @@ contract AssetManager is Initializable, IGovernable, IInitialize, IAssetManager 
     }
 
     /// @dev note that we dont require the token to be whitelisted
+    /// @dev note requires approval of `shares` equivalent of `assets` to the AssetManager from withdrawer
     function withdraw(address token, uint256 assets) public override {
-        // withdraw here is withdraw from shares to asset
-        _checkTokenSupported(token);
-        address vaultToken = vaultTokens[token];
-        uint256 sharesBurned = IERC4626(vaultToken).withdraw(assets, msg.sender, msg.sender);
-        emit Withdraw(msg.sender, vaultToken, assets, sharesBurned);
+        _withdraw(token, assets, msg.sender, msg.sender);
     }
 
     /// @dev call by lending manager, use for execute loan, redeem shares for borrower
-    function borrowerWithdraw(address borrower, address token, uint256 assets) public override onlyLendingManager {
-        address vaultToken = getVaultToken(token);
-        IERC4626(vaultToken).withdraw(assets, borrower, msg.sender);
-        emit BorrowerWithdraw(borrower, token, assets);
+    function withdrawTo(address receiver, address token, uint256 assets) public override {
+        _withdraw(token, assets, receiver, msg.sender);
     }
 
     /// @dev allow governor to add a new token
@@ -155,6 +150,13 @@ contract AssetManager is Initializable, IGovernable, IInitialize, IAssetManager 
         uint256 shares = IERC4626(vaultToken).deposit(assets, receiver);
 
         emit Deposit(receiver, token, assets, shares);
+    }
+
+    function _withdraw(address token, uint256 assets, address receiver, address user) internal {
+        _checkTokenSupported(token);
+        address vaultToken = vaultTokens[token];
+        uint256 shares = IERC4626(vaultToken).withdraw(assets, receiver, user);
+        emit Withdraw(receiver, user, vaultToken, assets, shares);
     }
 
     function _checkTokenSupported(address token) internal view {
