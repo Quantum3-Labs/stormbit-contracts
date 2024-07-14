@@ -2,6 +2,8 @@
 pragma solidity ^0.8.21;
 
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {IGovernable} from "./interfaces/utils/IGovernable.sol";
 import {IInitialize} from "./interfaces/utils/IInitialize.sol";
 import {IERC4626} from "./interfaces/token/IERC4626.sol";
@@ -25,11 +27,8 @@ contract LoanManager is Initializable, IGovernable, IInitialize, ILoanManager {
 
     mapping(uint256 loanId => Loan loan) public loans;
     mapping(uint256 loanId => mapping(uint256 termId => mapping(address vaultToken => uint256 shares))) public
-        termAllocatedShares;
-    mapping(uint256 loanId => mapping(uint256 termId => bool isAllocated)) public loanTermAllocated;
-    // a counter use to track amount of loans a term was allocated to
-    mapping(uint256 termId => uint256 loanAllocated) termLoanAllocatedCounter;
-    mapping(uint256 termId => mapping(uint256 loanId => mapping(address vaultToken => bool))) public lenderClaimedProfit; // mapping to track lender claim profit
+        allocatedShares;
+    mapping(uint256 termId => mapping(uint256 loanId => mapping(address vaultToken => bool))) private claimedProfit; // mapping to track lender claim profit
 
     constructor(address initialGovernor) {
         _governor = initialGovernor;
@@ -92,7 +91,8 @@ contract LoanManager is Initializable, IGovernable, IInitialize, ILoanManager {
             assetsAllocated: 0,
             sharesAllocated: 0,
             deadlineAllocate: deadline,
-            status: LoanStatus.Pending
+            status: LoanStatus.Pending,
+            executionTimestamp: 0
         });
 
         emit LoanRequested(loanId, msg.sender, token, assets);
@@ -107,16 +107,18 @@ contract LoanManager is Initializable, IGovernable, IInitialize, ILoanManager {
         require(_validLoan(loanId), "StormbitLoanManager: invalid loan");
         require(loan.status == LoanStatus.Pending, "StormbitLoanManager: loan not pending");
         require(loan.assetsAllocated >= loan.assetsRequired, "StormbitLoanManager: insufficient allocation");
-        // only if deadline is passed
-        require(block.timestamp >= loan.deadlineAllocate, "StormbitLoanManager: deadline not passed");
 
-        loans[loanId].status = LoanStatus.Active;
-        lendingManager.borrowerWithdraw(
+        assetManager.withdrawTo(
             // withdraw by asset manager
             loan.borrower,
             loan.token,
             loan.assetsRequired
         );
+
+        // only after withdraw is successful
+
+        loans[loanId].status = LoanStatus.Active;
+        loans[loanId].executionTimestamp = block.timestamp;
         emit LoanExecuted(loanId, loan.borrower, loan.token, loan.repayAssets);
     }
 
@@ -129,6 +131,7 @@ contract LoanManager is Initializable, IGovernable, IInitialize, ILoanManager {
         require(loan.status == LoanStatus.Active, "StormbitLoanManager: loan not active");
         assetManager.depositFrom(loan.token, loan.repayAssets, msg.sender, address(lendingManager));
         loans[loanId].status = LoanStatus.Repaid;
+
         emit LoanRepaid(loanId, msg.sender);
     }
 
@@ -140,46 +143,40 @@ contract LoanManager is Initializable, IGovernable, IInitialize, ILoanManager {
         Loan memory loan = loans[loanId];
         // check is valid loan
         require(_validLoan(loanId), "StormbitLoanManager: invalid loan");
-        require(block.timestamp < loan.deadlineAllocate, "StormbitLoanManager: deadline passed");
         // only if allocate deadline not passed
-        require(block.timestamp < loans[loanId].deadlineAllocate, "StormbitLoanManager: deadline passed");
-
-        // if first time allocate to the loan, update status
-        if (!loanTermAllocated[loanId][termId]) {
-            loanTermAllocated[loanId][termId] = true;
-            termLoanAllocatedCounter[termId] += 1;
-        }
+        require(block.timestamp < loan.deadlineAllocate, "StormbitLoanManager: deadline passed");
 
         // get disposable shares on token of the term
         address token = loan.token;
+        uint256 assetsAllocated = loan.assetsAllocated;
+        uint256 sharesAllocated = loan.sharesAllocated;
         // get the corresponding vault token
         address vaultToken = assetManager.getVaultToken(token);
         // get term owner disposable shares
-        (, uint256 termOwnerDisposableShares,) = lendingManager.getLendingTermBalances(termId, token);
+        (, uint256 sharesAvailable,) = lendingManager.getLendingTermBalances(termId, token);
         // convert assets to shares
         uint256 sharesRequired = assetManager.convertToShares(token, assets);
-        require(
-            termOwnerDisposableShares >= sharesRequired,
-            "StormbitLoanManager: term owner insufficient disposable shares"
-        );
+        sharesAllocated += sharesRequired;
+        require(sharesAvailable >= sharesRequired, "StormbitLoanManager: term owner insufficient disposable shares");
         // fund shares should less than loan shares required
-        require(
-            loan.assetsAllocated + assets <= loan.assetsRequired, "StormbitLoanManager: loan assets required exceeded"
-        );
+
+        assetsAllocated += assets;
+
+        require(assetsAllocated <= loan.assetsRequired, "StormbitLoanManager: loan assets required exceeded");
 
         // freeze the term owner shares
         lendingManager.freezeTermShares(termId, sharesRequired, token);
 
-        loans[loanId].sharesAllocated += sharesRequired;
-        loans[loanId].assetsAllocated += assets;
-        termAllocatedShares[loanId][termId][vaultToken] += sharesRequired;
+        loans[loanId].sharesAllocated = sharesAllocated;
+        loans[loanId].assetsAllocated = assetsAllocated;
+        allocatedShares[loanId][termId][vaultToken] += sharesRequired;
 
-        emit AllocatedTermAndFundOnLoan(loanId, termId, assets);
+        emit Allocate(loanId, termId, assets);
     }
 
     /// @dev claim the profit for loan and add the remaining profit to term profit or
     /// claim the allocated fund to loan but loan deadline pass and not executed
-    function claim(uint256 termId, uint256 loanId) public override {
+    function claim(uint256 loanId, uint256 termId) public override {
         Loan memory loan = loans[loanId];
         address vaultToken = assetManager.getVaultToken(loan.token);
 
@@ -188,12 +185,12 @@ contract LoanManager is Initializable, IGovernable, IInitialize, ILoanManager {
             "StormbitLendingManager: loan not repaid nor pending"
         );
         // term allocated on shares should > 0
-        uint256 weight = termAllocatedShares[loanId][termId][vaultToken];
+        uint256 weight = allocatedShares[loanId][termId][vaultToken];
         require(weight > 0, "StormbitLendingManager: term not allocated on loan");
 
         if (loan.status == ILoanManager.LoanStatus.Repaid) {
             // check if the profit has been claimed
-            if (lenderClaimedProfit[termId][loanId][vaultToken]) {
+            if (claimedProfit[termId][loanId][vaultToken]) {
                 revert("StormbitLendingManager: profit already claimed");
             }
             // get lending term
@@ -203,9 +200,9 @@ contract LoanManager is Initializable, IGovernable, IInitialize, ILoanManager {
             // calculate profit
             // calculate shares required, convert assets to shares
             uint256 sharesRequired = assetManager.convertToShares(loan.token, loan.assetsRequired);
-            uint256 profitShares = repayShares - sharesRequired;
             // calculate weight of term in shares / loan required shares
             uint256 termFundedPercent = (weight * BASIS_POINTS) / sharesRequired;
+            uint256 profitShares = repayShares - sharesRequired;
             // term owner profit shares
             uint256 termProfitShares = (profitShares * termFundedPercent) / BASIS_POINTS;
             // from term profit shares, get commission for term owner
@@ -213,13 +210,12 @@ contract LoanManager is Initializable, IGovernable, IInitialize, ILoanManager {
             // calculate the remaining profit after term owner profit
             uint256 extraProfit = termProfitShares - termOwnerProfitShares;
 
-            lendingManager.distributeProfit(termId, loan.token, extraProfit, weight, termOwnerProfitShares);
+            lendingManager.distributeProfit(
+                termId, loan.token, extraProfit, weight, termOwnerProfitShares, loan.executionTimestamp
+            );
 
             // update claimed status
-            lenderClaimedProfit[termId][loanId][vaultToken] = true;
-
-            // decrement term allocated counter
-            termLoanAllocatedCounter[termId] -= 1;
+            claimedProfit[termId][loanId][vaultToken] = true;
 
             emit ClaimAllocation(termId, loanId, loan.token, termOwnerProfitShares);
         } else if (loan.status == ILoanManager.LoanStatus.Pending) {
@@ -263,24 +259,9 @@ contract LoanManager is Initializable, IGovernable, IInitialize, ILoanManager {
         return loans[loanId];
     }
 
-    /// @dev get the allocation status of a term on a loan
-    function getLoanTermAllocated(uint256 loanId, uint256 termId) public view override returns (bool) {
-        return loanTermAllocated[loanId][termId];
-    }
-
-    /// @dev get the amount of loans a term was allocated to
-    function getTermLoanAllocatedCounter(uint256 termId) external view override returns (uint256) {
-        return termLoanAllocatedCounter[termId];
-    }
-
     /// @dev get the allocated shares on the loan
-    function getTermAllocatedSharesOnLoan(uint256 loanId, uint256 termId, address token)
-        public
-        view
-        override
-        returns (uint256)
-    {
+    function getAllocatedShares(uint256 loanId, uint256 termId, address token) public view override returns (uint256) {
         address vaultToken = assetManager.getVaultToken(token);
-        return termAllocatedShares[loanId][termId][vaultToken];
+        return allocatedShares[loanId][termId][vaultToken];
     }
 }

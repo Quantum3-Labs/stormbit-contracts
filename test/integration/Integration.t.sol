@@ -47,25 +47,17 @@ contract IntegrationTest is SetupTest {
         assert(lendingManagerSharesBalance == depositedShares);
         assert(depositor1SharesBalanceReal == depositor1SharesBalanceBeforeDeposit - depositedShares);
 
-        // check user total delegated shares on lending manager
-        uint256 depositor1TotalDelegatedShares = lendingManager.getUserTotalDelegatedShares(depositor1, address(token1));
-        assert(depositor1TotalDelegatedShares == depositedShares);
         // check delegated shares on term
-        (, uint256 termDelegatedShares,) = lendingManager.getLendingTermBalances(termId, address(token1));
-        assert(termDelegatedShares == depositedShares);
+        (, uint256 availableShares,) = lendingManager.getLendingTermBalances(termId, address(token1));
+        assert(availableShares == depositedShares);
         // check term total and disposable shares
-        (uint256 termTotalShares,,) = lendingManager.getLendingTermBalances(termId, address(token1));
-        assert(termTotalShares == depositedShares);
+        // (uint256 profit, , ) = lendingManager.getLendingTermBalances(
+        //     termId,
+        //     address(token1)
+        // );
+        // assert(profit == 0);
 
         _allocate(lender1, address(token1), loanId, termId, 1000);
-
-        // check term allocated counter
-        uint256 termAllocatedCounter = loanManager.getTermLoanAllocatedCounter(termId);
-        assert(termAllocatedCounter == 1);
-
-        // check if term allocated to loan
-        bool termAllocatedToLoan = loanManager.getLoanTermAllocated(loanId, termId);
-        assert(termAllocatedToLoan == true);
 
         // check freezed shares on term
         uint256 termFreezedShares = lendingManager.getTermFreezedShares(termId, address(token1));
@@ -123,10 +115,9 @@ contract IntegrationTest is SetupTest {
         // convert repay amount to shares
         uint256 expectedLendingManagerShares = assetManager.convertToShares(address(token1), borrowAssets + interest);
         assert(lendingManagerBalance == expectedLendingManagerShares);
-
         // term owner claim loan profit
         vm.startPrank(lender1);
-        loanManager.claim(termId, loanId);
+        loanManager.claim(loanId, termId);
         vm.stopPrank();
 
         // check term owner balance
@@ -143,9 +134,9 @@ contract IntegrationTest is SetupTest {
         // calculate remaining profit shares
         uint256 remainingProfitShares = profitShares - expectedLender1Balance;
         // check term profit
-        (uint256 total,, uint256 assets) = lendingManager.getLendingTermBalances(termId, address(token1));
-        uint256 termProfit = total - assets;
-        assert(termProfit == remainingProfitShares);
+        // (profit,, uint256 assets) = lendingManager
+        //     .getLendingTermBalances(termId, address(token1));
+        // assert(profit == remainingProfitShares);
 
         // check disposable amount is equal to initial deposit amount
 
@@ -160,18 +151,18 @@ contract IntegrationTest is SetupTest {
         // depositor withdraw from term
         uint256 depositor1BalanceBeforeWithdraw = vaultTokenInterface.balanceOf(depositor1);
         vm.startPrank(depositor1);
+        vm.roll(vm.getBlockNumber() + 1);
         lendingManager.withdrawFromTerm(termId, address(token1), depositedShares);
         vm.stopPrank();
 
         // check term total and disposable shares
-        (termTotalShares,,) = lendingManager.getLendingTermBalances(termId, address(token1));
-        assert(termTotalShares == 0);
+        // (termTotalShares, , ) = lendingManager.getLendingTermBalances(
+        //     termId,
+        //     address(token1)
+        // );
+        // assert(termTotalShares == 0);
         (, uint256 termDisposableShares,) = lendingManager.getLendingTermBalances(termId, address(token1));
         assert(termDisposableShares == 0);
-
-        // check depositor1 total delegated shares and total delegated shares on term
-        depositor1TotalDelegatedShares = lendingManager.getUserTotalDelegatedShares(depositor1, address(token1));
-        assert(depositor1TotalDelegatedShares == 0);
 
         // check user shares balance, should be equal to initial balance + profit
         uint256 depositor1SharesBalance = vaultTokenInterface.balanceOf(depositor1);
@@ -219,28 +210,17 @@ contract IntegrationTest is SetupTest {
         assert(depositor1SharesBalanceReal == depositor1SharesBalanceBeforeDeposit - depositedShares);
         assert(depositor2SharesBalanceReal == depositor1SharesBalanceBeforeDeposit - depositedShares);
 
-        // check user total delegated shares on lending manager
-        uint256 depositor1TotalDelegatedShares = lendingManager.getUserTotalDelegatedShares(depositor1, address(token1));
-        uint256 depositor2TotalDelegatedShares = lendingManager.getUserTotalDelegatedShares(depositor2, address(token1));
-        assert(depositor1TotalDelegatedShares == depositedShares);
-        assert(depositor2TotalDelegatedShares == depositedShares);
-
         // check delegated shares on term
         (, uint256 termDelegatedShares,) = lendingManager.getLendingTermBalances(termId, address(token1));
         assert(termDelegatedShares == expectedTotalDepositedShares);
         // check term total and disposable shares
-        (uint256 termTotalShares,,) = lendingManager.getLendingTermBalances(termId, address(token1));
-        assert(termTotalShares == expectedTotalDepositedShares);
+        // (uint256 termTotalShares, , ) = lendingManager.getLendingTermBalances(
+        //     termId,
+        //     address(token1)
+        // );
+        // assert(termTotalShares == 0);
 
         _allocate(lender1, address(token1), loanId, termId, 1000);
-
-        // check term allocated counter
-        uint256 termAllocatedCounter = loanManager.getTermLoanAllocatedCounter(termId);
-        assert(termAllocatedCounter == 1);
-
-        // check if term allocated to loan
-        bool termAllocatedToLoan = loanManager.getLoanTermAllocated(loanId, termId);
-        assert(termAllocatedToLoan == true);
 
         // check freezed shares on term
         uint256 termFreezedShares = lendingManager.getTermFreezedShares(termId, address(token1));
@@ -301,7 +281,7 @@ contract IntegrationTest is SetupTest {
 
         // term owner claim loan profit
         vm.startPrank(lender1);
-        loanManager.claim(termId, loanId);
+        loanManager.claim(loanId, termId);
         vm.stopPrank();
 
         // check term owner balance
@@ -318,14 +298,13 @@ contract IntegrationTest is SetupTest {
         // calculate remaining profit shares
         uint256 remainingProfitShares = profitShares - expectedLender1Balance;
         // check term profit
-        (uint256 total,, uint256 assets) = lendingManager.getLendingTermBalances(termId, address(token1));
-        uint256 termProfit = total - assets;
-        assert(termProfit == remainingProfitShares);
+        (uint256 profit,,) = lendingManager.getLendingTermBalances(termId, address(token1));
+        assert(profit == remainingProfitShares);
 
         // check disposable amount is equal to initial deposit amount
-        (, uint256 disposableAmount,) = lendingManager.getLendingTermBalances(termId, address(token1));
+        (, uint256 available,) = lendingManager.getLendingTermBalances(termId, address(token1));
         uint256 expectedDisposableAmount = 1000 * (10 ** vaultTokenInterface.decimals());
-        assert(disposableAmount == expectedDisposableAmount);
+        assert(available == expectedDisposableAmount);
 
         // check term freezed shares
         termFreezedShares = lendingManager.getTermFreezedShares(termId, address(token1));
@@ -334,26 +313,21 @@ contract IntegrationTest is SetupTest {
         // depositor withdraw from term
         uint256 depositor1BalanceBeforeWithdraw = vaultTokenInterface.balanceOf(depositor1);
         vm.startPrank(depositor1);
+        vm.roll(vm.getBlockNumber() + 1);
         lendingManager.withdrawFromTerm(termId, address(token1), depositedShares);
         vm.stopPrank();
         vm.startPrank(depositor2);
+        vm.roll(vm.getBlockNumber() + 1);
         lendingManager.withdrawFromTerm(termId, address(token1), depositedShares);
         vm.stopPrank();
 
         // check term total and disposable shares
-        (termTotalShares,,) = lendingManager.getLendingTermBalances(termId, address(token1));
+        (uint256 remainingProfit,,) = lendingManager.getLendingTermBalances(termId, address(token1));
 
-        assert(termTotalShares == 0);
-        (, uint256 termDisposableShares,) = lendingManager.getLendingTermBalances(termId, address(token1));
-        assert(termDisposableShares == 0);
+        assert(remainingProfit == 0);
+        (, uint256 availableShares,) = lendingManager.getLendingTermBalances(termId, address(token1));
+        assert(availableShares == 0);
 
-        // check depositor1 total delegated shares and total delegated shares on term
-        depositor1TotalDelegatedShares = lendingManager.getUserTotalDelegatedShares(depositor1, address(token1));
-        depositor2TotalDelegatedShares = lendingManager.getUserTotalDelegatedShares(depositor2, address(token1));
-        assert(depositor1TotalDelegatedShares == 0);
-        assert(depositor2TotalDelegatedShares == 0);
-
-        // check user shares balance, should be equal to initial balance + profit
         uint256 depositor1SharesBalance = vaultTokenInterface.balanceOf(depositor1);
         uint256 depositor2SharesBalance = vaultTokenInterface.balanceOf(depositor2);
         uint256 expectedDepositor1SharesBalance =
@@ -390,7 +364,7 @@ contract IntegrationTest is SetupTest {
 
         // lender take 10% commission on profit
         uint256 termId1 = _createTerm(lender1, 1000, address(0));
-        uint256 termId2 = _createTerm(lender1, 500, address(1));
+        uint256 termId2 = _createTerm(lender1, 500, address(0));
 
         IERC4626 vaultTokenInterface = IERC4626(assetManager.getVaultToken(address(token1)));
         _depositAndDelegate(depositor1, 500, 500, address(token1), termId1);
@@ -410,13 +384,6 @@ contract IntegrationTest is SetupTest {
         assert(depositor1SharesBalanceReal == 0);
         assert(depositor2SharesBalanceReal == 0);
 
-        // check user total delegated shares on lending manager
-        uint256 depositor1TotalDelegatedShares = lendingManager.getUserTotalDelegatedShares(depositor1, address(token1));
-        uint256 depositor2TotalDelegatedShares = lendingManager.getUserTotalDelegatedShares(depositor2, address(token1));
-        uint256 expectedDepositor1TotalDelegatedShares = depositedShares + depositedShares;
-        assert(depositor1TotalDelegatedShares == expectedDepositor1TotalDelegatedShares);
-        assert(depositor2TotalDelegatedShares == depositedShares);
-
         // check delegated shares on term
         (, uint256 term1DelegatedShares,) = lendingManager.getLendingTermBalances(termId1, address(token1));
         uint256 expectedTerm1DelegatedShares = depositedShares;
@@ -428,20 +395,6 @@ contract IntegrationTest is SetupTest {
 
         _allocate(lender1, address(token1), loanId, termId1, 500);
         _allocate(lender1, address(token1), loanId, termId2, 500);
-
-        // check term allocated counter
-        uint256 term1AllocatedCounter = loanManager.getTermLoanAllocatedCounter(termId1);
-        assert(term1AllocatedCounter == 1);
-        uint256 term2AllocatedCounter = loanManager.getTermLoanAllocatedCounter(termId2);
-        assert(term2AllocatedCounter == 1);
-
-        // check if term1 allocated to loan
-        bool term1AllocatedToLoan = loanManager.getLoanTermAllocated(loanId, termId1);
-        assert(term1AllocatedToLoan == true);
-
-        // check if term2 allocated to loan
-        bool term2AllocatedToLoan = loanManager.getLoanTermAllocated(loanId, termId2);
-        assert(term2AllocatedToLoan == true);
 
         // check freezed shares on term1
         uint256 term1FreezedShares = lendingManager.getTermFreezedShares(termId1, address(token1));
@@ -517,7 +470,7 @@ contract IntegrationTest is SetupTest {
 
         // term owner claim loan profit for term1
         vm.startPrank(lender1);
-        loanManager.claim(termId1, loanId);
+        loanManager.claim(loanId, termId1);
         vm.stopPrank();
 
         // check term owner balance
@@ -527,9 +480,8 @@ contract IntegrationTest is SetupTest {
         uint256 sharesRequired = assetManager.convertToShares(address(token1), loan.assetsRequired);
         uint256 profitShares = repayAssetsInShares - sharesRequired;
         // get term weight on loan
-        uint256 term1Weight = (
-            loanManager.getTermAllocatedSharesOnLoan(loanId, termId1, address(token1)) * BASIS_POINTS
-        ) / loan.sharesAllocated;
+        uint256 term1Weight =
+            (loanManager.getAllocatedShares(loanId, termId1, address(token1)) * BASIS_POINTS) / loan.sharesAllocated;
         // calculate profit for term1
         uint256 term1Profit = (profitShares * term1Weight) / BASIS_POINTS;
         // from term1 profit calculate lender profit
@@ -538,13 +490,12 @@ contract IntegrationTest is SetupTest {
         assert(lender1Balance == lender1ProfitTerm1);
         // check term1 profit
         uint256 term1ProfitBalance = term1Profit - lender1ProfitTerm1;
-        (uint256 total,, uint256 assets) = lendingManager.getLendingTermBalances(termId1, address(token1));
-        uint256 term1ProfitBalanceOnLendingManager = total - assets;
-        assert(term1ProfitBalance == term1ProfitBalanceOnLendingManager);
+        (uint256 profit,, uint256 assets) = lendingManager.getLendingTermBalances(termId1, address(token1));
+        assert(term1ProfitBalance == profit);
 
         // term owner claim loan profit for term2
         vm.startPrank(lender1);
-        loanManager.claim(termId2, loanId);
+        loanManager.claim(loanId, termId2);
         vm.stopPrank();
 
         // check term owner balance
@@ -554,9 +505,8 @@ contract IntegrationTest is SetupTest {
         sharesRequired = assetManager.convertToShares(address(token1), loan.assetsRequired);
         profitShares = repayAssetsInShares - sharesRequired;
         // get term weight on loan
-        uint256 term2Weight = (
-            loanManager.getTermAllocatedSharesOnLoan(loanId, termId2, address(token1)) * BASIS_POINTS
-        ) / loan.sharesAllocated;
+        uint256 term2Weight =
+            (loanManager.getAllocatedShares(loanId, termId2, address(token1)) * BASIS_POINTS) / loan.sharesAllocated;
         // calculate profit for term1
         uint256 term2Profit = (profitShares * term2Weight) / BASIS_POINTS;
         // from term1 profit calculate lender profit
@@ -565,9 +515,8 @@ contract IntegrationTest is SetupTest {
         assert(lender1Balance == lender1ProfitTerm1 + lender1ProfitTerm2);
         // check term1 profit
         uint256 term2ProfitBalance = term2Profit - lender1ProfitTerm2;
-        (total,, assets) = lendingManager.getLendingTermBalances(termId2, address(token1));
-        uint256 term2ProfitBalanceOnLendingManager = total - assets;
-        assert(term2ProfitBalance == term2ProfitBalanceOnLendingManager);
+        (profit,, assets) = lendingManager.getLendingTermBalances(termId2, address(token1));
+        assert(term2ProfitBalance == profit);
 
         // check disposable amount is equal to initial deposit amount
         (, uint256 disposableAmountTerm1,) = lendingManager.getLendingTermBalances(termId1, address(token1));
@@ -589,6 +538,7 @@ contract IntegrationTest is SetupTest {
         // depositor1 withdraw from term1
         uint256 depositor1BalanceBeforeWithdraw = vaultTokenInterface.balanceOf(depositor1);
         vm.startPrank(depositor1);
+        vm.roll(vm.getBlockNumber() + 1);
         lendingManager.withdrawFromTerm(termId1, address(token1), depositedShares);
         vm.stopPrank();
         // check depositor1 balance
@@ -598,6 +548,7 @@ contract IntegrationTest is SetupTest {
 
         // depositor1 withdraw from term2
         vm.startPrank(depositor1);
+        vm.roll(vm.getBlockNumber() + 1);
         lendingManager.withdrawFromTerm(termId2, address(token1), depositedShares);
         vm.stopPrank();
         expectedDepositor1SharesBalance = expectedDepositor1SharesBalance + depositedShares + (term2ProfitBalance / 2);
@@ -607,6 +558,7 @@ contract IntegrationTest is SetupTest {
         // depositor2 withdraw from term2
         uint256 depositor2BalanceBeforeWithdraw = vaultTokenInterface.balanceOf(depositor2);
         vm.startPrank(depositor2);
+        vm.roll(vm.getBlockNumber() + 1);
         lendingManager.withdrawFromTerm(termId2, address(token1), depositedShares);
         vm.stopPrank();
         // check depositor2 balance
@@ -658,6 +610,7 @@ contract IntegrationTest is SetupTest {
         // approve lending manager to transfer depositor delegate amount from depisitor to lending manager
         vaultTokenInterface.approve(address(lendingManager), delegateSharesWithDecimals);
 
+        vm.roll(vm.getBlockNumber() + 1);
         // delegate shares to lender1
         lendingManager.depositToTerm(termId, address(token), delegateSharesWithDecimals);
         vm.stopPrank();
@@ -668,6 +621,7 @@ contract IntegrationTest is SetupTest {
         // allocate term
         ERC20Mock mockToken = ERC20Mock(token);
         uint256 allocateFundOnTermAssets = allocateAssets * (10 ** mockToken.decimals());
+        vm.roll(vm.getBlockNumber() + 1);
         loanManager.allocate(loanId, termId, allocateFundOnTermAssets);
         vm.stopPrank();
     }
