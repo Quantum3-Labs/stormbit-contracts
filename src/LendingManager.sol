@@ -139,9 +139,6 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
         // check if the user has enough shares
         if (userShares < shares) revert NotEnoughShares();
         // transfer shares to lending manager
-        bool isSuccess = IERC4626(vaultToken).transferFrom(msg.sender, address(this), shares);
-        if (!isSuccess) revert TransferFailed();
-
         IERC20(vaultToken).safeTransferFrom(msg.sender, address(this), shares);
         LendingTerm storage term = lendingTerms[termId];
 
