@@ -115,10 +115,7 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
     function removeLendingTerm(uint256 termId) public override onlyTermOwner(termId) {
         if (!_validLendingTerm(termId)) revert LendingTermDoesNotExist();
         // if there are delegated shares, the term cannot be removed
-        require(
-            lendingTerms[termId].nonZeroTokenBalanceCounter <= 0,
-            "StormbitLendingManager: term has non zero token balance"
-        );
+        if (lendingTerms[termId].nonZeroTokenBalanceCounter > 0) revert TermHasNonZeroTokenBalance();
 
         delete lendingTerms[termId];
         emit LendingTermRemoved(termId);
@@ -245,7 +242,7 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
 
     /// @dev unfreeze the shares on term allocated fund to loan
     function unfreezeTermShares(uint256 termId, uint256 shares, address token) public override onlyLoanManager {
-        require(_validLendingTerm(termId), "StormbitLendingManager: lending term does not exist");
+        if (!_validLendingTerm(termId)) revert LendingTermDoesNotExist();
         _unfreezeTermShares(token, termId, shares);
     }
 
@@ -254,16 +251,14 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
         override
         onlyLoanManager
     {
-        require(_validLendingTerm(termId), "StormbitLendingManager: lending term does not exist");
+        if (!_validLendingTerm(termId)) revert LendingTermDoesNotExist();
 
         address vaultToken = assetManager.getVaultToken(token);
         LendingTerm storage term = lendingTerms[termId];
 
         // transfer profit shares to term owner
         bool isSuccess = IERC4626(vaultToken).transfer(term.owner, ownerProfit);
-        if (!isSuccess) {
-            revert("StormbitLendingManager: failed to transfer profit");
-        }
+        if (!isSuccess) revert FailedToTransferProfit();
 
         uint256 newProfit = term.termBalances[vaultToken].profit.latest() + profit;
 
@@ -300,9 +295,9 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
 
         LendingTerm storage term = lendingTerms[termId];
 
-        uint256 freezedShares = term.termBalances[vaultToken].shares.latest() - term.termBalances[vaultToken].available;
+        uint256 frozenShares = term.termBalances[vaultToken].shares.latest() - term.termBalances[vaultToken].available;
 
-        require(shares <= freezedShares, "StormbitLendingManager: insufficient freezed shares");
+        if (shares > frozenShares) revert InsufficientFreezedShares();
         term.termBalances[vaultToken].available += shares;
 
         emit UnfreezeShares(termId, token, shares);
