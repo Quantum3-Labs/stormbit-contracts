@@ -30,6 +30,18 @@ contract LendingManagerTest is SetupTest {
         assertEq(address(term.hooks), address(hooks), "Hooks address should match");
     }
 
+    function testExpectRevertTermAlreadyExists() public {
+        uint256 commission = 100; // 1% commission
+        IHooks hooks = IHooks(address(mockHooks));
+
+        // Create a lending term
+        uint256 termId = lendingManager.createLendingTerm(commission, hooks);
+
+        // Create the same lending term again
+        vm.expectRevert(abi.encodeWithSignature("LendingTermAlreadyExists()"));
+        lendingManager.createLendingTerm(commission, hooks);
+    }
+
     function testFreezeTermShares() public {
         // Params setup
         uint256 comission = 100; // 1% commission
