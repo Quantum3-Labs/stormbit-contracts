@@ -173,13 +173,13 @@ contract LoanManager is Initializable, IGovernable, IInitialize, ILoanManager {
         (, uint256 sharesAvailable,) = lendingManager.getLendingTermBalances(termId, token);
         // convert assets to shares
         uint256 sharesRequired = assetManager.convertToShares(token, assets);
-        if (termOwnerDisposableShares < sharesRequired) revert InsufficientAllocation();
         // fund shares should less than loan shares required
-        if (loan.assetsAllocated + assets > loan.assetsRequired) revert LoanAssetsRequiredExceeded();
         sharesAllocated += sharesRequired;
+        if (termOwnerDisposableShares < sharesRequired) revert InsufficientAllocation();
         // fund shares should less than loan shares required
 
         assetsAllocated += assets;
+        if (loan.assetsAllocated + assets > loan.assetsRequired) revert LoanAssetsRequiredExceeded();
 
         // freeze the term owner shares
         lendingManager.freezeTermShares(termId, sharesRequired, token);
