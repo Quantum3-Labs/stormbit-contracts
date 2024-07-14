@@ -108,7 +108,7 @@ contract LoanManager is Initializable, IGovernable, IInitialize, ILoanManager {
         require(loan.assetsAllocated >= loan.assetsRequired, "StormbitLoanManager: insufficient allocation");
 
         loans[loanId].status = LoanStatus.Active;
-        lendingManager.borrowerWithdraw(
+        assetManager.loanManagerWithdraw(
             // withdraw by asset manager
             loan.borrower,
             loan.token,

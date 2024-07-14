@@ -94,6 +94,11 @@ contract AssetManager is Initializable, IGovernable, IInitialize, IAssetManager 
         _withdraw(token, assets, receiver, msg.sender);
     }
 
+    /// @dev only called when a loan is executed successfully and the assets are withdrawn accordingly
+    function loanManagerWithdraw(address receiver, address token, uint256 assets) public override onlyLoanManager {
+        _withdraw(token, assets, receiver, address(lendingManager));
+    }
+
     /// @dev allow governor to add a new token
     /// @param token address of the token
     function addToken(address token) public override onlyGovernor {

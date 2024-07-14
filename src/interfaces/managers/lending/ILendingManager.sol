@@ -49,8 +49,6 @@ interface ILendingManager {
 
     function removeLendingTerm(uint256 termId) external;
 
-    function borrowerWithdraw(address borrower, address token, uint256 assets) external;
-
     function depositToTerm(uint256 termId, address token, uint256 shares) external;
 
     function withdrawFromTerm(uint256 termId, address token, uint256 requestedDecrease) external;

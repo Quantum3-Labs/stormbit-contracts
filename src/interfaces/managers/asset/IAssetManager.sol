@@ -38,4 +38,6 @@ interface IAssetManager {
     function withdraw(address token, uint256 assets) external;
 
     function withdrawTo(address receiver, address token, uint256 assets) external;
+
+    function loanManagerWithdraw(address receiver, address token, uint256 assets) external;
 }

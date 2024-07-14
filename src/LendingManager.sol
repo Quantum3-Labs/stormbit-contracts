@@ -264,19 +264,10 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
 
         emit DistributeProfit(termId, token, profit);
     }
-
-    function borrowerWithdraw(address borrower, address token, uint256 assets) public override onlyLoanManager {
-        address vaultToken = assetManager.getVaultToken(token);
-        // convert assets to shares
-        uint256 shares = assetManager.convertToShares(token, assets);
-        IERC4626(vaultToken).approve(address(assetManager), shares);
-        assetManager.withdrawTo(borrower, token, assets);
-        emit BorrowerWithdraw(borrower, token, assets);
-    }
-
     // -----------------------------------------
     // ---------- PRIVATE FUNCTIONS ------------
     // -----------------------------------------
+
     function _beforeDepositToTerm(uint256 termId, address token, uint256 shares) private returns (bool) {
         IHooks hooks = lendingTerms[termId].hooks;
         if (address(hooks) == address(0)) {

