@@ -80,16 +80,7 @@ contract AssetManager is Initializable, IGovernable, IInitialize, IAssetManager 
 
     /// @dev same function as deposit, but allow user to deposit on behalf of another user
     function depositFrom(address token, uint256 assets, address depositor, address receiver) public override {
-        _checkTokenSupported(token);
-        address vaultToken = vaultTokens[token]; // get the corresponding vault
-        // first make sure can transfer user token to manager
-        bool isSuccess = IERC20(token).transferFrom(depositor, address(this), assets);
-        if (!isSuccess) {
-            revert TransferFailed();
-        }
-        IERC20(token).approve(vaultToken, assets);
-        uint256 shares = IERC4626(vaultToken).deposit(assets, receiver);
-        emit Deposit(receiver, token, assets, shares);
+        _deposit(token, assets, depositor, receiver);
     }
 
     /// @dev note that we dont require the token to be whitelisted
@@ -157,11 +148,8 @@ contract AssetManager is Initializable, IGovernable, IInitialize, IAssetManager 
         // Transfer tokens safely from the depositor to this contract
         IERC20(token).safeTransferFrom(depositor, address(this), assets);
 
-        // Approve the vault to spend the tokens if necessary
-        uint256 currentAllowance = IERC20(token).allowance(address(this), vaultToken);
-        if (currentAllowance < assets) {
-            IERC20(token).forceApprove(vaultToken, assets);
-        }
+        // Approve the vault to spend the assets
+        IERC20(token).forceApprove(vaultToken, assets);
 
         // Deposit the assets into the vault and get shares
         uint256 shares = IERC4626(vaultToken).deposit(assets, receiver);
