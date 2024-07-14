@@ -14,6 +14,11 @@ contract WhiteList is BaseHook {
         }
     }
 
+    // -----------------------------------------
+    // ------------- Custom Errors -------------
+    // -----------------------------------------
+    error NotWhitelisted();
+
     function getHookPermissions() public pure override returns (Hooks.Permissions memory) {
         return Hooks.Permissions({beforeDepositToTerm: true});
     }
@@ -25,7 +30,9 @@ contract WhiteList is BaseHook {
         onlyByManager
         returns (bool)
     {
-        require(whitelist[from], "WhiteList: not whitelisted");
+        if (!whitelist[from]) {
+            revert NotWhitelisted();
+        }
         return true;
     }
 

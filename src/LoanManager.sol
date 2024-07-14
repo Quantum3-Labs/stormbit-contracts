@@ -186,8 +186,9 @@ contract LoanManager is Initializable, IGovernable, IInitialize, ILoanManager {
         Loan memory loan = loans[loanId];
         address vaultToken = assetManager.getVaultToken(loan.token);
 
-        if (loan.status != ILoanManager.LoanStatus.Repaid && loan.status != ILoanManager.LoanStatus.Pending)
+        if (loan.status != ILoanManager.LoanStatus.Repaid && loan.status != ILoanManager.LoanStatus.Pending) {
             revert LoanNotEligibleForClaiming();
+        }
         // term allocated on shares should > 0
         uint256 weight = allocatedShares[loanId][termId][vaultToken];
         if (weight <= 0) revert InsufficientAllocation();
