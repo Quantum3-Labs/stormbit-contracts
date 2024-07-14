@@ -57,7 +57,7 @@ contract BaseVault is ERC4626 {
         // some logic
     }
 
-    function _decimalsOffset() internal view override returns (uint8) {
+    function _decimalsOffset() internal pure override returns (uint8) {
         return 8;
     }
 }
