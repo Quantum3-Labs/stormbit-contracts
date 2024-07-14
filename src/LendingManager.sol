@@ -257,8 +257,6 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
         LendingTerm storage term = lendingTerms[termId];
 
         // transfer profit shares to term owner
-        bool isSuccess = IERC4626(vaultToken).transfer(term.owner, ownerProfit);
-        if (!isSuccess) revert FailedToTransferProfit();
         IERC20(vaultToken).safeTransfer(term.owner, ownerProfit);
 
         uint256 newProfit = term.termBalances[vaultToken].profit.latest() + profit;
