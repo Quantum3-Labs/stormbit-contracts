@@ -10,8 +10,8 @@ import {IHooks} from "../../src/interfaces/hooks/IHooks.sol";
 import "../../src/interfaces/managers/lending/ILendingManager.sol";
 
 contract LendingManagerTest is SetupTest {
-
     address lender = makeAddr("lender");
+
     function setUp() public override {
         super.setUp();
     }
@@ -32,14 +32,12 @@ contract LendingManagerTest is SetupTest {
     }
 
     function testFreezeTermShares() public {
-
-        // Params setup 
+        // Params setup
         uint256 comission = 100; // 1% commission
         IHooks hooks = IHooks(address(mockHooks));
 
-
         vm.prank(lender);
-        // Create a lending term 
+        // Create a lending term
         uint256 termId = lendingManager.createLendingTerm(comission, hooks);
 
         // Depositor 1 deposits 1000 tokens
@@ -50,19 +48,5 @@ contract LendingManagerTest is SetupTest {
         token1.approve(address(assetManager), depositAmount);
         assetManager.deposit(address(token1), depositAmount);
         vm.stopPrank();
-
-
-
-
-
-
-
-
-
-
-
-
     }
-
-
 }
