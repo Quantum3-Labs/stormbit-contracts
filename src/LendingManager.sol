@@ -215,8 +215,6 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
         lastDepositTime[msg.sender][termId] = 0;
 
         // transfer shares back to user
-        bool isSuccess = IERC4626(vaultToken).transfer(msg.sender, redeemShares);
-        if (!isSuccess) revert TransferFailed();
         IERC20(vaultToken).safeTransfer(msg.sender, redeemShares);
 
         // if term shares balance is 0, decrement the counter
