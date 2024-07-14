@@ -6,98 +6,120 @@ import {SetupTest} from "../Setup.t.sol";
 // import {ILendingManager} from "../../src/interfaces/managers/lending/ILendingTerms.sol";
 import {IERC4626} from "../../src/interfaces/token/IERC4626.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
+import {IHooks} from "../../src/interfaces/hooks/IHooks.sol";
+import "../../src/interfaces/managers/lending/ILendingManager.sol";
 
 contract LendingManagerTest is SetupTest {
-    uint256 depositAmount;
-    uint256 delegateAmount;
-    // function testRegister() public {
-    //     vm.prank(lender1);
-    //     lendingManager.register();
+    address lender = makeAddr("lender");
 
-    //     assert(lendingManager.isRegistered(lender1));
-    // }
+    function setUp() public override {
+        super.setUp();
+    }
 
-    // function testCreateLendingTerm() public {
-    //     vm.startPrank(lender1);
-    //     lendingManager.register();
-    //     uint256 termId = lendingManager.createLendingTerm(0);
-    //     (, uint256 commission, ) = lendingManager.lendingTerms(termId);
-    //     assert(commission == 0);
-    // }
+    function testCreateLendingTerm() public {
+        uint256 commission = 100; // 1% commission
+        IHooks hooks = IHooks(address(mockHooks));
 
-    // function testNotLenderCreateLendingTermRevert() public {
-    //     vm.expectRevert();
-    //     vm.prank(lender1);
-    //     lendingManager.createLendingTerm(0);
-    // }
+        // Create a lending term
+        uint256 termId = lendingManager.createLendingTerm(commission, hooks);
 
-    // function testRemoveLendingterm() public {
-    //     vm.startPrank(lender1);
-    //     lendingManager.register();
-    //     uint256 termId = lendingManager.createLendingTerm(5);
-    //     lendingManager.removeLendingTerm(termId);
-    //     vm.stopPrank();
+        ILendingManager.LendingTermMetadata memory term = lendingManager.getLendingTerm(termId);
 
-    //     (, uint256 commission, ) = lendingManager.lendingTerms(termId);
-    //     assert(commission == 0);
-    // }
+        assertEq(term.owner, address(this), "Owner should be the caller");
+        assertEq(term.comission, commission, "Commission should match");
+        assertEq(address(term.hooks), address(hooks), "Hooks address should match");
+    }
 
-    // function testRemoveLendingTermRevert() public {
-    //     vm.startPrank(lender1);
-    //     lendingManager.register();
-    //     uint256 termId = lendingManager.createLendingTerm(5);
-    //     vm.stopPrank();
+    function testExpectRevertTermAlreadyExists() public {
+        uint256 commission = 100; // 1% commission
+        IHooks hooks = IHooks(address(mockHooks));
 
-    //     vm.startPrank(depositor1);
-    //     // deposit some token to vault by asset manager
-    //     token1.approve(address(assetManager), depositAmount);
-    //     assetManager.deposit(address(token1), depositAmount);
-    //     // delegate shares to lender1
-    //     lendingManager.depositToTerm(termId, address(token1), delegateAmount);
-    //     vm.stopPrank();
+        // Create a lending term
+        uint256 termId = lendingManager.createLendingTerm(commission, hooks);
 
-    //     // now the term has shares, should not be able to remove
-    //     vm.expectRevert();
-    //     vm.startPrank(lender1);
-    //     lendingManager.removeLendingTerm(termId);
-    // }
+        // Create the same lending term again
+        vm.expectRevert(abi.encodeWithSignature("LendingTermAlreadyExists()"));
+        lendingManager.createLendingTerm(commission, hooks);
+    }
 
-    // function testIncreaseDeletegateToTerm() public {
-    //     // register and create new term with 5% commission
-    //     vm.startPrank(lender1);
-    //     lendingManager.register();
-    //     uint256 termId = lendingManager.createLendingTerm(5);
-    //     vm.stopPrank();
+    function testFreezeTermShares() public {
+        // Params setup
+        uint256 comission = 100; // 1% commission
+        IHooks hooks = IHooks(address(mockHooks));
 
-    //     vm.startPrank(depositor1);
-    //     // deposit some token to vault by asset manager
-    //     token1.approve(address(assetManager), depositAmount);
-    //     assetManager.deposit(address(token1), depositAmount);
-    //     // delegate shares to lender1
-    //     lendingManager.depositToTerm(termId, address(token1), delegateAmount);
-    //     vm.stopPrank();
+        vm.prank(lender);
+        // Create a lending term
+        uint256 termId = lendingManager.createLendingTerm(comission, hooks);
 
-    //     (uint256 disposableAmount, ) = lendingManager.termOwnerShares(
-    //         termId,
-    //         address(vaultToken1)
-    //     );
-    //     address[] memory termDepositors = lendingManager.getTermDepositors(
-    //         termId,
-    //         address(vaultToken1)
-    //     );
-    //     uint256 userTotalDelagatedShares = lendingManager
-    //         .userTotalDelegatedShares(depositor1, address(vaultToken1));
-    //     uint256 userDisposableSharesOnTerm = lendingManager
-    //         .getUserDisposableSharesOnTerm(
-    //             termId,
-    //             depositor1,
-    //             address(vaultToken1)
-    //         );
+        // Depositor 1 deposits 1000 tokens
+        address depositor = depositor1;
+        uint256 depositAmount = 1000;
 
-    //     assert(termDepositors.length == 1);
-    //     assert(termDepositors[0] == depositor1);
-    //     assert(userTotalDelagatedShares == delegateAmount);
-    //     assert(disposableAmount == delegateAmount);
-    //     assert(userDisposableSharesOnTerm == delegateAmount);
-    // }
+        vm.startPrank(depositor);
+        token1.approve(address(assetManager), depositAmount);
+        assetManager.deposit(address(token1), depositAmount);
+
+        // Deposit tokens into the lending term
+        uint256 shares = vaultToken1.balanceOf(depositor);
+        vaultToken1.approve(address(lendingManager), shares);
+        lendingManager.depositToTerm(termId, address(token1), shares);
+        vm.stopPrank();
+
+        // Get initial disposable shares
+        (, uint256 initialDisposableShares,) = lendingManager.getLendingTermBalances(termId, address(token1));
+
+        uint256 freezeSharesAmount = 500;
+        vm.startPrank(address(loanManager));
+        lendingManager.freezeTermShares(termId, freezeSharesAmount, address(token1));
+        vm.stopPrank();
+
+        // Get new disposable shares
+        (, uint256 newDisposableShares,) = lendingManager.getLendingTermBalances(termId, address(token1));
+        assertEq(newDisposableShares, initialDisposableShares - freezeSharesAmount, "Disposable shares should decrease");
+    }
+
+    function testExpectRevertFreezeTermSharesNonExistentTerm() public {
+        uint256 freezeSharesAmount = 500;
+        uint256 nonExistentTermId = 9999;
+        ERC20Mock token1 = token1;
+
+        vm.startPrank(address(loanManager));
+        vm.expectRevert(abi.encodeWithSignature("LendingTermDoesNotExist()"));
+        lendingManager.freezeTermShares(nonExistentTermId, freezeSharesAmount, address(token1));
+        vm.stopPrank();
+    }
+
+    function testExpectRevertInsufficientDisposableShares() public {
+        // Params setup
+        uint256 comission = 100; // 1% commission
+        IHooks hooks = IHooks(address(mockHooks));
+
+        vm.prank(lender);
+        // Create a lending term
+        uint256 termId = lendingManager.createLendingTerm(comission, hooks);
+
+        // Depositor 1 deposits 1000 tokens
+        address depositor = depositor1;
+        uint256 depositAmount = 1000;
+
+        vm.startPrank(depositor);
+        token1.approve(address(assetManager), depositAmount);
+        assetManager.deposit(address(token1), depositAmount);
+
+        // Deposit tokens into the lending term
+        uint256 shares = vaultToken1.balanceOf(depositor);
+        vaultToken1.approve(address(lendingManager), shares);
+        lendingManager.depositToTerm(termId, address(token1), shares);
+        vm.stopPrank();
+
+        // Get initial disposable shares
+        (, uint256 initialDisposableShares,) = lendingManager.getLendingTermBalances(termId, address(token1));
+
+        // Freeze more shares than available
+        uint256 excessiveFreezeSharesAmount = initialDisposableShares + 1;
+        vm.startPrank(address(loanManager));
+        vm.expectRevert(abi.encodeWithSignature("InsufficientDisposableShares()"));
+        lendingManager.freezeTermShares(termId, excessiveFreezeSharesAmount, address(token1));
+        vm.stopPrank();
+    }
 }
