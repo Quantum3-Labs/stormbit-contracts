@@ -40,10 +40,24 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
         _governor = initialGovernor;
     }
 
-    /**
-     * @dev The clock was incorrectly modified.
-     */
-    error ERC6372InconsistentClock();
+    // -----------------------------------------
+    // ------------- Custom Errors -------------
+    // -----------------------------------------
+
+    error BeforeDepositToTermFailed();
+    error NotGovernor();
+    error NotLoanManager();
+    error NotTermOwner();
+    error LendingTermAlreadyExists();
+    error LendingTermDoesNotExist();
+    error TermHasNonZeroTokenBalance();
+    error TokenNotSupported();
+    error NotEnoughShares();
+    error TransferFailed();
+    error InsufficientSharesToWithdraw();
+    error InsufficientDisposableShares();
+    error InsufficientFreezedShares();
+    error FailedToTransferProfit();
 
     /**
      * @dev Lookup to future votes is not available.
@@ -55,17 +69,17 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
     // -----------------------------------------
 
     modifier onlyGovernor() {
-        require(msg.sender == _governor, "StormbitAssetManager: not governor");
+        if (msg.sender != _governor) revert NotGovernor();
         _;
     }
 
     modifier onlyLoanManager() {
-        require(msg.sender == address(loanManager), "StormbitLendingManager: not loan manager");
+        if (msg.sender != address(loanManager)) revert NotLoanManager();
         _;
     }
 
     modifier onlyTermOwner(uint256 termId) {
-        require(lendingTerms[termId].owner == msg.sender, "StormbitLendingManager: not term owner");
+        if (lendingTerms[termId].owner != msg.sender) revert NotTermOwner();
         _;
     }
 
@@ -89,7 +103,7 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
     function createLendingTerm(uint256 comission, IHooks hooks) public override returns (uint256) {
         // unique id by hashing the sender and hooks address
         uint256 termId = uint256(keccak256(abi.encode(msg.sender, comission, address(hooks))));
-        require(!_validLendingTerm(termId), "StormbitLendingManager: lending term already exists");
+        if (_validLendingTerm(termId)) revert LendingTermAlreadyExists();
         lendingTerms[termId].owner = msg.sender;
         lendingTerms[termId].comission = comission;
         lendingTerms[termId].hooks = hooks;
@@ -101,12 +115,9 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
     /// @dev remove a lending term
     /// @param termId id of the lending term
     function removeLendingTerm(uint256 termId) public override onlyTermOwner(termId) {
-        require(_validLendingTerm(termId), "StormbitLendingManager: lending term does not exist");
+        if (!_validLendingTerm(termId)) revert LendingTermDoesNotExist();
         // if there are delegated shares, the term cannot be removed
-        require(
-            lendingTerms[termId].nonZeroTokenBalanceCounter <= 0,
-            "StormbitLendingManager: term has non zero token balance"
-        );
+        if (lendingTerms[termId].nonZeroTokenBalanceCounter > 0) revert TermHasNonZeroTokenBalance();
 
         delete lendingTerms[termId];
         emit LendingTermRemoved(termId);
@@ -117,17 +128,16 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
     /// @param token address of the token
     /// @param shares amount of shares to delegate
     function depositToTerm(uint256 termId, address token, uint256 shares) public override {
-        require(_beforeDepositToTerm(termId, token, shares), "StormbitLendingManager: before deposit failed");
-        require(assetManager.isTokenSupported(token), "StormbitLendingManager: token not supported");
-        require(_validLendingTerm(termId), "StormbitLendingManager: lending term does not exist");
+        if (!_beforeDepositToTerm(termId, token, shares)) revert BeforeDepositToTermFailed();
+        if (!assetManager.isTokenSupported(token)) revert TokenNotSupported();
+        if (!_validLendingTerm(termId)) revert LendingTermDoesNotExist();
 
         address vaultToken = assetManager.getVaultToken(token);
 
         // get user shares in the vault
         uint256 userShares = assetManager.getUserShares(token, msg.sender);
         // check if the user has enough shares
-        require(userShares >= shares, "StormbitLendingManager: not enough shares");
-
+        if (userShares < shares) revert NotEnoughShares();
         // transfer shares to lending manager
         IERC20(vaultToken).safeTransferFrom(msg.sender, address(this), shares);
         LendingTerm storage term = lendingTerms[termId];
@@ -167,7 +177,7 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
     /// @param token address of the token
     /// @param shares amount of shares to withdraw
     function withdrawFromTerm(uint256 termId, address token, uint256 shares) public override {
-        require(_validLendingTerm(termId), "StormbitLendingManager: lending term does not exist");
+        if (!_validLendingTerm(termId)) revert LendingTermDoesNotExist();
 
         address vaultToken = assetManager.getVaultToken(token);
         LendingTerm storage term = lendingTerms[termId];
@@ -175,16 +185,16 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
         uint256 totalDelegatedShares = term.userSharesCheckpoints[msg.sender][vaultToken].latest();
 
         // check how many percentage of shares are freezed on term
-        uint256 freezedShares = term.termBalances[vaultToken].shares.latest() - term.termBalances[vaultToken].available;
+        uint256 frozenShares = term.termBalances[vaultToken].shares.latest() - term.termBalances[vaultToken].available;
+        uint256 frozenSharesPercentage = (frozenShares * BASIS_POINTS) / term.termBalances[vaultToken].shares.latest();
 
-        uint256 freezedSharesPercentage = (freezedShares * BASIS_POINTS) / term.termBalances[vaultToken].shares.latest();
         // get the freezeAmount from disposable shares
-        uint256 freezeAmount = (totalDelegatedShares * freezedSharesPercentage) / BASIS_POINTS;
+        uint256 freezeAmount = (totalDelegatedShares * frozenSharesPercentage) / BASIS_POINTS;
 
         // cannot withdraw more than disposable shares - freezeAmount
         uint256 maximumWithdraw = totalDelegatedShares - freezeAmount;
 
-        require(shares <= maximumWithdraw, "StormbitLendingManager: insufficient shares to withdraw");
+        if (shares > maximumWithdraw) revert InsufficientSharesToWithdraw();
 
         // calculate the profit based on the last deposit shares
         uint256 userProfit = _calculateUserProfit(termId, shares, token);
@@ -217,14 +227,13 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
 
     /// @dev freeze the shares on term when allocated fund to loan
     function freezeTermShares(uint256 termId, uint256 shares, address token) public override onlyLoanManager {
-        require(_validLendingTerm(termId), "StormbitLendingManager: lending term does not exist");
+        if (!_validLendingTerm(termId)) revert LendingTermDoesNotExist();
         address vaultToken = assetManager.getVaultToken(token);
 
         LendingTerm storage term = lendingTerms[termId];
 
-        require(
-            term.termBalances[vaultToken].available >= shares, "StormbitLendingManager: insufficient disposable shares"
-        );
+        if (term.termBalances[vaultToken].available < shares) revert InsufficientDisposableShares();
+
         term.termBalances[vaultToken].available -= shares;
 
         emit FreezeShares(termId, token, shares);
@@ -232,19 +241,17 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
 
     /// @dev unfreeze the shares on term allocated fund to loan
     function unfreezeTermShares(uint256 termId, uint256 shares, address token) public override onlyLoanManager {
-        require(_validLendingTerm(termId), "StormbitLendingManager: lending term does not exist");
+        if (!_validLendingTerm(termId)) revert LendingTermDoesNotExist();
         _unfreezeTermShares(token, termId, shares);
     }
 
-    function distributeProfit(
-        uint256 termId,
-        address token,
-        uint256 profit,
-        uint256 shares,
-        uint256 ownerProfit,
-        uint256 executionTimestamp
-    ) public override onlyLoanManager {
-        require(_validLendingTerm(termId), "StormbitLendingManager: lending term does not exist");
+    function distributeProfit(uint256 termId, address token, uint256 profit, uint256 shares, uint256 ownerProfit)
+        public
+        override
+        onlyLoanManager
+    {
+        if (!_validLendingTerm(termId)) revert LendingTermDoesNotExist();
+ 
 
         address vaultToken = assetManager.getVaultToken(token);
         LendingTerm storage term = lendingTerms[termId];
@@ -283,9 +290,9 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
 
         LendingTerm storage term = lendingTerms[termId];
 
-        uint256 freezedShares = term.termBalances[vaultToken].shares.latest() - term.termBalances[vaultToken].available;
+        uint256 frozenShares = term.termBalances[vaultToken].shares.latest() - term.termBalances[vaultToken].available;
 
-        require(shares <= freezedShares, "StormbitLendingManager: insufficient freezed shares");
+        if (shares > frozenShares) revert InsufficientFreezedShares();
         term.termBalances[vaultToken].available += shares;
 
         emit UnfreezeShares(termId, token, shares);
@@ -325,8 +332,8 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
     }
 
     function getLendingTerm(uint256 termId) public view override returns (LendingTermMetadata memory) {
-        return
-            LendingTermMetadata(lendingTerms[termId].owner, lendingTerms[termId].comission, lendingTerms[termId].hooks);
+        LendingTerm storage term = lendingTerms[termId];
+        return LendingTermMetadata(term.owner, term.comission, term.hooks);
     }
 
     function getLendingTermBalances(uint256 termId, address token)

@@ -20,13 +20,25 @@ contract StormbitRegistry is Initializable, IGovernable, IStormbitRegistry {
         _governor = initialGovernor;
     }
 
+    // -----------------------------------------
+    // -------- CUSTOM ERRORS ------------------
+    // -----------------------------------------
+
+    error UsernameEmpty();
+    error UserAlreadyRegistered();
+
     function governor() public view override returns (address) {
         return _governor;
     }
 
     function register(string memory _username) external override {
-        require(bytes(usernames[msg.sender]).length == 0, "StormbitRegistry: user already registered");
-        require(bytes(_username).length > 0, "StormbitRegistry: username is empty");
+        if (bytes(_username).length <= 0) {
+            revert UsernameEmpty();
+        }
+
+        if (bytes(usernames[msg.sender]).length > 0) {
+            revert UserAlreadyRegistered();
+        }
 
         usernames[msg.sender] = _username;
 
