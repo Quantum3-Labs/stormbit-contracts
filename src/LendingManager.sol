@@ -7,7 +7,9 @@ import {Checkpoints} from "@openzeppelin/contracts/utils/structs/Checkpoints.sol
 import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
-import {IERC4626} from "./interfaces/token/IERC4626.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+
+import {IERC20} from "./interfaces/token/IERC20.sol";
 import {IGovernable} from "./interfaces/utils/IGovernable.sol";
 import {IInitialize} from "./interfaces/utils/IInitialize.sol";
 import {IHooks} from "./interfaces/hooks/IHooks.sol";
@@ -22,6 +24,7 @@ import {ILendingManager} from "./interfaces/managers/lending/ILendingManager.sol
 /// @dev Think of terms are minimal ERC4626, this contract is using word "shares" to represent ERC4626 assets, and "weight" to represent ERC4626 shares
 contract LendingManager is Initializable, IGovernable, IInitialize, ILendingManager {
     using Checkpoints for Checkpoints.Trace224;
+    using SafeERC20 for IERC20;
 
     uint16 public constant BASIS_POINTS = 10_000;
 
@@ -76,7 +79,7 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
     }
 
     function clock() public view virtual returns (uint32) {
-        return SafeCast.toUint32(Time.blockNumber());
+        return SafeCast.toUint32(Time.timestamp());
     }
 
     /// @dev create a lending term
@@ -91,7 +94,7 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
         lendingTerms[termId].comission = comission;
         lendingTerms[termId].hooks = hooks;
 
-        emit LendingTermCreated(termId, msg.sender, comission);
+        emit LendingTermCreated(termId, msg.sender, comission, address(hooks));
         return termId;
     }
 
@@ -126,16 +129,13 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
         require(userShares >= shares, "StormbitLendingManager: not enough shares");
 
         // transfer shares to lending manager
-        bool isSuccess = IERC4626(vaultToken).transferFrom(msg.sender, address(this), shares);
-        if (!isSuccess) {
-            revert("StormbitLendingManager: failed to transfer shares");
-        }
+        IERC20(vaultToken).safeTransferFrom(msg.sender, address(this), shares);
         LendingTerm storage term = lendingTerms[termId];
 
-        uint256 termSharesBalance = term.termBalances[vaultToken].shares.latest();
+        uint256 prevShares = term.termBalances[vaultToken].shares.latest();
 
         // check if the vault token term has 0 balance
-        if (termSharesBalance <= 0) {
+        if (prevShares == 0 && shares > 0) {
             term.nonZeroTokenBalanceCounter++;
         }
 
@@ -156,7 +156,7 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
         uint256 lastUserShares = term.userSharesCheckpoints[msg.sender][vaultToken].latest();
         term.userSharesCheckpoints[msg.sender][vaultToken].push(clock(), SafeCast.toUint224(lastUserShares + shares));
 
-        uint256 newShares = term.termBalances[vaultToken].shares.latest() + shares;
+        uint256 newShares = prevShares + shares;
         term.termBalances[vaultToken].shares.push(clock(), SafeCast.toUint224(newShares));
         term.termBalances[vaultToken].available += shares;
 
@@ -205,13 +205,10 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
         lastDepositTime[msg.sender][termId] = 0;
 
         // transfer shares back to user
-        bool isSuccess = IERC4626(vaultToken).transfer(msg.sender, redeemShares);
-        if (!isSuccess) {
-            revert("StormbitLendingManager: failed to transfer shares");
-        }
+        IERC20(vaultToken).safeTransfer(msg.sender, redeemShares);
 
         // if term shares balance is 0, decrement the counter
-        if (term.termBalances[vaultToken].shares.latest() <= 0) {
+        if (term.termBalances[vaultToken].shares.latest() == 0) {
             term.nonZeroTokenBalanceCounter--;
         }
 
@@ -239,31 +236,36 @@ contract LendingManager is Initializable, IGovernable, IInitialize, ILendingMana
         _unfreezeTermShares(token, termId, shares);
     }
 
-    function distributeProfit(uint256 termId, address token, uint256 profit, uint256 shares, uint256 ownerProfit)
-        public
-        override
-        onlyLoanManager
-    {
+    function distributeProfit(
+        uint256 termId,
+        address token,
+        uint256 profit,
+        uint256 shares,
+        uint256 ownerProfit,
+        uint256 executionTimestamp
+    ) public override onlyLoanManager {
         require(_validLendingTerm(termId), "StormbitLendingManager: lending term does not exist");
 
         address vaultToken = assetManager.getVaultToken(token);
         LendingTerm storage term = lendingTerms[termId];
 
         // transfer profit shares to term owner
-        bool isSuccess = IERC4626(vaultToken).transfer(term.owner, ownerProfit);
-        if (!isSuccess) {
-            revert("StormbitLendingManager: failed to transfer profit");
-        }
+        IERC20(vaultToken).safeTransfer(term.owner, ownerProfit);
 
         uint256 newProfit = term.termBalances[vaultToken].profit.latest() + profit;
 
         // add profit to term checkpoint
         // get the last allocate clock time from loan
-        term.termBalances[vaultToken].profit.push(clock(), SafeCast.toUint224(newProfit));
+        term.termBalances[vaultToken].profit.push(
+            // clock(),
+            SafeCast.toUint32(executionTimestamp),
+            SafeCast.toUint224(newProfit)
+        );
         _unfreezeTermShares(token, termId, shares);
 
         emit DistributeProfit(termId, token, profit);
     }
+
     // -----------------------------------------
     // ---------- PRIVATE FUNCTIONS ------------
     // -----------------------------------------

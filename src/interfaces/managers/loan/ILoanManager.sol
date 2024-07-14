@@ -20,6 +20,7 @@ interface ILoanManager {
         uint256 assetsAllocated;
         uint256 sharesAllocated;
         uint256 deadlineAllocate;
+        uint256 executionTimestamp;
         LoanStatus status;
     }
 
@@ -41,7 +42,7 @@ interface ILoanManager {
 
     function repay(uint256 loanId) external;
 
-    function claim(uint256 termId, uint256 loanId) external;
+    function claim(uint256 loanId, uint256 termId) external;
 
     function getLoan(uint256 loanId) external view returns (Loan memory);
 

@@ -117,7 +117,7 @@ contract IntegrationTest is SetupTest {
         assert(lendingManagerBalance == expectedLendingManagerShares);
         // term owner claim loan profit
         vm.startPrank(lender1);
-        loanManager.claim(termId, loanId);
+        loanManager.claim(loanId, termId);
         vm.stopPrank();
 
         // check term owner balance
@@ -281,7 +281,7 @@ contract IntegrationTest is SetupTest {
 
         // term owner claim loan profit
         vm.startPrank(lender1);
-        loanManager.claim(termId, loanId);
+        loanManager.claim(loanId, termId);
         vm.stopPrank();
 
         // check term owner balance
@@ -470,7 +470,7 @@ contract IntegrationTest is SetupTest {
 
         // term owner claim loan profit for term1
         vm.startPrank(lender1);
-        loanManager.claim(termId1, loanId);
+        loanManager.claim(loanId, termId1);
         vm.stopPrank();
 
         // check term owner balance
@@ -495,7 +495,7 @@ contract IntegrationTest is SetupTest {
 
         // term owner claim loan profit for term2
         vm.startPrank(lender1);
-        loanManager.claim(termId2, loanId);
+        loanManager.claim(loanId, termId2);
         vm.stopPrank();
 
         // check term owner balance

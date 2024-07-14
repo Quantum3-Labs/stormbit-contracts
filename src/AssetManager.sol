@@ -103,6 +103,7 @@ contract AssetManager is Initializable, IGovernable, IInitialize, IAssetManager 
         BaseVault vault = new BaseVault(
             IERC20(token),
             address(this),
+            address(lendingManager),
             string(abi.encodePacked("Stormbit ", IERC20(token).symbol())),
             string(abi.encodePacked("s", IERC20(token).symbol()))
         );
