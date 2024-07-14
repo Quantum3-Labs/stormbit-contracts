@@ -91,7 +91,8 @@ contract LoanManager is Initializable, IGovernable, IInitialize, ILoanManager {
             assetsAllocated: 0,
             sharesAllocated: 0,
             deadlineAllocate: deadline,
-            status: LoanStatus.Pending
+            status: LoanStatus.Pending,
+            executionTimestamp: 0
         });
 
         emit LoanRequested(loanId, msg.sender, token, assets);
@@ -107,13 +108,17 @@ contract LoanManager is Initializable, IGovernable, IInitialize, ILoanManager {
         require(loan.status == LoanStatus.Pending, "StormbitLoanManager: loan not pending");
         require(loan.assetsAllocated >= loan.assetsRequired, "StormbitLoanManager: insufficient allocation");
 
-        loans[loanId].status = LoanStatus.Active;
-        lendingManager.borrowerWithdraw(
+        assetManager.withdrawTo(
             // withdraw by asset manager
             loan.borrower,
             loan.token,
             loan.assetsRequired
         );
+
+        // only after withdraw is successful
+
+        loans[loanId].status = LoanStatus.Active;
+        loans[loanId].executionTimestamp = block.timestamp;
         emit LoanExecuted(loanId, loan.borrower, loan.token, loan.repayAssets);
     }
 
@@ -143,26 +148,27 @@ contract LoanManager is Initializable, IGovernable, IInitialize, ILoanManager {
 
         // get disposable shares on token of the term
         address token = loan.token;
+        uint256 assetsAllocated = loan.assetsAllocated;
+        uint256 sharesAllocated = loan.sharesAllocated;
         // get the corresponding vault token
         address vaultToken = assetManager.getVaultToken(token);
         // get term owner disposable shares
-        (, uint256 termOwnerDisposableShares,) = lendingManager.getLendingTermBalances(termId, token);
+        (, uint256 sharesAvailable,) = lendingManager.getLendingTermBalances(termId, token);
         // convert assets to shares
         uint256 sharesRequired = assetManager.convertToShares(token, assets);
-        require(
-            termOwnerDisposableShares >= sharesRequired,
-            "StormbitLoanManager: term owner insufficient disposable shares"
-        );
+        sharesAllocated += sharesRequired;
+        require(sharesAvailable >= sharesRequired, "StormbitLoanManager: term owner insufficient disposable shares");
         // fund shares should less than loan shares required
-        require(
-            loan.assetsAllocated + assets <= loan.assetsRequired, "StormbitLoanManager: loan assets required exceeded"
-        );
+
+        assetsAllocated += assets;
+
+        require(assetsAllocated <= loan.assetsRequired, "StormbitLoanManager: loan assets required exceeded");
 
         // freeze the term owner shares
         lendingManager.freezeTermShares(termId, sharesRequired, token);
 
-        loans[loanId].sharesAllocated += sharesRequired;
-        loans[loanId].assetsAllocated += assets;
+        loans[loanId].sharesAllocated = sharesAllocated;
+        loans[loanId].assetsAllocated = assetsAllocated;
         allocatedShares[loanId][termId][vaultToken] += sharesRequired;
 
         emit Allocate(loanId, termId, assets);
@@ -170,7 +176,7 @@ contract LoanManager is Initializable, IGovernable, IInitialize, ILoanManager {
 
     /// @dev claim the profit for loan and add the remaining profit to term profit or
     /// claim the allocated fund to loan but loan deadline pass and not executed
-    function claim(uint256 termId, uint256 loanId) public override {
+    function claim(uint256 loanId, uint256 termId) public override {
         Loan memory loan = loans[loanId];
         address vaultToken = assetManager.getVaultToken(loan.token);
 
@@ -204,7 +210,9 @@ contract LoanManager is Initializable, IGovernable, IInitialize, ILoanManager {
             // calculate the remaining profit after term owner profit
             uint256 extraProfit = termProfitShares - termOwnerProfitShares;
 
-            lendingManager.distributeProfit(termId, loan.token, extraProfit, weight, termOwnerProfitShares);
+            lendingManager.distributeProfit(
+                termId, loan.token, extraProfit, weight, termOwnerProfitShares, loan.executionTimestamp
+            );
 
             // update claimed status
             claimedProfit[termId][loanId][vaultToken] = true;

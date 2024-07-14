@@ -20,6 +20,7 @@ contract WhiteList is BaseHook {
 
     function beforeDepositToTerm(address from, address token, uint256 termId, uint256 shares)
         external
+        view
         override
         onlyByManager
         returns (bool)

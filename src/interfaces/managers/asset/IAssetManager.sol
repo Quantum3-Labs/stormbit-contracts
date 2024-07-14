@@ -9,10 +9,11 @@ interface IAssetManager {
 
     event RemoveToken(address indexed token, address indexed vault);
 
-    event Deposit(address indexed user, address indexed token, uint256 assets);
-
+    event Deposit(address indexed receiver, address indexed token, uint256 assets, uint256 shares);
     /// @dev note that withdraw event uses assets instead of shares
-    event Withdraw(address indexed user, address indexed vaultToken, uint256 assets, uint256 sharesBurned);
+    event Withdraw(
+        address indexed receiver, address indexed owner, address indexed vaultToken, uint256 assets, uint256 shares
+    );
 
     event BorrowerWithdraw(address indexed borrower, address indexed token, uint256 shares);
 
@@ -32,9 +33,9 @@ interface IAssetManager {
 
     function deposit(address token, uint256 assets) external;
 
-    function depositFrom(address token, uint256 assets, address depositor, address receiver) external;
+    function depositFrom(address token, uint256 assets, address user, address receiver) external;
 
-    function withdraw(address token, uint256 shares) external;
+    function withdraw(address token, uint256 assets) external;
 
-    function borrowerWithdraw(address borrower, address token, uint256 assets) external;
+    function withdrawTo(address receiver, address token, uint256 assets) external;
 }

@@ -5,17 +5,23 @@ import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.so
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IAssetManager} from "../interfaces/managers/asset/IAssetManager.sol";
+import {ILendingManager} from "../interfaces/managers/lending/ILendingManager.sol";
 
 contract BaseVault is ERC4626 {
     error OnlyAssetManager();
 
     IAssetManager private assetManager;
+    ILendingManager private lendingManager;
 
-    constructor(IERC20 _token, address assetManagerAddr, string memory _name, string memory _symbol)
-        ERC4626(_token)
-        ERC20(_name, _symbol)
-    {
+    constructor(
+        IERC20 _token,
+        address assetManagerAddr,
+        address lendingManagerAddr,
+        string memory _name,
+        string memory _symbol
+    ) ERC4626(_token) ERC20(_name, _symbol) {
         assetManager = IAssetManager(assetManagerAddr);
+        lendingManager = ILendingManager(lendingManagerAddr);
     }
 
     modifier onlyAssetManager() {
@@ -57,7 +63,14 @@ contract BaseVault is ERC4626 {
         // some logic
     }
 
-    function _decimalsOffset() internal view override returns (uint8) {
+    function _decimalsOffset() internal pure override returns (uint8) {
         return 8;
+    }
+
+    function _spendAllowance(address owner, address caller, uint256 amount) internal override {
+        if (caller == address(assetManager) || caller == address(lendingManager)) {
+            _approve(owner, caller, amount);
+        }
+        super._spendAllowance(owner, caller, amount);
     }
 }
