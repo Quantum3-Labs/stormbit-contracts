@@ -116,7 +116,6 @@ contract LoanManager is Initializable, IGovernable, IInitialize, ILoanManager {
         );
 
         // only after withdraw is successful
-
         loans[loanId].status = LoanStatus.Active;
         loans[loanId].executionTimestamp = block.timestamp;
         emit LoanExecuted(loanId, loan.borrower, loan.token, loan.repayAssets);
