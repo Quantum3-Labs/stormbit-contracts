@@ -656,6 +656,15 @@ contract IntegrationTest is SetupTest {
         assert(loan2.status == ILoanManager.LoanStatus.Repaid);
         loan3 = loanManager.getLoan(loanId3);
         assert(loan3.status == ILoanManager.LoanStatus.Repaid);
+
+
+        // lender1 (term owner of term1) CLAIMS PROFIT for the 3 loans.
+        vm.startPrank(lender1);
+        loanManager.claim(loanId1, termId1);
+        loanManager.claim(loanId2, termId1);
+        loanManager.claim(loanId3, termId1);
+
+
     }
 
     // todo: move to utils file
