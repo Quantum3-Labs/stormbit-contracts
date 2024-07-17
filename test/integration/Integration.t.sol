@@ -626,26 +626,28 @@ contract IntegrationTest is SetupTest {
 
         // repay loan
         // mint 5% interest to borrower to pay extra
-        uint256 interest = (borrowAssets1 * 500) / BASIS_POINTS;
-        token1.mint(borrower1, interest);
-        token1.mint(borrower2, interest);
-        token1.mint(borrower3, interest);
+        uint256 interest1 = (borrowAssets1 * 500) / BASIS_POINTS;
+        uint256 interest2 = (borroweAssets2 * 500) / BASIS_POINTS;
+        uint256 interest3 = (borroweAssets3 * 500) / BASIS_POINTS;
+        token1.mint(borrower1, interest1);
+        token1.mint(borrower2, interest2);
+        token1.mint(borrower3, interest3);
 
         // borrower1 repay loan
         vm.startPrank(borrower1);
-        token1.approve(address(assetManager), borrowAssets1 + interest);
+        token1.approve(address(assetManager), borrowAssets1 + interest1);
         loanManager.repay(loanId1);
         vm.stopPrank();
 
         // borrower2 repay loan
         vm.startPrank(borrower2);
-        token1.approve(address(assetManager), borroweAssets2 + interest);
+        token1.approve(address(assetManager), borroweAssets2 + interest2);
         loanManager.repay(loanId2);
         vm.stopPrank();
 
         // borrower3 repay loan
         vm.startPrank(borrower3);
-        token1.approve(address(assetManager), borroweAssets3 + interest);
+        token1.approve(address(assetManager), borroweAssets3 + interest3);
         loanManager.repay(loanId3);
         vm.stopPrank();
 
@@ -657,14 +659,19 @@ contract IntegrationTest is SetupTest {
         loan3 = loanManager.getLoan(loanId3);
         assert(loan3.status == ILoanManager.LoanStatus.Repaid);
 
+        // make sure borrower balances are 0
+        uint256 borrower1BalanceAfterRepayment = token1.balanceOf(borrower1);
+        uint256 borrower2BalanceAfterRepayment = token1.balanceOf(borrower2);
+        uint256 borrower3BalanceAfterRepayment = token1.balanceOf(borrower3);
+        assert(borrower1BalanceAfterRepayment == 0);
+        assert(borrower2BalanceAfterRepayment == 0);
+        assert(borrower3BalanceAfterRepayment == 0);
 
         // lender1 (term owner of term1) CLAIMS PROFIT for the 3 loans.
         vm.startPrank(lender1);
         loanManager.claim(loanId1, termId1);
         loanManager.claim(loanId2, termId1);
         loanManager.claim(loanId3, termId1);
-
-
     }
 
     // todo: move to utils file
