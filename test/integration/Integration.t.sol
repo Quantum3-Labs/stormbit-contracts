@@ -471,6 +471,7 @@ contract IntegrationTest is SetupTest {
             (loanManager.getAllocatedShares(loanId, termId1, address(token1)) * BASIS_POINTS) / loan.sharesAllocated;
         // calculate profit for term1
         uint256 term1Profit = (profitShares * term1Weight) / BASIS_POINTS;
+        console.log("term1Profit", term1Profit);
         // from term1 profit calculate lender profit
         uint256 lender1ProfitTerm1 = (term1Profit * 1000) / BASIS_POINTS;
         uint256 lender1Balance = vaultTokenInterface.balanceOf(lender1);
@@ -672,6 +673,49 @@ contract IntegrationTest is SetupTest {
         loanManager.claim(loanId1, termId1);
         loanManager.claim(loanId2, termId1);
         loanManager.claim(loanId3, termId1);
+
+        // ------------------------------------
+        // ---------- PROFITS -----------------
+        // ------------------------------------
+
+        // Convert repay amount to shares
+        uint256 repayInShares1 = assetManager.convertToShares(address(token1), loan1.repayAssets);
+        uint256 repayInShares2 = assetManager.convertToShares(address(token1), loan2.repayAssets);
+        uint256 repayInShares3 = assetManager.convertToShares(address(token1), loan3.repayAssets);
+        // Get shares required
+        uint256 sharesRequired1 = assetManager.convertToShares(address(token1), loan1.assetsRequired);
+        uint256 sharesRequired2 = assetManager.convertToShares(address(token1), loan2.assetsRequired);
+        uint256 sharesRequired3 = assetManager.convertToShares(address(token1), loan3.assetsRequired);
+        // Get profit shares
+        uint256 profitShares1 = repayInShares1 - sharesRequired1;
+        uint256 profitShares2 = repayInShares2 - sharesRequired2;
+        uint256 profitShares3 = repayInShares3 - sharesRequired3;
+
+        // Profits on term1 
+        // Get term weight on loan
+        uint256 termWeight1 = (loanManager.getAllocatedShares(loanId1, termId1, address(token1)) * BASIS_POINTS) / loan1.sharesAllocated;
+        uint256 termWeight2 = (loanManager.getAllocatedShares(loanId2, termId1, address(token1)) * BASIS_POINTS) / loan2.sharesAllocated;
+        uint256 termWeight3 = (loanManager.getAllocatedShares(loanId3, termId1, address(token1)) * BASIS_POINTS) / loan3.sharesAllocated;
+
+        // Calculate profit for term1
+        // Aggregate profit for the three loans for term1 
+        uint256 termProfitAggregated = (profitShares1 * termWeight1) / BASIS_POINTS + (profitShares2 * termWeight2) / BASIS_POINTS + (profitShares3 * termWeight3) / BASIS_POINTS;
+        console.log("termProfit", termProfitAggregated);
+
+        // From term1 profit calculate lender profit
+        uint256 lenderProfitTerm1 = (termProfitAggregated * 1750) / BASIS_POINTS;
+        console.log("lenderProfitTerm1", lenderProfitTerm1);
+
+
+
+
+
+
+
+
+                    
+
+
     }
 
     // todo: move to utils file
