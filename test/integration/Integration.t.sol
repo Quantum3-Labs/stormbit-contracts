@@ -407,19 +407,6 @@ contract IntegrationTest is SetupTest {
         uint256 expectedLoanAllocatedShares = 1000 * (10 ** vaultTokenInterface.decimals());
         assert(loan.sharesAllocated == expectedLoanAllocatedShares);
 
-        // try to withdraw from term2 as depositor 1, since depositor1 deposited 500 in term2, term2 has 1000 shares, allocated 500 shares, should freezed
-        // 250 on depositor1, 250 on depositor2
-        // so depositor1 should beable to withdraw 250, but not more than that
-        // uint256 depositor1BalanceBeforTryWithdraw = vaultTokenInterface
-        //     .balanceOf(depositor1);
-        // vm.startPrank(depositor1);
-        // lendingManager.withdrawFromTerm(
-        //     termId2,
-        //     address(token1),
-        //     260 * (10 ** vaultTokenInterface.decimals()) // ! 260 should fail, 250 should pass
-        // );
-        // vm.stopPrank();
-
         // borrower1 asset balance beofre loan
         uint256 borrowerBalanceBeforeLoan = token1.balanceOf(borrower1);
         // borrower execute loan
@@ -484,6 +471,7 @@ contract IntegrationTest is SetupTest {
             (loanManager.getAllocatedShares(loanId, termId1, address(token1)) * BASIS_POINTS) / loan.sharesAllocated;
         // calculate profit for term1
         uint256 term1Profit = (profitShares * term1Weight) / BASIS_POINTS;
+        console.log("term1Profit", term1Profit);
         // from term1 profit calculate lender profit
         uint256 lender1ProfitTerm1 = (term1Profit * 1000) / BASIS_POINTS;
         uint256 lender1Balance = vaultTokenInterface.balanceOf(lender1);
@@ -568,6 +556,168 @@ contract IntegrationTest is SetupTest {
         assert(depositor2SharesBalance == expectedDepositor2SharesBalance);
     }
 
+    function testIntegration4() public {
+        // Creation of term1 :
+        uint256 termId1 = _createTerm(lender1, 500, address(0)); // 5% commission -> term 1
+
+        // 3 borrowers 1/2/3
+        uint256 borrowAssets1 = 1000 * (10 ** token1.decimals());
+        uint256 borroweAssets2 = 500 * (10 ** token1.decimals());
+        uint256 borroweAssets3 = 250 * (10 ** token1.decimals());
+
+        // A, B and C are requesting each 1000, 500, 250
+        uint256 loanId1 = _requestLoan(borrower1, address(token1), borrowAssets1, 1 days);
+        uint256 loanId2 = _requestLoan(borrower2, address(token1), borroweAssets2, 1 days);
+        uint256 loanId3 = _requestLoan(borrower3, address(token1), borroweAssets3, 1 days);
+
+        // Define loans
+        ILoanManager.Loan memory loan1 = loanManager.getLoan(loanId1);
+        ILoanManager.Loan memory loan2 = loanManager.getLoan(loanId2);
+        ILoanManager.Loan memory loan3 = loanManager.getLoan(loanId3);
+        IERC4626 vaultTokenInterface = IERC4626(assetManager.getVaultToken(address(token1)));
+
+        // A deposits
+        _depositAndDelegate(depositor1, 2000, 2000, address(token1), termId1);
+        // B deposits
+        _depositAndDelegate(depositor2, 2000, 2000, address(token1), termId1);
+        // C deposits
+        _depositAndDelegate(depositor3, 2000, 2000, address(token1), termId1);
+
+        // TERM1 is funded - we check total deposits -> converted to shares after delegation
+        (, uint256 availableShares,) = lendingManager.getLendingTermBalances(termId1, address(token1));
+        assert(availableShares == 6000 * (10 ** vaultTokenInterface.decimals()));
+
+        // lender1 allocates 1000 shares to loan1
+        _allocate(lender1, address(token1), loanId1, termId1, 1000);
+        // lender1 allocates 1000 shares to loan2
+        _allocate(lender1, address(token1), loanId2, termId1, 500);
+        // lender1 allocates 1000 shares to loan3
+        _allocate(lender1, address(token1), loanId3, termId1, 250);
+
+        // check freezed shares on term
+        uint256 termFreezedShares = lendingManager.getTermFreezedShares(termId1, address(token1));
+        uint256 expectedTermFreezedShares = 1750 * (10 ** vaultTokenInterface.decimals());
+        assert(termFreezedShares == expectedTermFreezedShares);
+
+        // borrower1 executes loan
+        vm.startPrank(borrower1);
+        skip(1 days);
+        loanManager.executeLoan(loanId1);
+        vm.stopPrank();
+
+        // borrower2 executes loan
+        vm.startPrank(borrower2);
+        skip(1 days);
+        loanManager.executeLoan(loanId2);
+        vm.stopPrank();
+
+        // borrower3 executes loan
+        vm.startPrank(borrower3);
+        skip(1 days);
+        loanManager.executeLoan(loanId3);
+        vm.stopPrank();
+
+        // check borrower asset balance
+        uint256 borrower1Balance = token1.balanceOf(borrower1);
+        uint256 borrower2Balance = token1.balanceOf(borrower2);
+        uint256 borrower3Balance = token1.balanceOf(borrower3);
+        assert(borrower1Balance == borrowAssets1);
+        assert(borrower2Balance == borroweAssets2);
+        assert(borrower3Balance == borroweAssets3);
+
+        // repay loan
+        // mint 5% interest to borrower to pay extra
+        uint256 interest1 = (borrowAssets1 * 500) / BASIS_POINTS;
+        uint256 interest2 = (borroweAssets2 * 500) / BASIS_POINTS;
+        uint256 interest3 = (borroweAssets3 * 500) / BASIS_POINTS;
+        token1.mint(borrower1, interest1);
+        token1.mint(borrower2, interest2);
+        token1.mint(borrower3, interest3);
+
+        // borrower1 repay loan
+        vm.startPrank(borrower1);
+        token1.approve(address(assetManager), borrowAssets1 + interest1);
+        loanManager.repay(loanId1);
+        vm.stopPrank();
+
+        // borrower2 repay loan
+        vm.startPrank(borrower2);
+        token1.approve(address(assetManager), borroweAssets2 + interest2);
+        loanManager.repay(loanId2);
+        vm.stopPrank();
+
+        // borrower3 repay loan
+        vm.startPrank(borrower3);
+        token1.approve(address(assetManager), borroweAssets3 + interest3);
+        loanManager.repay(loanId3);
+        vm.stopPrank();
+
+        // check loan status for 1,2,3
+        loan1 = loanManager.getLoan(loanId1);
+        assert(loan1.status == ILoanManager.LoanStatus.Repaid);
+        loan2 = loanManager.getLoan(loanId2);
+        assert(loan2.status == ILoanManager.LoanStatus.Repaid);
+        loan3 = loanManager.getLoan(loanId3);
+        assert(loan3.status == ILoanManager.LoanStatus.Repaid);
+
+        // make sure borrower balances are 0
+        uint256 borrower1BalanceAfterRepayment = token1.balanceOf(borrower1);
+        uint256 borrower2BalanceAfterRepayment = token1.balanceOf(borrower2);
+        uint256 borrower3BalanceAfterRepayment = token1.balanceOf(borrower3);
+        assert(borrower1BalanceAfterRepayment == 0);
+        assert(borrower2BalanceAfterRepayment == 0);
+        assert(borrower3BalanceAfterRepayment == 0);
+
+        // lender1 (term owner of term1) CLAIMS PROFIT for the 3 loans.
+        vm.startPrank(lender1);
+        loanManager.claim(loanId1, termId1);
+        loanManager.claim(loanId2, termId1);
+        loanManager.claim(loanId3, termId1);
+
+        // ------------------------------------
+        // ---------- PROFITS -----------------
+        // ------------------------------------
+
+        // Convert repay amount to shares
+        uint256 repayInShares1 = assetManager.convertToShares(address(token1), loan1.repayAssets);
+        uint256 repayInShares2 = assetManager.convertToShares(address(token1), loan2.repayAssets);
+        uint256 repayInShares3 = assetManager.convertToShares(address(token1), loan3.repayAssets);
+        // Get shares required
+        uint256 sharesRequired1 = assetManager.convertToShares(address(token1), loan1.assetsRequired);
+        uint256 sharesRequired2 = assetManager.convertToShares(address(token1), loan2.assetsRequired);
+        uint256 sharesRequired3 = assetManager.convertToShares(address(token1), loan3.assetsRequired);
+        // Get profit shares
+        uint256 profitShares1 = repayInShares1 - sharesRequired1;
+        uint256 profitShares2 = repayInShares2 - sharesRequired2;
+        uint256 profitShares3 = repayInShares3 - sharesRequired3;
+
+        // Profits on term1 
+        // Get term weight on loan
+        uint256 termWeight1 = (loanManager.getAllocatedShares(loanId1, termId1, address(token1)) * BASIS_POINTS) / loan1.sharesAllocated;
+        uint256 termWeight2 = (loanManager.getAllocatedShares(loanId2, termId1, address(token1)) * BASIS_POINTS) / loan2.sharesAllocated;
+        uint256 termWeight3 = (loanManager.getAllocatedShares(loanId3, termId1, address(token1)) * BASIS_POINTS) / loan3.sharesAllocated;
+
+        // Calculate profit for term1
+        // Aggregate profit for the three loans for term1 
+        uint256 termProfitAggregated = (profitShares1 * termWeight1) / BASIS_POINTS + (profitShares2 * termWeight2) / BASIS_POINTS + (profitShares3 * termWeight3) / BASIS_POINTS;
+        console.log("termProfit", termProfitAggregated);
+
+        // From term1 profit calculate lender profit
+        uint256 lenderProfitTerm1 = (termProfitAggregated * 1750) / BASIS_POINTS;
+        console.log("lenderProfitTerm1", lenderProfitTerm1);
+
+
+
+
+
+
+
+
+                    
+
+
+    }
+
     // todo: move to utils file
     // -----------------------------------------
     // ----------- UTILS FUNCTIONS -------------
@@ -607,7 +757,7 @@ contract IntegrationTest is SetupTest {
         IERC4626 vaultTokenInterface = IERC4626(vaultToken);
         uint256 delegateSharesWithDecimals = delegateShares * (10 ** vaultTokenInterface.decimals());
 
-        // approve lending manager to transfer depositor delegate amount from depisitor to lending manager
+        // approve lending manager to transfer depositor delegate amount from depositor to lending manager
         vaultTokenInterface.approve(address(lendingManager), delegateSharesWithDecimals);
 
         vm.roll(vm.getBlockNumber() + 1);
